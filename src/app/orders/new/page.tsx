@@ -215,7 +215,7 @@ export default function CreateOrderPage() {
                 {!matchedCustomer && phoneSearch.length >= 8 && !selectedCustomer && (
                   <p className="text-xs text-amber-600 mt-1 flex items-center gap-1 font-medium">
                     <UserPlus className="w-3.5 h-3.5" />
-                    Chưa có trong danh bạ — sẽ tự động lưu là khách hàng mới
+                    Chưa có trong danh bạ — sẽ tạo hồ sơ khách mới khi Firebase được kết nối
                   </p>
                 )}
               </div>
