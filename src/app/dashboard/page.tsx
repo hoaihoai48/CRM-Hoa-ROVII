@@ -23,14 +23,14 @@ import { formatDate } from '@/lib/utils/format';
 export default function DashboardPage() {
   const now = new Date();
   const todayKey = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
-  const todayOrders = mockOrders.filter((order) => order.createdAt.slice(0, 10) === todayKey);
+  const todayOrders = orders.filter((order) => order.createdAt.slice(0, 10) === todayKey);
   const newOrders = todayOrders.filter((order) => order.status === 'new');
   const processingOrders = todayOrders.filter(
     (order) => order.status === 'confirmed' || order.status === 'delivering'
   );
   const completedOrders = todayOrders.filter((order) => order.status === 'completed');
   const todayRevenue = completedOrders.reduce((sum, order) => sum + order.summary.total, 0);
-  const recentOrders = mockOrders.slice(0, 6);
+  const recentOrders = orders.slice(0, 6);
 
   return (
     <AppShell>
