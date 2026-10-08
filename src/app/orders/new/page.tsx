@@ -17,7 +17,7 @@ import { PageHeader } from '@/components/common/Cards';
 import { Input, Textarea } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
-import { mockCustomers, mockProducts } from '@/lib/mock';
+import { mockCustomers, mockProducts } from '@/lib/services';
 import { Customer, Product } from '@/types';
 import { formatVND } from '@/lib/utils/format';
 
