@@ -1,13 +1,15 @@
 import { Order } from '@/types';
-import { mockOrders } from '@/lib/mock';
+import { seedOrders as seedOrders } from '@/lib/mock';
 
 export async function listOrders(): Promise<Order[]> {
-  return mockOrders;
+  return seedOrders;
 }
 
 export async function getOrderById(id: string): Promise<Order | null> {
-  return mockOrders.find((order) => order.id === id) ?? null;
+  return seedOrders.find((order) => order.id === id) ?? null;
 }
 
-export const orders = mockOrders;
+export const orders = seedOrders;
 export const mockOrdersData = orders;
+
+export const mockOrders = orders;
