@@ -35,6 +35,7 @@ function EditProductContent() {
   const [category, setCategory] = useState('Hoa bó');
   const [note, setNote] = useState('');
   const [isActive, setIsActive] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (initialProduct) {
@@ -50,16 +51,12 @@ function EditProductContent() {
   if (!initialProduct) {
     return <AppShell><div className="p-8 text-center text-sm text-stone-500">Đang tải sản phẩm...</div></AppShell>;
   }
-  const [isLoading, setIsLoading] = useState(false);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Mock save update
-    setTimeout(() => {
-      setIsLoading(false);
-      router.push('/products');
-    }, 400);
+    updateProduct(productId, { name: name.trim(), price: Number(price) || 0, unit, category, note, isActive })
+      .then(() => router.push('/products'))
+      .finally(() => setIsLoading(false));
   };
 
   return (
