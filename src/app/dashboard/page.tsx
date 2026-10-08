@@ -21,7 +21,8 @@ import { mockOrders } from '@/lib/mock';
 import { formatDate } from '@/lib/utils/format';
 
 export default function DashboardPage() {
-  const todayKey = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const todayKey = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
   const todayOrders = mockOrders.filter((order) => order.createdAt.slice(0, 10) === todayKey);
   const newOrders = todayOrders.filter((order) => order.status === 'new');
   const processingOrders = todayOrders.filter(
