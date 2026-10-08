@@ -8,3 +8,6 @@ export async function getStoreSettings(): Promise<StoreSettings> {
 export async function getCurrentUser(): Promise<User> {
   return mockCurrentUser;
 }
+
+export const mockCurrentUser = currentUser;
+export const mockStoreSettings = storeSettings;
