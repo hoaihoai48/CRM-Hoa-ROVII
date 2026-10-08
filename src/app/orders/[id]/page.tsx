@@ -18,6 +18,7 @@ import { ZaloButton } from '@/components/common/ZaloButton';
 import { mockOrders } from '@/lib/mock';
 import { formatDate, formatVND } from '@/lib/utils/format';
 import { OrderStatus } from '@/types';
+import { getNextOrderStatuses, canTransitionOrderStatus } from '@/lib/utils/order-status';
 
 function OrderDetailContent() {
   const params = useParams();
@@ -28,6 +29,8 @@ function OrderDetailContent() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const handleUpdateStatus = (newStatus: OrderStatus) => {
+    if (!canTransitionOrderStatus(currentStatus, newStatus)) return;
+
     setCurrentStatus(newStatus);
     setStatusMessage(`Đã cập nhật trạng thái sang "${newStatus}" (mock action)`);
     setTimeout(() => setStatusMessage(null), 3000);
@@ -71,38 +74,39 @@ function OrderDetailContent() {
               <StatusBadge status={currentStatus} size="lg" />
             </div>
 
-            {/* Quick status changer buttons (Mock interactive) */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-              <span className="text-xs font-semibold text-stone-400 mr-1">Chuyển:</span>
-              <button
-                type="button"
-                onClick={() => handleUpdateStatus('confirmed')}
-                className="px-2.5 py-1 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 cursor-pointer"
-              >
-                Xác nhận
-              </button>
-              <button
-                type="button"
-                onClick={() => handleUpdateStatus('delivering')}
-                className="px-2.5 py-1 text-xs font-medium rounded-md bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 cursor-pointer"
-              >
-                Giao hàng
-              </button>
-              <button
-                type="button"
-                onClick={() => handleUpdateStatus('completed')}
-                className="px-2.5 py-1 text-xs font-medium rounded-md bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 cursor-pointer"
-              >
-                Hoàn tất
-              </button>
-              <button
-                type="button"
-                onClick={() => handleUpdateStatus('cancelled')}
-                className="px-2.5 py-1 text-xs font-medium rounded-md bg-stone-100 text-stone-600 hover:bg-stone-200 border border-stone-200 cursor-pointer"
-              >
-                Hủy đơn
-              </button>
-            </div>
+            {/* Chỉ hiển thị các chuyển trạng thái hợp lệ theo workflow */}
+            {getNextOrderStatuses(currentStatus).length > 0 && (
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                <span className="text-xs font-semibold text-stone-400 mr-1">Chuyển:</span>
+                {getNextOrderStatuses(currentStatus).map((nextStatus) => {
+                  const labels: Record<OrderStatus, string> = {
+                    new: 'Mới',
+                    confirmed: 'Xác nhận',
+                    delivering: 'Giao hàng',
+                    completed: 'Hoàn tất',
+                    cancelled: 'Hủy đơn',
+                  };
+                  const classes: Record<OrderStatus, string> = {
+                    new: 'bg-stone-50 text-stone-600 hover:bg-stone-100 border-stone-200',
+                    confirmed: 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200',
+                    delivering: 'bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200',
+                    completed: 'bg-rose-50 text-rose-700 hover:bg-rose-100 border-rose-200',
+                    cancelled: 'bg-stone-100 text-stone-600 hover:bg-stone-200 border-stone-200',
+                  };
+
+                  return (
+                    <button
+                      key={nextStatus}
+                      type="button"
+                      onClick={() => handleUpdateStatus(nextStatus)}
+                      className={`px-2.5 py-1 text-xs font-medium rounded-md border cursor-pointer ${classes[nextStatus]}`}
+                    >
+                      {labels[nextStatus]}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Customer Snapshot Card */}
