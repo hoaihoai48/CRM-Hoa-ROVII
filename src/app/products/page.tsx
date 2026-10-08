@@ -112,9 +112,17 @@ export default function ProductsPage() {
               key={product.id}
               className="bg-white rounded-xl border border-stone-200/80 shadow-2xs overflow-hidden flex flex-col justify-between hover:border-stone-300 transition-colors group"
             >
-              {/* Product Card Header Image / Gradient */}
-              <div className="h-36 bg-gradient-to-tr from-rose-100 via-pink-50 to-amber-50 relative flex items-center justify-center p-4">
-                <Flower2 className="w-12 h-12 text-rose-300 group-hover:scale-110 transition-transform duration-300" />
+              {/* Product Card Header Image */}
+              <div
+                className="h-36 relative flex items-center justify-center p-4 bg-gradient-to-tr from-rose-100 via-pink-50 to-amber-50 bg-cover bg-center"
+                style={product.imageUrl ? { backgroundImage: `url(${product.imageUrl})` } : undefined}
+              >
+                {!product.imageUrl && (
+                  <Flower2 className="w-12 h-12 text-rose-300 group-hover:scale-110 transition-transform duration-300" />
+                )}
+                {product.imageUrl && (
+                  <div className="absolute inset-0 bg-black/5 group-hover:bg-black/0 transition-colors" aria-hidden="true" />
+                )}
                 <span
                   className={`absolute top-3 right-3 text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
                     product.isActive
