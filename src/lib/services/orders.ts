@@ -382,7 +382,7 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
       status: input.status,
       timestamp: now,
       actorName: input.actorName || 'Nhân viên',
-      note: input.note?.trim() || undefined,
+      note: input.note?.trim() || null,
     };
 
     const existingHistory = Array.isArray(orderData.statusHistory) ? orderData.statusHistory : [];

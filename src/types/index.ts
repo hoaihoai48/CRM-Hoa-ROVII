@@ -75,7 +75,7 @@ export interface OrderStatusHistory {
   id: string;
   status: OrderStatus;
   timestamp: string;
-  note?: string;
+  note?: string | null;
   actorName: string;
 }
 

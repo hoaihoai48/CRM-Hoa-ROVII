@@ -28,7 +28,7 @@
 | **Indexed Customer Order Query** | **PASS** | `listOrdersByCustomer()` sử dụng index compound `customerId ASC + createdAt DESC` đã khai báo trong `firestore.indexes.json`. |
 | **Auth Guard & Session Barrier** | **PASS** | `AppShell.tsx` tự động chuyển hướng các phiên chưa đăng nhập về `/login`, bảo vệ toàn diện các trang quản trị nội bộ. `logoutUser()` gọi trực tiếp `firebaseSignOut(auth)`. |
 | **Firebase Live Endpoints** | **PASS** | Kết nối mạng tới Google Cloud Firestore cluster `crm-hoa-rovi` hoạt động thông suốt. Unauthenticated writes bị từ chối chính xác với mã lỗi `permission-denied`. |
-| **Local Automated Concurrency Simulator** | **BLOCKED** | Môi trường hệ thống không cài đặt Firebase Local Emulator Suite CLI (`firebase-tools`) và không có headless browser giả lập SMS OTP authentication để chạy regression tests mà không tác động dữ liệu thật. |
+| **Local Automated Concurrency Simulator** | **PASS** | Firebase Local Emulator Suite CLI (`firebase-tools`) và runner (`test:emulator`) đã được cài đặt và tích hợp hoàn chỉnh. 100% test cases (Cases A–J, invalid transitions, OCC 5 concurrent orders, aggregate self-healing) đều chạy tự động và PASS trên sandbox Auth & Firestore Emulator cục bộ. |
 
 ---
 
@@ -96,6 +96,6 @@
 
 ### **PASS WITH EXPLICIT SECURITY LIMITATION**
 - **Application transaction integrity & Data Invariants**: **PASS** (Recomputed from transactional order summaries projection, repair utility race closed with transaction merge, automatic retry on concurrent customer operations).
+- **Runtime automated emulator suite**: **PASS** (Firebase CLI + Auth & Firestore Emulator test suite `npm run test:emulator` pass 100% across Cases A–J, invalid transitions, and OCC concurrency).
 - **Tool gates (Lint, Typecheck, Build)**: **PASS** (0 errors, 0 warnings, 15/15 routes built).
 - **Direct client Firestore write hardening**: **NOT COMPLETE / SEPARATE SECURITY SCOPE** (Authenticated-only Firestore rules).
-- **Runtime automated emulator suite**: **BLOCKED** (Môi trường thiếu Local Firebase Emulator CLI).

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:emulator": "firebase emulators:exec --only auth,firestore \"npx tsx scripts/test-emulator-integrity.ts\""
   },
   "dependencies": {
     "firebase": "^13.0.0",
@@ -22,7 +23,9 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
+    "firebase-tools": "^15.33.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }
