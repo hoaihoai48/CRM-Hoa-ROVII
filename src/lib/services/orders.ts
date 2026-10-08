@@ -9,4 +9,5 @@ export async function getOrderById(id: string): Promise<Order | null> {
   return mockOrders.find((order) => order.id === id) ?? null;
 }
 
-export const mockOrders = orders;
+export const orders = mockOrders;
+export const mockOrdersData = orders;
