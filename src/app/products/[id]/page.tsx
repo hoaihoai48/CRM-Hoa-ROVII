@@ -238,22 +238,34 @@ function ProductEditForm({ product, productId }: ProductFormProps) {
 
 function EditProductContent() {
   const params = useParams();
-  const productId = (params?.id as string) || 'PROD-001';
+  const productId = params?.id as string;
 
   const [product, setProduct] = useState<Product | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    getProductById(productId).then((loadedProduct) => {
-      setProduct(loadedProduct);
-    });
+    if (!productId) {
+      setLoadError('Mã sản phẩm không hợp lệ.');
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    setLoadError(null);
+    getProductById(productId)
+      .then((loadedProduct) => {
+        setProduct(loadedProduct);
+        if (!loadedProduct) setLoadError('Không tìm thấy sản phẩm.');
+      })
+      .catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải sản phẩm.'))
+      .finally(() => setIsLoading(false));
   }, [productId]);
 
-  if (!product) {
-    return (
-      <AppShell>
-        <div className="p-8 text-center text-sm text-stone-500">Đang tải sản phẩm...</div>
-      </AppShell>
-    );
+  if (isLoading) {
+    return <AppShell><div className="p-8 text-center text-sm text-stone-500">Đang tải sản phẩm...</div></AppShell>;
+  }
+  if (loadError || !product) {
+    return <AppShell><div className="p-8 text-center text-sm text-red-600">{loadError || 'Không tìm thấy sản phẩm.'}</div></AppShell>;
   }
 
   return <ProductEditForm key={product.id} product={product} productId={productId} />;
