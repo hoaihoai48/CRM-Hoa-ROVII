@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { 
   PlusCircle, 
@@ -15,7 +15,7 @@ import { PageHeader, EmptyState } from '@/components/common/Cards';
 import { SearchInput } from '@/components/common/Input';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
-import { orders } from '@/lib/services';
+import { listOrders } from '@/lib/services';
 import { formatDate } from '@/lib/utils/format';
 import { OrderStatus } from '@/types';
 
@@ -29,11 +29,16 @@ const STATUS_FILTERS: { id: string; label: string; value?: OrderStatus }[] = [
 ];
 
 export default function OrdersPage() {
+  const [orders, setOrders] = useState<Awaited<ReturnType<typeof listOrders>>>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
 
+  useEffect(() => {
+    listOrders().then(setOrders);
+  }, []);
+
   const filteredOrders = useMemo(() => {
-    return mockOrders.filter((order) => {
+    return orders.filter((order) => {
       // Filter status
       if (selectedStatus !== 'all' && order.status !== selectedStatus) {
         return false;
