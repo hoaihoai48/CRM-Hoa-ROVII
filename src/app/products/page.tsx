@@ -29,7 +29,7 @@ export default function ProductsPage() {
       if (!searchTerm.trim()) return true;
       return product.name.toLowerCase().includes(searchTerm.toLowerCase());
     });
-  }, [searchTerm, statusFilter]);
+  }, [products, searchTerm, statusFilter]);
 
   return (
     <AppShell>
