@@ -306,6 +306,10 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
     const existingHistory = Array.isArray(orderData.statusHistory) ? orderData.statusHistory : [];
     const updatedHistory = [...existingHistory, historyEntry];
 
+    if (!customerRef || !customerSnap || !customerSnap.exists()) {
+      throw new Error(`Không tìm thấy khách hàng của đơn hàng: ${customerId}`);
+    }
+
     if (customerRef && customerSnap && customerSnap.exists()) {
       // Recompute the complete aggregate from the order set as part of this
       // transaction. This keeps totalOrders, totalSpent and lastOrderDate in
