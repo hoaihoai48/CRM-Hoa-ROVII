@@ -18,6 +18,13 @@ export interface User {
   avatarUrl?: string;
 }
 
+export interface CustomerOrderSummary {
+  id: string;
+  status: OrderStatus;
+  total: number;
+  createdAt: string;
+}
+
 export interface Customer {
   id: string;
   name: string;
@@ -27,6 +34,7 @@ export interface Customer {
   totalOrders: number;
   totalSpent: number;
   lastOrderDate: string;
+  orderSummaries?: CustomerOrderSummary[];
   note?: string;
   createdAt: string;
 }

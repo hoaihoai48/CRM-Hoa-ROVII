@@ -18,6 +18,14 @@ function normalizePhone(phone: string): string {
 }
 
 function mapDocToCustomer(id: string, data: Record<string, unknown>): Customer {
+  const rawSummaries = Array.isArray(data.orderSummaries) ? data.orderSummaries : [];
+  const orderSummaries = rawSummaries.map((s: Record<string, unknown>) => ({
+    id: String(s.id || ''),
+    status: (s.status as Customer['orderSummaries'] extends (infer U)[] ? U extends { status: infer S } ? S : never : never) || 'new',
+    total: Number(s.total || 0),
+    createdAt: normalizeIsoString(s.createdAt),
+  }));
+
   return {
     id,
     name: String(data.name || '').trim(),
@@ -27,6 +35,7 @@ function mapDocToCustomer(id: string, data: Record<string, unknown>): Customer {
     totalOrders: Number(data.totalOrders || 0),
     totalSpent: Number(data.totalSpent || 0),
     lastOrderDate: normalizeIsoString(data.lastOrderDate, ''),
+    orderSummaries,
     note: data.note ? String(data.note).trim() : undefined,
     createdAt: normalizeIsoString(data.createdAt),
   };
