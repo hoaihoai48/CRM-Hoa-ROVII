@@ -7,7 +7,6 @@ import {
   User, 
   ShoppingBag, 
   Calendar, 
-  Edit3, 
   ArrowRight,
   PlusCircle
 } from 'lucide-react';
@@ -37,14 +36,6 @@ function CustomerDetailContent() {
         action={
           <div className="flex items-center gap-2">
             <ZaloButton phone={customer.phone} size="md" variant="primary" />
-            <button
-              type="button"
-              onClick={() => alert('Chỉnh sửa thông tin khách (Mock UI)')}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>Sửa</span>
-            </button>
           </div>
         }
       />
@@ -54,21 +45,21 @@ function CustomerDetailContent() {
         <StatCard
           title="Tổng số đơn hàng"
           value={`${customer.totalOrders} đơn`}
-          subtitle="Tỉ lệ nhận hoa 100%"
+          subtitle="Tổng tích lũy theo hồ sơ khách"
           icon={ShoppingBag}
           iconBgColor="bg-blue-50 text-blue-700"
         />
         <StatCard
           title="Tổng chi tiêu"
           value={<MoneyDisplay amount={customer.totalSpent} size="xl" className="text-stone-900" />}
-          subtitle="Doanh thu tích lũy"
+          subtitle="Tổng giá trị các đơn"
           icon={ShoppingBag}
           iconBgColor="bg-rose-50 text-rose-700"
         />
         <StatCard
           title="Đơn gần nhất"
           value={formatDateShort(customer.lastOrderDate)}
-          subtitle="Thường xuyên tương tác"
+          subtitle="Theo hồ sơ khách hàng"
           icon={Calendar}
           iconBgColor="bg-emerald-50 text-emerald-700"
         />
