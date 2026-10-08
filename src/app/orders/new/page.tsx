@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   UserCheck, 
@@ -17,7 +17,7 @@ import { PageHeader } from '@/components/common/Cards';
 import { Input, Textarea } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
-import { customers, products } from '@/lib/services';
+import { createCustomer, createOrder, getCurrentUser, listActiveProducts, listCustomers } from '@/lib/services';
 import { Customer, Product } from '@/types';
 import { formatVND } from '@/lib/utils/format';
 
@@ -30,6 +30,9 @@ export default function CreateOrderPage() {
   const router = useRouter();
 
   // Step 1: Customer flow
+  const [customers, setCustomers] = useState<Awaited<ReturnType<typeof listCustomers>>>([]);
+  const [products, setProducts] = useState<Awaited<ReturnType<typeof listActiveProducts>>>([]);
+  const [currentUser, setCurrentUser] = useState<Awaited<ReturnType<typeof getCurrentUser>>>(null);
   const [phoneSearch, setPhoneSearch] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
@@ -37,11 +40,19 @@ export default function CreateOrderPage() {
   const [deliveryDate, setDeliveryDate] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
+  useEffect(() => {
+    Promise.all([listCustomers(), listActiveProducts(), getCurrentUser()]).then(([loadedCustomers, loadedProducts, user]) => {
+      setCustomers(loadedCustomers);
+      setProducts(loadedProducts);
+      setCurrentUser(user);
+    });
+  }, []);
+
   // Suggestion match based on phone
   const normalizedPhone = phoneSearch.replace(/\D/g, '');
   const matchedCustomer = useMemo(() => {
     if (normalizedPhone.length < 3) return null;
-    return mockCustomers.find((c) => c.phone.replace(/\D/g, '').includes(normalizedPhone)) || null;
+    return customers.find((c) => c.phoneNormalized.includes(normalizedPhone)) || null;
   }, [normalizedPhone]);
 
   const handleSelectCustomer = (customer: Customer) => {
@@ -63,7 +74,7 @@ export default function CreateOrderPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
 
   const filteredProducts = useMemo(() => {
-    return mockProducts.filter((p) => {
+    return products.filter((p) => {
       if (!p.isActive) return false;
       if (!productSearch.trim()) return true;
       return p.name.toLowerCase().includes(productSearch.toLowerCase());
@@ -103,7 +114,7 @@ export default function CreateOrderPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const handleSaveOrder = (e: React.FormEvent) => {
+  const handleSaveOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
 
@@ -128,11 +139,43 @@ export default function CreateOrderPage() {
       return;
     }
 
+    if (!currentUser) {
+      setFormError('Chưa tải được tài khoản nhân viên.');
+      return;
+    }
+
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
+      const customer = selectedCustomer ?? await createCustomer({
+        name: customerName,
+        phone: phoneSearch,
+        address: customerAddress,
+      });
+
+      const order = await createOrder({
+        customerId: customer.id,
+        customerSnapshot: {
+          name: customerName.trim(),
+          phone: phoneSearch.trim(),
+          address: customerAddress.trim(),
+        },
+        items: cart.map((item) => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+        })),
+        deliveryFee,
+        discount,
+        note: orderNote,
+        deliveryDate: deliveryDate ? new Date(deliveryDate).toISOString() : undefined,
+        createdBy: currentUser.name,
+      });
+
+      router.push(`/orders/${order.id}`);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Không thể tạo đơn hàng.');
+    } finally {
       setIsSubmitting(false);
-      setFormError('Đã kiểm tra đơn hợp lệ. Chức năng lưu thật sẽ được kết nối với Firestore ở Phase 2.');
-    }, 450);
+    }
   };
 
   return (
