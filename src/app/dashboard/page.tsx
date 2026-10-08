@@ -25,9 +25,10 @@ import { formatDate } from '@/lib/utils/format';
 
 function DashboardContent() {
   const [orders, setOrders] = React.useState<Order[]>([]);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    listOrders().then(setOrders);
+    listOrders().then(setOrders).catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải dữ liệu tổng quan.'));
   }, []);
 
   const now = new Date();
@@ -59,6 +60,8 @@ function DashboardContent() {
           </div>
         }
       />
+
+      {loadError && <div className="mb-6 p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs">{loadError}</div>}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-8">
