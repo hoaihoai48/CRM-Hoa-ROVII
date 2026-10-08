@@ -3,11 +3,11 @@ import { db, auth } from '@/lib/firebase/config';
 import { StoreSettings, User, UpdateStoreSettingsInput } from '@/types';
 
 const DEFAULT_STORE_SETTINGS: StoreSettings = {
-  storeName: 'Tiệm Hoa Tươi Họa Mi',
-  phone: '0909888999',
-  address: '158 Nguyễn Đình Chiểu, Phường Võ Thị Sáu, Quận 3, TP.HCM',
-  zaloUrl: 'https://zalo.me/0909888999',
-  email: 'lienhe@tiemhoa.vn',
+  storeName: '',
+  phone: '',
+  address: '',
+  zaloUrl: '',
+  email: '',
   notificationEnabled: true,
 };
 
