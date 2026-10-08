@@ -32,10 +32,12 @@ function ProductEditForm({ product, productId }: ProductFormProps) {
   const [note, setNote] = useState(product.note || '');
   const [isActive, setIsActive] = useState(product.isActive);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage(null);
     updateProduct(productId, { 
       name: name.trim(), 
       price: Number(price) || 0, 
@@ -45,6 +47,7 @@ function ProductEditForm({ product, productId }: ProductFormProps) {
       isActive 
     })
       .then(() => router.push('/products'))
+      .catch((error) => setErrorMessage(error instanceof Error ? error.message : 'Không thể cập nhật sản phẩm.'))
       .finally(() => setIsLoading(false));
   };
 
@@ -59,7 +62,9 @@ function ProductEditForm({ product, productId }: ProductFormProps) {
             type="button"
             onClick={() => {
               if (confirm('Bạn có chắc muốn ngừng bán mẫu hoa này?')) {
-                updateProduct(productId, { isActive: false }).then(() => router.push('/products'));
+                updateProduct(productId, { isActive: false })
+                  .then(() => router.push('/products'))
+                  .catch((error) => setErrorMessage(error instanceof Error ? error.message : 'Không thể cập nhật trạng thái sản phẩm.'));
               }
             }}
             className="p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
@@ -69,6 +74,8 @@ function ProductEditForm({ product, productId }: ProductFormProps) {
           </button>
         }
       />
+
+      {errorMessage && <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-xs">{errorMessage}</div>}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Form Column (8 cols) */}
