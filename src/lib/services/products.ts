@@ -52,7 +52,7 @@ export async function createProduct(input: CreateProductInput): Promise<Product>
   if (input.price < 0) throw new Error('Giá sản phẩm không được âm.');
   if (!input.unit.trim()) throw new Error('Đơn vị tính không được để trống.');
 
-  const productId = `PROD-${Date.now()}`;
+  const productId = `PROD-${crypto.randomUUID()}`;
   const now = new Date().toISOString();
 
   const productData = {
