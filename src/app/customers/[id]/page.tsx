@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { 
@@ -21,11 +21,21 @@ import { formatDateShort } from '@/lib/utils/format';
 function CustomerDetailContent() {
   const params = useParams();
   const customerId = (params?.id as string) || 'CUST-001';
+  const [initialCustomer, setInitialCustomer] = useState<Awaited<ReturnType<typeof getCustomerById>>>(null);
+  const [customerOrders, setCustomerOrders] = useState<Awaited<ReturnType<typeof listOrders>>>([]);
 
-  
+  useEffect(() => {
+    Promise.all([getCustomerById(customerId), listOrders()]).then(([customer, orders]) => {
+      setInitialCustomer(customer);
+      setCustomerOrders(orders.filter((order) => order.customerId === customerId));
+    });
+  }, [customerId]);
 
-  // Orders belonging to this customer
-  const customerOrders = customerOrders.filter((o) => o.customerId === customer.id);
+  if (!initialCustomer) {
+    return <AppShell><div className="p-8 text-center text-sm text-stone-500">Đang tải hồ sơ khách hàng...</div></AppShell>;
+  }
+
+  const customer = initialCustomer;
 
   return (
     <AppShell>
