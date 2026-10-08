@@ -32,25 +32,32 @@ export default function SettingsPage() {
   const [userEmail, setUserEmail] = useState('');
 
   const [isSaved, setIsSaved] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([getStoreSettings(), getCurrentUser()]).then(([settings, user]) => {
-      setStoreName(settings.storeName);
-      setStorePhone(settings.phone);
-      setStoreAddress(settings.address);
-      setZaloUrl(settings.zaloUrl);
-      if (user) {
-        setUserName(user.name);
-        setUserEmail(user.email);
-      }
-    });
+    Promise.all([getStoreSettings(), getCurrentUser()])
+      .then(([settings, user]) => {
+        setStoreName(settings.storeName);
+        setStorePhone(settings.phone);
+        setStoreAddress(settings.address);
+        setZaloUrl(settings.zaloUrl);
+        if (user) {
+          setUserName(user.name);
+          setUserEmail(user.email);
+        }
+      })
+      .catch((error) => setErrorMessage(error instanceof Error ? error.message : 'Không thể tải cài đặt.'));
   }, []);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     updateStoreSettings({ storeName, phone: storePhone, address: storeAddress, zaloUrl })
-      .then(() => setIsSaved(true));
-    setTimeout(() => setIsSaved(false), 2500);
+      .then(() => {
+        setIsSaved(true);
+        setTimeout(() => setIsSaved(false), 2500);
+      })
+      .catch((error) => setErrorMessage(error instanceof Error ? error.message : 'Không thể lưu cài đặt.'));
   };
 
   const handleLogout = async () => {
@@ -64,6 +71,12 @@ export default function SettingsPage() {
         title="Cài đặt hệ thống"
         subtitle="Thông tin cửa hàng, tài khoản nhân viên và liên kết mạng xã hội"
       />
+
+      {errorMessage && (
+        <div className="mb-6 p-3.5 bg-red-50 border border-red-200 text-red-800 text-xs rounded-xl">
+          {errorMessage}
+        </div>
+      )}
 
       {isSaved && (
         <div className="mb-6 p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center gap-2">
@@ -125,7 +138,8 @@ export default function SettingsPage() {
             <Input
               label="Tên nhân viên"
               value={userName}
-              onChange={(e) => setUserName(e.target.value)}
+              disabled
+              hint="Tên tài khoản lấy từ Firebase Authentication; không thể thay đổi tại màn hình này"
             />
             <Input
               label="Email đăng nhập"
