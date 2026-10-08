@@ -121,6 +121,14 @@ export async function listOrders(): Promise<Order[]> {
   return orders.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+export async function listOrdersByCustomer(customerId: string): Promise<Order[]> {
+  if (!customerId) return [];
+  const collRef = collection(db, 'orders');
+  const q = query(collRef, where('customerId', '==', customerId), orderBy('createdAt', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((docSnap) => mapDocToOrder(docSnap.id, docSnap.data()));
+}
+
 export async function getOrderById(id: string): Promise<Order | null> {
   if (!id) return null;
   const docRef = doc(db, 'orders', id);
