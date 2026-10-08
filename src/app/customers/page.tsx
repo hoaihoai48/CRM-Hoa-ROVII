@@ -14,7 +14,7 @@ import { PageHeader, EmptyState } from '@/components/common/Cards';
 import { SearchInput } from '@/components/common/Input';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
 import { ZaloButton } from '@/components/common/ZaloButton';
-import { mockCustomers } from '@/lib/mock';
+import { mockCustomers } from '@/lib/services';
 import { formatDateShort } from '@/lib/utils/format';
 
 export default function CustomersPage() {
