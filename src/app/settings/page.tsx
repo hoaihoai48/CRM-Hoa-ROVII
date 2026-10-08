@@ -44,6 +44,7 @@ export default function SettingsPage() {
   }, []);
 
   const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
     updateStoreSettings({ storeName, phone: storePhone, address: storeAddress, zaloUrl })
       .then(() => setIsSaved(true));
     setTimeout(() => setIsSaved(false), 2500);
