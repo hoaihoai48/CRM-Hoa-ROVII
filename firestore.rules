@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function: kiểm tra user đã đăng nhập
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Các collection nghiệp vụ tiệm hoa: chỉ cho phép nhân viên/user đã xác thực truy cập
+    match /orders/{orderId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /customers/{customerId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /products/{productId} {
+      allow read: if true; // Bảng giá mẫu hoa có thể xem công khai
+      allow write: if isAuthenticated();
+    }
+
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+  }
+}
