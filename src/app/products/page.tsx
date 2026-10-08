@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { 
   PlusCircle, 
@@ -10,15 +10,20 @@ import {
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader, EmptyState } from '@/components/common/Cards';
 import { SearchInput } from '@/components/common/Input';
-import { products } from '@/lib/services';
+import { listProducts } from '@/lib/services';
 import { formatVND } from '@/lib/utils/format';
 
 export default function ProductsPage() {
+  const [products, setProducts] = useState<Awaited<ReturnType<typeof listProducts>>>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
+  useEffect(() => {
+    listProducts().then(setProducts);
+  }, []);
+
   const filteredProducts = useMemo(() => {
-    return mockProducts.filter((product) => {
+    return products.filter((product) => {
       if (statusFilter === 'active' && !product.isActive) return false;
       if (statusFilter === 'inactive' && product.isActive) return false;
       if (!searchTerm.trim()) return true;
@@ -62,7 +67,7 @@ export default function ProductsPage() {
                   : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
               }`}
             >
-              Tất cả ({mockProducts.length})
+              Tất cả ({products.length})
             </button>
             <button
               type="button"
