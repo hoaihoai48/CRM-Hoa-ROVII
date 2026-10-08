@@ -13,7 +13,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/common/Cards';
 import { Input, Textarea } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
-import { mockProducts } from '@/lib/mock';
+import { mockProducts } from '@/lib/services';
 import { formatVND } from '@/lib/utils/format';
 
 function EditProductContent() {
