@@ -26,6 +26,7 @@ function OrderDetailContent() {
   const [initialOrder, setInitialOrder] = useState<Awaited<ReturnType<typeof getOrderById>>>(null);
   const [currentUser, setCurrentUser] = useState<Awaited<ReturnType<typeof getCurrentUser>>>(null);
   const [currentStatus, setCurrentStatus] = useState<OrderStatus>('new');
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([getOrderById(orderId), getCurrentUser()]).then(([order, user]) => {
@@ -38,8 +39,6 @@ function OrderDetailContent() {
   if (!initialOrder) {
     return <AppShell><div className="p-8 text-center text-sm text-stone-500">Đang tải chi tiết đơn hàng...</div></AppShell>;
   }
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-
   const handleUpdateStatus = async (newStatus: OrderStatus) => {
     if (!canTransitionOrderStatus(currentStatus, newStatus)) return;
 
