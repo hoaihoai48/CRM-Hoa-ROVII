@@ -3,11 +3,15 @@
 import React from 'react';
 import Link from 'next/link';
 import { Flower2, Settings, User } from 'lucide-react';
-import { mockCurrentUser } from '@/lib/mock';
+import { getCurrentUser } from '@/lib/services';
+import { ThemeToggle } from './ThemeToggle';
 
 export function MobileHeader() {
+  const [user, setUser] = React.useState<{ name: string; email: string } | null>(null);
+  React.useEffect(() => { getCurrentUser().then(setUser); }, []);
+
   return (
-    <header className="lg:hidden sticky top-0 inset-x-0 h-14 bg-white border-b border-stone-200 z-30 px-4 flex items-center justify-between">
+    <header className="lg:hidden sticky top-0 inset-x-0 h-14 bg-white border-b border-stone-200 z-30 dark:bg-slate-900 dark:border-slate-800 px-4 flex items-center justify-between">
       <Link href="/dashboard" className="flex items-center gap-2">
         <div className="w-8 h-8 rounded-lg bg-rose-500 flex items-center justify-center text-white">
           <Flower2 className="w-4 h-4" />
@@ -16,6 +20,7 @@ export function MobileHeader() {
       </Link>
 
       <div className="flex items-center gap-1.5">
+        <ThemeToggle compact />
         <Link
           href="/settings"
           className="p-2 text-stone-500 hover:text-stone-900 rounded-lg"
@@ -26,7 +31,7 @@ export function MobileHeader() {
         <Link
           href="/settings"
           className="w-8 h-8 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-xs"
-          title={mockCurrentUser.name}
+          title={user?.name ?? "Tài khoản"}
         >
           <User className="w-4 h-4" />
         </Link>
