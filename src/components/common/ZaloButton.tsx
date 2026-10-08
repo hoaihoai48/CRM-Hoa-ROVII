@@ -12,7 +12,7 @@ interface ZaloButtonProps {
 
 export function ZaloButton({
   phone,
-  zaloUrl = '#',
+  zaloUrl,
   size = 'md',
   variant = 'primary',
   className = '',
@@ -21,6 +21,7 @@ export function ZaloButton({
   // Phase 2 will construct real deep link: https://zalo.me/${phone} or custom link
   // TODO_PHASE_2_FIREBASE: Link to actual Zalo app deep link
   const href = phone ? `https://zalo.me/${phone.replace(/[^0-9]/g, '')}` : zaloUrl;
+  const isConfigured = Boolean(href && href !== '#');
 
   const sizeClasses = {
     sm: 'text-xs px-2.5 py-1.5 gap-1.5 min-h-[32px]',
@@ -33,6 +34,18 @@ export function ZaloButton({
     outline: 'border border-sky-300 text-sky-700 bg-sky-50/50 hover:bg-sky-100/70 focus:ring-sky-300',
     subtle: 'text-sky-600 hover:bg-sky-50 focus:ring-sky-200',
   };
+
+  if (!isConfigured) {
+    return (
+      <span
+        title="Chưa cấu hình Zalo của cửa hàng"
+        className={`inline-flex items-center justify-center font-medium rounded-lg text-stone-400 bg-stone-50 border border-stone-200 cursor-not-allowed select-none ${sizeClasses[size]} ${className}`}
+      >
+        <MessageCircle className="w-4 h-4 shrink-0" />
+        <span>{children || 'Zalo chưa cấu hình'}</span>
+      </span>
+    );
+  }
 
   return (
     <a
