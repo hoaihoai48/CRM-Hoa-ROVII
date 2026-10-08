@@ -17,7 +17,7 @@ import { PageHeader, StatCard } from '@/components/common/Cards';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
 import { ZaloButton } from '@/components/common/ZaloButton';
-import { orders } from '@/lib/services';
+import { listOrders } from '@/lib/services';
 import { formatDate } from '@/lib/utils/format';
 
 export default function DashboardPage() {
