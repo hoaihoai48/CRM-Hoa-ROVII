@@ -25,10 +25,12 @@ export default function NewProductPage() {
   const [note, setNote] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage(null);
     createProduct({
       name,
       price: Number(price) || 0,
@@ -36,7 +38,9 @@ export default function NewProductPage() {
       category,
       note,
       isActive,
-    }).then(() => router.push('/products')).finally(() => setIsLoading(false));
+    }).then(() => router.push('/products')).catch((error) => {
+      setErrorMessage(error instanceof Error ? error.message : 'Không thể tạo sản phẩm.');
+    }).finally(() => setIsLoading(false));
   };
 
   return (
@@ -46,6 +50,8 @@ export default function NewProductPage() {
         subtitle="Tạo mới sản phẩm hoa vào danh mục của tiệm"
         backHref="/products"
       />
+
+      {errorMessage && <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-xs">{errorMessage}</div>}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Form Column (8 cols) */}
