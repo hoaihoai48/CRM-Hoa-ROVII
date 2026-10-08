@@ -7,8 +7,7 @@ import {
   User, 
   Phone, 
   MapPin, 
-  Clock, 
-  Edit3
+  Clock
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/common/Cards';
@@ -45,13 +44,6 @@ function OrderDetailContent() {
         action={
           <div className="flex items-center gap-2">
             <ZaloButton phone={initialOrder.customerSnapshot.phone} size="md" variant="outline" />
-            <Link
-              href="/orders/new"
-              className="inline-flex items-center gap-1.5 px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-xs font-semibold transition-colors"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>Chỉnh sửa</span>
-            </Link>
           </div>
         }
       />
