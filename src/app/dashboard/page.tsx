@@ -21,7 +21,14 @@ import { mockOrders } from '@/lib/mock';
 import { formatDate } from '@/lib/utils/format';
 
 export default function DashboardPage() {
-  // Recent 6 orders
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayOrders = mockOrders.filter((order) => order.createdAt.slice(0, 10) === todayKey);
+  const newOrders = todayOrders.filter((order) => order.status === 'new');
+  const processingOrders = todayOrders.filter(
+    (order) => order.status === 'confirmed' || order.status === 'delivering'
+  );
+  const completedOrders = todayOrders.filter((order) => order.status === 'completed');
+  const todayRevenue = completedOrders.reduce((sum, order) => sum + order.summary.total, 0);
   const recentOrders = mockOrders.slice(0, 6);
 
   return (
@@ -47,28 +54,28 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-8">
         <StatCard
           title="Đơn hôm nay"
-          value={12}
-          subtitle="Tổng đơn phát sinh"
+          value={todayOrders.length}
+          subtitle="Đơn phát sinh hôm nay"
           icon={ShoppingBag}
           iconBgColor="bg-stone-100 text-stone-700"
         />
         <StatCard
           title="Đơn mới"
-          value={3}
+          value={newOrders.length}
           subtitle="Cần xác nhận ngay"
           icon={Sparkles}
           iconBgColor="bg-emerald-50 text-emerald-700"
         />
         <StatCard
           title="Đang xử lý"
-          value={5}
-          subtitle="Đã chốt & đang giao"
+          value={processingOrders.length}
+          subtitle="Đã xác nhận hoặc đang giao"
           icon={Clock}
           iconBgColor="bg-amber-50 text-amber-700"
         />
         <StatCard
           title="Hoàn tất"
-          value={4}
+          value={completedOrders.length}
           subtitle="Đã giao thành công"
           icon={CheckCircle2}
           iconBgColor="bg-rose-50 text-rose-700"
@@ -76,8 +83,8 @@ export default function DashboardPage() {
         <div className="col-span-2 lg:col-span-1">
           <StatCard
             title="Doanh thu hôm nay"
-            value="8.450.000đ"
-            subtitle="Tạm tính theo đơn chốt"
+            value={`${todayRevenue.toLocaleString("vi-VN")}đ`}
+            subtitle="Doanh thu từ đơn hoàn tất"
             icon={Banknote}
             iconBgColor="bg-blue-50 text-blue-700"
           />
