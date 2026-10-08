@@ -16,3 +16,5 @@ export async function findCustomerByPhone(phone: string): Promise<Customer | nul
 }
 
 export const customers = mockCustomers;
+
+export const mockCustomers = customers;
