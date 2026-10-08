@@ -14,3 +14,5 @@ export async function findCustomerByPhone(phone: string): Promise<Customer | nul
   if (!normalized) return null;
   return mockCustomers.find((customer) => customer.phone.replace(/\D/g, '') === normalized) ?? null;
 }
+
+export const customers = mockCustomers;
