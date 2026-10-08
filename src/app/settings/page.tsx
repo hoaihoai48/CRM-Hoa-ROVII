@@ -10,17 +10,18 @@ import {
   Mail, 
   MessageCircle, 
   LogOut, 
-  Check,
-  ShieldAlert
+  Check
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/common/Cards';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { getCurrentUser, getStoreSettings, updateStoreSettings } from '@/lib/services';
+import { useAuth } from '@/components/auth/AuthProvider';
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { logout } = useAuth();
 
   const [storeName, setStoreName] = useState('');
   const [storePhone, setStorePhone] = useState('');
@@ -50,8 +51,8 @@ export default function SettingsPage() {
     setTimeout(() => setIsSaved(false), 2500);
   };
 
-  const handleLogout = () => {
-    // Mock logout flow
+  const handleLogout = async () => {
+    await logout();
     router.push('/login');
   };
 
@@ -150,11 +151,11 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Section 3: Phase 2 Note */}
-        <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 text-amber-800 flex items-start gap-2.5">
-          <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+        {/* Section 3: Note */}
+        <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-900/50 dark:text-emerald-300 flex items-start gap-2.5">
+          <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
           <div className="text-xs leading-relaxed">
-            <strong>Lưu ý kiến trúc:</strong> Thông tin tiệm và cài đặt hệ thống được chuẩn bị để lưu trữ tại document <code>settings/store</code> trên Cloud Firestore ở Phase 2.
+            <strong>Đã kết nối Firestore:</strong> Thông tin cửa hàng và cấu hình hệ thống được đồng bộ thời gian thực tại document <code>settings/store</code> trên Cloud Firestore.
           </div>
         </div>
 

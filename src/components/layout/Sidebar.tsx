@@ -28,11 +28,11 @@ const NAV_ITEMS = [
 export function Sidebar() {
   const pathname = usePathname();
   const { user: firebaseUser, logout } = useAuth();
-  const [mockUser, setMockUser] = React.useState<{ name: string; email: string } | null>(null);
+  const [defaultUser, setDefaultUser] = React.useState<{ name: string; email: string } | null>(null);
 
   React.useEffect(() => {
     if (!firebaseUser) {
-      getCurrentUser().then(setMockUser);
+      getCurrentUser().then(setDefaultUser);
     }
   }, [firebaseUser]);
 
@@ -41,7 +41,7 @@ export function Sidebar() {
         name: firebaseUser.displayName || firebaseUser.phoneNumber || firebaseUser.email?.split('@')[0] || 'Nhân viên tiệm',
         email: firebaseUser.email || firebaseUser.phoneNumber || 'Tài khoản hoạt động',
       }
-    : mockUser;
+    : defaultUser;
 
   return (
     <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-white border-r border-stone-200 z-30 dark:bg-slate-900 dark:border-slate-800">
