@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { 
@@ -14,7 +14,7 @@ import { PageHeader } from '@/components/common/Cards';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
 import { ZaloButton } from '@/components/common/ZaloButton';
-import { orders } from '@/lib/services';
+import { getCurrentUser, getOrderById, updateOrderStatus } from '@/lib/services';
 import { formatDate, formatVND } from '@/lib/utils/format';
 import { OrderStatus } from '@/types';
 import { getNextOrderStatuses, canTransitionOrderStatus } from '@/lib/utils/order-status';
@@ -23,15 +23,38 @@ function OrderDetailContent() {
   const params = useParams();
   const orderId = (params?.id as string) || 'DH-1024';
 
-  const initialOrder = mockOrders.find((o) => o.id === orderId) || mockOrders[0];
-  const [currentStatus, setCurrentStatus] = useState<OrderStatus>(initialOrder.status);
+  const [initialOrder, setInitialOrder] = useState<Awaited<ReturnType<typeof getOrderById>>>(null);
+  const [currentUser, setCurrentUser] = useState<Awaited<ReturnType<typeof getCurrentUser>>>(null);
+  const [currentStatus, setCurrentStatus] = useState<OrderStatus>('new');
+
+  useEffect(() => {
+    Promise.all([getOrderById(orderId), getCurrentUser()]).then(([order, user]) => {
+      setInitialOrder(order);
+      setCurrentUser(user);
+      if (order) setCurrentStatus(order.status);
+    });
+  }, [orderId]);
+
+  if (!initialOrder) {
+    return <AppShell><div className="p-8 text-center text-sm text-stone-500">Đang tải chi tiết đơn hàng...</div></AppShell>;
+  }
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  const handleUpdateStatus = (newStatus: OrderStatus) => {
+  const handleUpdateStatus = async (newStatus: OrderStatus) => {
     if (!canTransitionOrderStatus(currentStatus, newStatus)) return;
 
-    setCurrentStatus(newStatus);
-    setStatusMessage(`Đã cập nhật trạng thái sang "${newStatus}" (mock action)`);
+    if (!currentUser) return;
+    try {
+      const updated = await updateOrderStatus(initialOrder.id, {
+        status: newStatus,
+        actorName: currentUser.name,
+      });
+      setInitialOrder(updated);
+      setCurrentStatus(updated.status);
+      setStatusMessage(`Đã cập nhật trạng thái sang "${newStatus}"`);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : 'Không thể cập nhật trạng thái.');
+    }
     setTimeout(() => setStatusMessage(null), 3000);
   };
 
