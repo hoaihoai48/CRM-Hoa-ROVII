@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { 
   Flower2, 
@@ -13,7 +13,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/common/Cards';
 import { Input, Textarea } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
-import { products } from '@/lib/services';
+import { getProductById, updateProduct } from '@/lib/services';
 import { formatVND } from '@/lib/utils/format';
 
 function EditProductContent() {
@@ -21,7 +21,7 @@ function EditProductContent() {
   const params = useParams();
   const productId = (params?.id as string) || 'PROD-001';
 
-  const initialProduct = mockProducts.find((p) => p.id === productId) || mockProducts[0];
+  const initialProduct = products.find((p) => p.id === productId) || products[0];
 
   const [name, setName] = useState(initialProduct.name);
   const [price, setPrice] = useState<number | ''>(initialProduct.price);
