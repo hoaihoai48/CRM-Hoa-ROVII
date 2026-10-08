@@ -88,12 +88,6 @@ export async function createCustomer(input: CreateCustomerInput): Promise<Custom
   if (!input.name.trim()) throw new Error('Tên khách hàng là bắt buộc.');
   if (!input.address.trim()) throw new Error('Địa chỉ khách hàng là bắt buộc.');
 
-  // Check legacy customer ID first to prevent duplicate if existed with legacy ID
-  const existingLegacy = await findCustomerByPhone(phoneNormalized);
-  if (existingLegacy) {
-    return existingLegacy;
-  }
-
   const customerId = `CUST_${phoneNormalized}`;
   const customerRef = doc(db, 'customers', customerId);
   const legacyQuery = query(
