@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Store, 
@@ -17,24 +17,35 @@ import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/common/Cards';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
-import { mockCurrentUser, mockStoreSettings } from '@/lib/services';
+import { getCurrentUser, getStoreSettings, updateStoreSettings } from '@/lib/services';
 
 export default function SettingsPage() {
   const router = useRouter();
 
-  const [storeName, setStoreName] = useState(mockStoreSettings.storeName);
-  const [storePhone, setStorePhone] = useState(mockStoreSettings.phone);
-  const [storeAddress, setStoreAddress] = useState(mockStoreSettings.address);
-  const [zaloUrl, setZaloUrl] = useState(mockStoreSettings.zaloUrl);
+  const [storeName, setStoreName] = useState('');
+  const [storePhone, setStorePhone] = useState('');
+  const [storeAddress, setStoreAddress] = useState('');
+  const [zaloUrl, setZaloUrl] = useState('');
 
-  const [userName, setUserName] = useState(mockCurrentUser.name);
-  const userEmail = mockCurrentUser.email;
+  const [userName, setUserName] = useState('');
+  const [userEmail, setUserEmail] = useState('');
 
   const [isSaved, setIsSaved] = useState(false);
 
+  useEffect(() => {
+    Promise.all([getStoreSettings(), getCurrentUser()]).then(([settings, user]) => {
+      setStoreName(settings.storeName);
+      setStorePhone(settings.phone);
+      setStoreAddress(settings.address);
+      setZaloUrl(settings.zaloUrl);
+      setUserName(user.name);
+      setUserEmail(user.email);
+    });
+  }, []);
+
   const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSaved(true);
+    updateStoreSettings({ storeName, phone: storePhone, address: storeAddress, zaloUrl })
+      .then(() => setIsSaved(true));
     setTimeout(() => setIsSaved(false), 2500);
   };
 
