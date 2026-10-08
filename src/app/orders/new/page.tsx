@@ -79,7 +79,7 @@ export default function CreateOrderPage() {
       if (!productSearch.trim()) return true;
       return p.name.toLowerCase().includes(productSearch.toLowerCase());
     });
-  }, [productSearch]);
+  }, [products, productSearch]);
 
   const updateQuantity = (product: Product, delta: number) => {
     setCart((prevCart) => {
