@@ -4,13 +4,21 @@ import React from 'react';
 import { Moon, Sun } from 'lucide-react';
 
 export function ThemeToggle({ compact = false }: { compact?: boolean }) {
+  const [mounted, setMounted] = React.useState(false);
   const [isDark, setIsDark] = React.useState(false);
 
   React.useEffect(() => {
-    const stored = window.localStorage.getItem('theme');
-    const dark = stored ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-    document.documentElement.classList.toggle('dark', dark);
-    setIsDark(dark);
+    const isDarkMode = document.documentElement.classList.contains('dark') ||
+      (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches) ||
+      localStorage.getItem('theme') === 'dark';
+    
+    document.documentElement.classList.toggle('dark', isDarkMode);
+    // Wrap state setter in microtask or callback to avoid direct synchronous effect cascade
+    const timer = setTimeout(() => {
+      setIsDark(isDarkMode);
+      setMounted(true);
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const toggle = () => {
@@ -19,6 +27,17 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
     window.localStorage.setItem('theme', next ? 'dark' : 'light');
     setIsDark(next);
   };
+
+  if (!mounted) {
+    return (
+      <div
+        className={`inline-flex items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-500 dark:border-slate-700 dark:bg-slate-800 ${compact ? 'w-9 h-9' : 'gap-2 px-3 h-9 text-xs font-medium'}`}
+      >
+        <span className="w-4 h-4" />
+        {!compact && <span>Giao diện</span>}
+      </div>
+    );
+  }
 
   return (
     <button

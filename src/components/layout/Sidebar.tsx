@@ -38,10 +38,11 @@ export function Sidebar() {
             <Flower2 className="w-5 h-5" />
           </div>
           <div>
-            <span className="font-bold text-stone-900 text-base leading-tight block">Tiệm Hoa</span>
+            <span className="font-bold text-stone-900 text-base leading-tight block dark:text-white">Tiệm Hoa</span>
             <span className="text-[11px] text-stone-400 font-medium leading-none block mt-0.5">Quản lý đơn hàng</span>
           </div>
         </Link>
+        <ThemeToggle compact />
       </div>
 
       {/* Quick Action */}
