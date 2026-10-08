@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { 
   Users, 
@@ -14,16 +14,21 @@ import { PageHeader, EmptyState } from '@/components/common/Cards';
 import { SearchInput } from '@/components/common/Input';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
 import { ZaloButton } from '@/components/common/ZaloButton';
-import { customers } from '@/lib/services';
+import { listCustomers } from '@/lib/services';
 import { formatDateShort } from '@/lib/utils/format';
 
 export default function CustomersPage() {
+  const [customers, setCustomers] = useState<Awaited<ReturnType<typeof listCustomers>>>([]);
   const [searchTerm, setSearchTerm] = useState('');
 
+  useEffect(() => {
+    listCustomers().then(setCustomers);
+  }, []);
+
   const filteredCustomers = useMemo(() => {
-    if (!searchTerm.trim()) return mockCustomers;
+    if (!searchTerm.trim()) return customers;
     const lower = searchTerm.toLowerCase();
-    return mockCustomers.filter(
+    return customers.filter(
       (c) =>
         c.name.toLowerCase().includes(lower) ||
         c.phone.includes(lower) ||
