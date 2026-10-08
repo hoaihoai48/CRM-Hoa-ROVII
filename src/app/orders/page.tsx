@@ -51,7 +51,7 @@ export default function OrdersPage() {
       const matchPhone = order.customerSnapshot.phone.includes(lower);
       return matchId || matchName || matchPhone;
     });
-  }, [searchTerm, selectedStatus]);
+  }, [orders, searchTerm, selectedStatus]);
 
   return (
     <AppShell>
