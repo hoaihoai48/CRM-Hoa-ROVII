@@ -22,7 +22,7 @@ function CustomerDetailContent() {
   const params = useParams();
   const customerId = (params?.id as string) || 'CUST-001';
 
-  const customer = mockCustomers.find((c) => c.id === customerId) || mockCustomers[0];
+  
 
   // Orders belonging to this customer
   const customerOrders = customerOrders.filter((o) => o.customerId === customer.id);
@@ -124,7 +124,7 @@ function CustomerDetailContent() {
 
             {customerOrders.length === 0 ? (
               <div className="p-8 text-center text-xs text-stone-400">
-                Chưa có đơn hàng nào trong bộ mock data cho khách này.
+                Chưa có đơn hàng nào trong hệ thống cho khách này.
               </div>
             ) : (
               <div className="divide-y divide-stone-100">
