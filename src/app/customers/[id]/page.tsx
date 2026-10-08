@@ -15,7 +15,7 @@ import { PageHeader, StatCard } from '@/components/common/Cards';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
 import { ZaloButton } from '@/components/common/ZaloButton';
-import { customers, mockOrders } from '@/lib/services';
+import { customers, orders } from '@/lib/services';
 import { formatDateShort } from '@/lib/utils/format';
 
 function CustomerDetailContent() {
