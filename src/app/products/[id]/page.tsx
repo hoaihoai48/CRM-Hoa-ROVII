@@ -29,16 +29,27 @@ function EditProductContent() {
     });
   }, [productId]);
 
+  const [name, setName] = useState('');
+  const [price, setPrice] = useState<number | ''>('');
+  const [unit, setUnit] = useState('bó');
+  const [category, setCategory] = useState('Hoa bó');
+  const [note, setNote] = useState('');
+  const [isActive, setIsActive] = useState(true);
+
+  useEffect(() => {
+    if (initialProduct) {
+      setName(initialProduct.name);
+      setPrice(initialProduct.price);
+      setUnit(initialProduct.unit);
+      setCategory(initialProduct.category || 'Hoa bó');
+      setNote(initialProduct.note || '');
+      setIsActive(initialProduct.isActive);
+    }
+  }, [initialProduct]);
+
   if (!initialProduct) {
     return <AppShell><div className="p-8 text-center text-sm text-stone-500">Đang tải sản phẩm...</div></AppShell>;
   }
-
-  const [name, setName] = useState(initialProduct.name);
-  const [price, setPrice] = useState<number | ''>(initialProduct.price);
-  const [unit, setUnit] = useState(initialProduct.unit);
-  const [category, setCategory] = useState(initialProduct.category || 'Hoa bó');
-  const [note, setNote] = useState(initialProduct.note || '');
-  const [isActive, setIsActive] = useState(initialProduct.isActive);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
