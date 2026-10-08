@@ -13,7 +13,8 @@ import {
   LogOut,
   User as UserIcon
 } from 'lucide-react';
-import { mockCurrentUser } from '@/lib/mock';
+import { getCurrentUser } from '@/lib/services';
+import { ThemeToggle } from './ThemeToggle';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard },
@@ -25,11 +26,13 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [user, setUser] = React.useState<{ name: string; email: string } | null>(null);
+  React.useEffect(() => { getCurrentUser().then(setUser); }, []);
 
   return (
-    <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-white border-r border-stone-200 z-30">
+    <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-white border-r border-stone-200 z-30 dark:bg-slate-900 dark:border-slate-800">
       {/* Brand Header */}
-      <div className="flex items-center justify-between h-16 px-6 border-b border-stone-100">
+      <div className="flex items-center justify-between h-16 px-5 border-b border-stone-100 dark:border-slate-800">
         <Link href="/dashboard" className="flex items-center gap-2.5 group">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-500 to-pink-400 flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
             <Flower2 className="w-5 h-5" />
@@ -83,8 +86,8 @@ export function Sidebar() {
               <UserIcon className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-stone-900 truncate">{mockCurrentUser.name}</p>
-              <p className="text-[11px] text-stone-500 truncate">{mockCurrentUser.email}</p>
+              <p className="text-xs font-semibold text-stone-900 truncate">{user?.name ?? "Đang tải..."}</p>
+              <p className="text-[11px] text-stone-500 truncate">{user?.email ?? ""}</p>
             </div>
           </div>
           <Link
