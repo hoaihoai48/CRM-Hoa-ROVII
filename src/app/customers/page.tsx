@@ -34,7 +34,7 @@ export default function CustomersPage() {
         c.phone.includes(lower) ||
         c.address.toLowerCase().includes(lower)
     );
-  }, [searchTerm]);
+  }, [customers, searchTerm]);
 
   return (
     <AppShell>
