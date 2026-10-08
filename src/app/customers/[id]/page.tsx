@@ -20,19 +20,35 @@ import { formatDateShort } from '@/lib/utils/format';
 
 function CustomerDetailContent() {
   const params = useParams();
-  const customerId = (params?.id as string) || 'CUST-001';
+  const customerId = params?.id as string;
   const [initialCustomer, setInitialCustomer] = useState<Awaited<ReturnType<typeof getCustomerById>>>(null);
   const [customerOrders, setCustomerOrders] = useState<Awaited<ReturnType<typeof listOrders>>>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([getCustomerById(customerId), listOrders()]).then(([customer, orders]) => {
-      setInitialCustomer(customer);
-      setCustomerOrders(orders.filter((order) => order.customerId === customerId));
-    });
+    if (!customerId) {
+      setLoadError('Mã khách hàng không hợp lệ.');
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    setLoadError(null);
+    Promise.all([getCustomerById(customerId), listOrders()])
+      .then(([customer, orders]) => {
+        setInitialCustomer(customer);
+        setCustomerOrders(orders.filter((order) => order.customerId === customerId));
+        if (!customer) setLoadError('Không tìm thấy khách hàng.');
+      })
+      .catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải hồ sơ khách hàng.'))
+      .finally(() => setIsLoading(false));
   }, [customerId]);
 
-  if (!initialCustomer) {
+  if (isLoading) {
     return <AppShell><div className="p-8 text-center text-sm text-stone-500">Đang tải hồ sơ khách hàng...</div></AppShell>;
+  }
+  if (loadError || !initialCustomer) {
+    return <AppShell><div className="p-8 text-center text-sm text-red-600">{loadError || 'Không tìm thấy khách hàng.'}</div></AppShell>;
   }
 
   const customer = initialCustomer;
