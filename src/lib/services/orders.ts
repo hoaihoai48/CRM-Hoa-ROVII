@@ -146,7 +146,7 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
   }
 
   const customerRef = doc(db, 'customers', input.customerId);
-  const orderId = `DH-${Date.now()}`;
+  const orderId = `DH-${crypto.randomUUID()}`;
   const orderRef = doc(db, 'orders', orderId);
 
   // Setup product references
@@ -189,7 +189,7 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
       const subtotal = unitPrice * pReq.quantity;
 
       validatedItems.push({
-        id: `ITEM-${Date.now()}-${i}`,
+        id: `${orderId}-ITEM-${i}`,
         productId: pReq.productId,
         productSnapshot: {
           name: productData.name,
@@ -210,7 +210,7 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
     const now = new Date().toISOString();
 
     const initialHistory: OrderStatusHistory = {
-      id: `HIST-${Date.now()}`,
+      id: `${orderId}-HIST-0`,
       status: 'new',
       timestamp: now,
       actorName: input.createdBy || 'Nhân viên',
@@ -239,12 +239,28 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
       deliveryDate: input.deliveryDate || null,
     };
 
-    // Calculate updated customer aggregates
-    const currentCustomerData = customerSnap.data() || {};
-    const currentTotalOrders = Number(currentCustomerData.totalOrders || 0);
+    // Recompute aggregates from the transaction's current order set so the
+    // customer document is repaired as part of every successful order creation.
+    const customerOrdersQuery = query(
+      collection(db, 'orders'),
+      where('customerId', '==', input.customerId),
+    );
+    const customerOrdersSnap = await tx.get(customerOrdersQuery);
+
+    const existingOrders = customerOrdersSnap.docs.map((docSnap) =>
+      mapDocToOrder(docSnap.id, docSnap.data()),
+    );
+    const activeCreatedOrders = existingOrders.filter((order) => order.status !== 'cancelled');
+    const completedExistingOrders = existingOrders.filter((order) => order.status === 'completed');
+    const lastExistingOrderDate = activeCreatedOrders
+      .map((order) => order.createdAt)
+      .sort()
+      .at(-1) || '';
+
     const updatedCustomerAggregates = {
-      totalOrders: currentTotalOrders + 1,
-      lastOrderDate: now,
+      totalOrders: activeCreatedOrders.length + 1,
+      totalSpent: completedExistingOrders.reduce((sum, order) => sum + order.summary.total, 0),
+      lastOrderDate: now > lastExistingOrderDate ? now : lastExistingOrderDate,
     };
 
     // 3. ALL WRITES AFTER READS (Atomic)
@@ -280,7 +296,7 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
     // 2. COMPUTE UPDATES
     const now = new Date().toISOString();
     const historyEntry: OrderStatusHistory = {
-      id: `HIST-${Date.now()}`,
+      id: `${id}-HIST-${crypto.randomUUID()}`,
       status: input.status,
       timestamp: now,
       actorName: input.actorName || 'Nhân viên',
@@ -290,33 +306,34 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
     const existingHistory = Array.isArray(orderData.statusHistory) ? orderData.statusHistory : [];
     const updatedHistory = [...existingHistory, historyEntry];
 
-    // Compute Customer Aggregate Delta atomically
     if (customerRef && customerSnap && customerSnap.exists()) {
-      const custData = customerSnap.data() || {};
-      let totalOrders = Number(custData.totalOrders || 0);
-      let totalSpent = Number(custData.totalSpent || 0);
-      const orderTotal = Number((orderData.summary as Record<string, unknown>)?.total || 0);
+      // Recompute the complete aggregate from the order set as part of this
+      // transaction. This keeps totalOrders, totalSpent and lastOrderDate in
+      // sync even when an older aggregate was already inconsistent.
+      const customerOrdersQuery = query(
+        collection(db, 'orders'),
+        where('customerId', '==', customerId),
+      );
+      const customerOrdersSnap = await tx.get(customerOrdersQuery);
 
-      // Total orders count: active orders (status !== 'cancelled')
-      if (currentStatus !== 'cancelled' && input.status === 'cancelled') {
-        totalOrders = Math.max(0, totalOrders - 1);
-      } else if (currentStatus === 'cancelled' && input.status !== 'cancelled') {
-        totalOrders += 1;
-      }
+      const customerOrders = customerOrdersSnap.docs.map((docSnap) =>
+        mapDocToOrder(docSnap.id, docSnap.data()),
+      );
+      const projectedOrders = customerOrders.map((order) =>
+        order.id === id ? { ...order, status: input.status } : order,
+      );
+      const activeOrders = projectedOrders.filter((order) => order.status !== 'cancelled');
+      const completedOrders = projectedOrders.filter((order) => order.status === 'completed');
 
-      // Total spent: completed orders (status === 'completed')
-      if (currentStatus !== 'completed' && input.status === 'completed') {
-        totalSpent += orderTotal;
-      } else if (currentStatus === 'completed' && input.status !== 'completed') {
-        totalSpent = Math.max(0, totalSpent - orderTotal);
-      }
+      const totalOrders = activeOrders.length;
+      const totalSpent = completedOrders.reduce((sum, order) => sum + order.summary.total, 0);
+      const lastOrderDate = activeOrders.map((order) => order.createdAt).sort().at(-1) || '';
 
-      const updatedCustomerFields: Record<string, unknown> = {
+      tx.update(customerRef, {
         totalOrders,
         totalSpent,
-      };
-
-      tx.update(customerRef, updatedCustomerFields);
+        lastOrderDate,
+      });
     }
 
     // 3. ORDER WRITE
