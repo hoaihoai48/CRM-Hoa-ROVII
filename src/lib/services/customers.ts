@@ -96,12 +96,24 @@ export async function createCustomer(input: CreateCustomerInput): Promise<Custom
 
   const customerId = `CUST_${phoneNormalized}`;
   const customerRef = doc(db, 'customers', customerId);
+  const legacyQuery = query(
+    collection(db, 'customers'),
+    where('phoneNormalized', '==', phoneNormalized),
+    limit(1),
+  );
 
-  // Use Firestore transaction on the deterministic customer document to eliminate race condition
+  // Read deterministic and legacy records in the same transaction so concurrent
+  // create requests cannot race through a separate preflight lookup.
   return await runTransaction(db, async (tx) => {
     const existingSnap = await tx.get(customerRef);
     if (existingSnap.exists()) {
       return mapDocToCustomer(existingSnap.id, existingSnap.data());
+    }
+
+    const legacySnap = await tx.get(legacyQuery);
+    if (!legacySnap.empty) {
+      const legacyDoc = legacySnap.docs[0];
+      return mapDocToCustomer(legacyDoc.id, legacyDoc.data());
     }
 
     const now = new Date().toISOString();
