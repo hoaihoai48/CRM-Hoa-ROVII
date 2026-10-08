@@ -3,12 +3,12 @@
 import React from 'react';
 import Link from 'next/link';
 import { Flower2, Settings, User } from 'lucide-react';
-import { getCurrentUser } from '@/lib/services';
 import { ThemeToggle } from './ThemeToggle';
+import { useAuth } from '@/components/auth/AuthProvider';
 
 export function MobileHeader() {
-  const [user, setUser] = React.useState<{ name: string; email: string } | null>(null);
-  React.useEffect(() => { getCurrentUser().then(setUser); }, []);
+  const { user: firebaseUser } = useAuth();
+  const userName = firebaseUser?.displayName || firebaseUser?.phoneNumber || firebaseUser?.email || 'Tài khoản';
 
   return (
     <header className="lg:hidden sticky top-0 inset-x-0 h-14 bg-white border-b border-stone-200 z-30 dark:bg-slate-900 dark:border-slate-800 px-4 flex items-center justify-between">
@@ -31,7 +31,7 @@ export function MobileHeader() {
         <Link
           href="/settings"
           className="w-8 h-8 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-xs"
-          title={user?.name ?? "Tài khoản"}
+          title={userName}
         >
           <User className="w-4 h-4" />
         </Link>

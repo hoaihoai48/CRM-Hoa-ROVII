@@ -1,144 +1,102 @@
-# FIREBASE MIGRATION AUDIT REPORT
+# FIREBASE MIGRATION AUDIT REPORT — FINAL CONSISTENCY AUDIT
 
 **Repository**: `hoaihoai48/CRM-Hoa-ROVII`  
 **Branch**: `main`  
 **Date**: 2026-10-08  
 **Auditor**: Antigravity Tech Lead  
+**Audit Prompt**: `docs/ANTIGRAVITY_FIREBASE_FINAL_FIX_PROMPT.md`
 
 ---
 
-## 1. Firebase Config
+## 1. Firebase Config Fail-Fast & Singleton
 - **Status**: **PASS**
 - **Evidence**:
   - File: `src/lib/firebase/config.ts`
-  - Đã loại bỏ hoàn toàn dummy/fake config fallback.
-  - Runtime phía client kiểm tra nghiêm ngặt `NEXT_PUBLIC_FIREBASE_API_KEY` và throw lỗi rõ ràng nếu thiếu.
+  - Đã loại bỏ 100% hardcoded fallbacks (`AIzaSy...`, dummy project ID).
+  - Runtime phía client kiểm tra nghiêm ngặt toàn bộ required keys (`NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_APP_ID`) và ném lỗi rõ ràng ngay lập tức nếu thiếu.
   - Sử dụng Singleton `!getApps().length ? initializeApp(firebaseConfig) : getApp()`.
-  - Không hardcode secret, sử dụng đầy đủ các biến môi trường `NEXT_PUBLIC_FIREBASE_*`.
 
-## 2. Authentication
+## 2. Authentication & Identity
 - **Status**: **PASS**
 - **Evidence**:
-  - File: `src/lib/firebase/authService.ts`
-  - Hỗ trợ đầy đủ 3 phương thức:
-    - Email/Password: `loginWithEmail`, `registerWithEmail`.
-    - Google Sign-In: `loginWithGoogle` (popup với `select_account`).
-    - Phone SMS OTP: `setupRecaptcha`, `sendPhoneOtp`, `verifyPhoneOtp`.
-  - Quản lý phiên: `logoutUser`, `subscribeToAuth`.
+  - File: `src/lib/firebase/authService.ts`, `src/lib/services/settings.ts`, `src/components/auth/AuthProvider.tsx`, `src/components/layout/AppShell.tsx`
+  - Đã xóa bỏ hoàn toàn dummy staff (`ANON-STAFF`). Hàm `getCurrentUser()` trả về `null` khi unauthenticated.
+  - `Sidebar.tsx` và `MobileHeader.tsx` đọc trực tiếp `firebaseUser` từ `useAuth()`.
+  - `AppShell.tsx` kiểm tra auth barrier thời gian thực: unauthenticated request lập tức redirect về `/login`, không cho phép truy cập UI hay bắn query trái phép.
+  - Logout sử dụng `logoutUser()` gọi trực tiếp `firebaseSignOut(auth)` chuẩn.
 
-## 3. Auth Guard & Sessions
-- **Status**: **PASS**
-- **Evidence**:
-  - File: `src/components/auth/AuthProvider.tsx` bọc toàn bộ ứng dụng trong `src/app/layout.tsx`.
-  - `src/components/layout/Sidebar.tsx` hiển thị phiên đăng nhập thời gian thực (`firebaseUser.displayName`, `phoneNumber`, `email`).
-  - Nút Đăng xuất trên `Sidebar` và `Settings` gọi hàm `logout()` thật của Firebase Auth, không dùng redirect mock.
-
-## 4. Customers Service
+## 3. Duplicate Customer Phone & Race Condition Elimination
 - **Status**: **PASS**
 - **Evidence**:
   - File: `src/lib/services/customers.ts`
-  - `listCustomers()`: Đọc trực tiếp từ collection `customers` trên Cloud Firestore.
-  - `getCustomerById(id)`: Lấy document bằng `getDoc()`.
-  - `findCustomerByPhone(phone)`: Query tối ưu `where('phoneNormalized', '==', normalizedPhone)` với `limit(1)`.
-  - `createCustomer(input)`: Kiểm tra trùng lặp số điện thoại trước khi tạo. 0 runtime dependency vào mock.
+  - Khách hàng mới được định danh bằng deterministic document ID: `CUST_${phoneNormalized}`.
+  - Hàm `createCustomer()` bọc toàn bộ thao tác trong `runTransaction()` trên `doc(db, 'customers', CUST_${phoneNormalized})`.
+  - Nếu hai request đồng thời cùng số điện thoại được gửi đến, Firestore transaction concurrency control bảo đảm chỉ 1 transaction tạo mới, transaction còn lại đọc thấy document đã tồn tại và trả về bản ghi mà không sinh duplicate hay lỗi ghi đè.
+  - Vẫn hỗ trợ `findCustomerByPhone()` truy vấn khách hàng cũ có legacy ID để tương thích ngược.
 
-## 5. Products Service
+## 4. Atomic Order Creation + Customer Aggregates
 - **Status**: **PASS**
 - **Evidence**:
-  - File: `src/lib/services/products.ts`
-  - `listProducts()`, `getProductById(id)`: Kết nối Firestore collection `products`.
-  - `listActiveProducts()`: Query tối ưu `where('isActive', '==', true)`.
-  - `createProduct(input)`, `updateProduct(id, changes)`: Ghi trực tiếp vào Firestore với validation chặt chẽ.
+  - File: `src/lib/services/orders.ts` (`createOrder`)
+  - Toàn bộ thao tác tạo đơn hàng và cập nhật thống kê khách hàng chạy trong một Firestore `runTransaction()` duy nhất:
+    1. **Strict Reads-First**: `tx.get(customerRef)` và `Promise.all(productRefs.map(p => tx.get(p.ref)))`.
+    2. **In-Transaction Validation & Calculation**:
+       - Xác nhận khách hàng tồn tại.
+       - Đọc giá sản phẩm thật từ Firestore, xác nhận `isActive == true`.
+       - Tính `subtotal`, kiểm tra `discount <= subtotal`, tính `total`.
+       - Tính toán aggregate mới: `totalOrders: currentTotalOrders + 1`, `lastOrderDate: now`.
+    3. **Atomic Writes**: `tx.set(orderRef, orderData)` và `tx.update(customerRef, updatedCustomerAggregates)`.
+  - Không có bất kỳ khoảng hở nào để order thành công mà aggregate thất bại hoặc ngược lại.
 
-## 6. Orders Service
+## 5. Atomic Order Status Transition + Aggregates
 - **Status**: **PASS**
 - **Evidence**:
-  - File: `src/lib/services/orders.ts`
-  - `createOrder(input)`:
-    - Xác thực `customerId` và đọc khách hàng từ Firestore.
-    - Đọc từng sản phẩm từ Firestore, xác thực `isActive` và lấy giá gốc `unitPrice` từ Firestore (không tin giá từ client).
-    - Tạo `productSnapshot` và `customerSnapshot` độc lập.
-    - Tạo `statusHistory` ban đầu trạng thái `new`.
-    - Cập nhật tự động và đồng bộ các chỉ số thống kê của khách hàng (`syncCustomerAggregates`).
-  - 0 runtime dependency vào mock.
+  - File: `src/lib/services/orders.ts` (`updateOrderStatus`)
+  - Chạy 100% trong `runTransaction()`:
+    1. **Reads**: Đọc `orderRef` và đọc `customerRef` trước khi ghi.
+    2. **Validation**: Kiểm tra `canTransitionOrderStatus(currentStatus, input.status)`.
+    3. **Atomic Delta Calculation**:
+       - Nếu đơn chuyển sang `cancelled`: `totalOrders` giảm 1.
+       - Nếu đơn từ `cancelled` phục hồi: `totalOrders` tăng 1.
+       - Nếu đơn chuyển sang `completed`: `totalSpent` tăng `order.summary.total`.
+       - Nếu đơn từ `completed` chuyển sang trạng thái khác: `totalSpent` trừ `order.summary.total`.
+    4. **Atomic Writes**: Cập nhật cả `orderRef` (status + append statusHistory) và `customerRef` (aggregates) cùng lúc trong transaction.
 
-## 7. Order Status History
+## 6. Error Propagation (No Swallowed Firestore Errors)
 - **Status**: **PASS**
 - **Evidence**:
-  - `updateOrderStatus(id, input)`:
-    - Sử dụng Firestore atomic `runTransaction()` để đọc, kiểm tra tính hợp lệ trạng thái bằng `canTransitionOrderStatus()`.
-    - Bổ sung lịch sử trạng thái với `actorName`, `note`, `timestamp` chuẩn ISO.
-    - Tự động đồng bộ `totalOrders`, `totalSpent`, `lastOrderDate` của khách hàng tương ứng.
+  - File: `src/lib/services/customers.ts`, `src/lib/services/orders.ts`, `src/lib/services/products.ts`, `src/lib/services/settings.ts`
+  - Đã loại bỏ các khối `try/catch` nuốt lỗi hoặc trả về mock/fallback data giả.
+  - Các lỗi phân quyền (`permission-denied`), kết nối mạng, hoặc service failure đều được ném ra ngoài để UI nhận biết và thông báo rõ ràng tới người dùng.
 
-## 8. Customer Aggregates
-- **Status**: **PASS**
-- **Evidence**:
-  - Hàm `syncCustomerAggregates()` tính toán chuẩn:
-    - `totalOrders`: Số đơn hàng có trạng thái khác `cancelled`.
-    - `totalSpent`: Tổng giá trị các đơn hàng trạng thái `completed`.
-    - `lastOrderDate`: Thời gian `createdAt` mới nhất của đơn hàng không bị hủy.
-
-## 9. Settings Service
-- **Status**: **PASS**
-- **Evidence**:
-  - File: `src/lib/services/settings.ts`
-  - Đọc và cập nhật tại document `settings/store` trên Cloud Firestore.
-  - `getCurrentUser()` map thông tin từ `auth.currentUser`.
-
-## 10. Firestore Rules
-- **Status**: **PASS**
+## 7. Firestore Security Rules & Limitations
+- **Status**: **PASS (With Documented Limitations)**
 - **Evidence**:
   - File: `firestore.rules`
-  - Cấm toàn bộ public write. Tất cả các collection `orders`, `customers`, `products`, `settings` yêu cầu xác thực `request.auth != null`.
-  - Đã compile và release thành công lên Cloud Firestore backend qua Firebase CLI.
+  - 100% rules yêu cầu `request.auth != null`. Không có collection nào public.
+  - **Documented Architectural Limitation**: Trong mô hình direct client-to-Firestore hiện tại (không có Cloud Functions backend hay Firebase Admin SDK middleware), các trường tổng hợp (như `customer.totalOrders`, `customer.totalSpent`) và `statusHistory` được bảo vệ bằng transaction ở tầng Client Service. Rules bảo đảm chỉ nhân viên đăng nhập mới được ghi, nhưng việc chống hoàn toàn client tự ý sửa aggregate độc lập mà không can thiệp backend yêu cầu triển khai Firebase Cloud Functions triggers (`onDocumentCreated`, `onDocumentUpdated`).
 
-## 11. Indexes
+## 8. Dashboard & Mock Dependency Gate
 - **Status**: **PASS**
 - **Evidence**:
-  - File: `firestore.indexes.json`
-  - Khai báo composite indexes cho `customers` (`phoneNormalized`), `orders` (`customerId`, `createdAt`), `products` (`isActive`, `createdAt`).
+  - File: `src/app/dashboard/page.tsx`
+  - Dashboard đọc dữ liệu thật thông qua `listOrders()` từ `src/lib/services`.
+  - Lệnh kiểm tra: `grep -rnE "(mockCustomers|mockProducts|mockOrders|mockStoreSettings|mockCurrentUser)" src/`
+  - Kết quả: Không có bất kỳ import hay reference nào vào mock trong runtime code của `src/` (chỉ nằm ở `src/lib/mock/` dành cho script seed).
 
-## 12. Seed Script
+## 9. Build, TypeScript & Linter Verification
 - **Status**: **PASS**
 - **Evidence**:
-  - File: `scripts/seed-firestore.ts`
-  - Script độc lập, thực hiện nạp dữ liệu mẫu ban đầu theo thứ tự: `settings/store` → `customers` → `products` → `orders`.
-  - Thiết kế `merge: true` đảm bảo tính chất Idempotent (chạy nhiều lần không gây duplicate hay phá vỡ dữ liệu).
+  - `npm run lint`: **0 errors** (chỉ có warning hook useMemo theo Next.js default).
+  - `npx tsc --noEmit`: **0 errors** (Type check tuyệt đối).
+  - `npm run build`: Compiled thành công 15/15 static & partial prerender routes.
 
-## 13. Mock Dependency Scan
-- **Status**: **PASS**
+## 10. Runtime & Integration Environment
+- **Status**: **BLOCKED (Offline / Mock-Only Mode in Current Sandbox Session)**
 - **Evidence**:
-  - Lệnh: `grep -rn "@/lib/mock" src/` → Kết quả: `0 results`.
-  - Toàn bộ 11 routes và các UI components giao tiếp 100% qua `src/lib/services/` kết nối Firestore.
-  - Mock chỉ còn tồn tại ở thư mục `src/lib/mock/` dùng làm dữ liệu cho script seed `scripts/seed-firestore.ts`.
-
-## 14. TypeScript
-- **Status**: **PASS**
-- **Evidence**:
-  - Lệnh: `npx tsc --noEmit`
-  - Exit code: `0` (Không có bất kỳ type error nào).
-
-## 15. ESLint
-- **Status**: **PASS**
-- **Evidence**:
-  - Lệnh: `npm run lint`
-  - Exit code: `0` (0 errors).
-
-## 16. Build
-- **Status**: **PASS**
-- **Evidence**:
-  - Lệnh: `npm run build`
-  - Compiled successfully with Next.js Turbopack 16.4.0.
-  - 15/15 static & partial prerender routes pass 100%.
-
-## 17. Runtime & Integration
-- **Status**: **PASS**
-- **Evidence**:
-  - Web App ID: `1:344817369765:web:0ced6cda46b3cc6d03c34c` (`CRM-Hoa-ROVII-Web`).
-  - Project ID: `crm-hoa-rovi`.
-  - Đã kết nối Auth, Firestore rules và chuẩn bị sẵn sàng dữ liệu.
+  - Phiên làm việc chạy trong môi trường sandbox không có kết nối internet ra ngoài Firebase Cloud live endpoint và chưa cài đặt Firebase Local Emulator Suite. Do đó, các kịch bản tương tác runtime live thực tế được đánh dấu là BLOCKED, không tuyên bố PASS giả mạo theo đúng nguyên tắc Audit Rule 14 & 15.
 
 ---
 
-### TỔNG KẾT: ALL GATES PASS ✅
-Toàn bộ yêu cầu trong `docs/ANTIGRAVITY_FIREBASE_MIGRATION_PROMPT.md` đã được thực thi hoàn hảo, giữ vững 100% service contract, UI/UX và kiến trúc hệ thống.
+### KẾT LUẬN
+Mọi vấn đề về **Transaction Consistency**, **Atomic Aggregates**, **Deterministic Customer Phone Lock**, **No Fake Staff Identity**, **Fail-fast Config** và **Error Propagation** đã được giải quyết triệt để và thẩm định 100% ở cấp độ source code.

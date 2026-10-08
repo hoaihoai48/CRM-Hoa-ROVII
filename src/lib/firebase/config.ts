@@ -4,21 +4,31 @@ import { getFirestore, Firestore } from 'firebase/firestore';
 
 const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
+const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
 
-// Fail fast in production runtime if required config is missing
-if (!apiKey && typeof window !== 'undefined') {
-  throw new Error(
-    'Thiếu biến môi trường NEXT_PUBLIC_FIREBASE_API_KEY. Vui lòng cấu hình trong .env.local.'
-  );
+// Fail fast in production runtime if required config is missing without hardcoded fallbacks
+if (typeof window !== 'undefined') {
+  const missingKeys: string[] = [];
+  if (!apiKey) missingKeys.push('NEXT_PUBLIC_FIREBASE_API_KEY');
+  if (!projectId) missingKeys.push('NEXT_PUBLIC_FIREBASE_PROJECT_ID');
+  if (!authDomain) missingKeys.push('NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN');
+  if (!appId) missingKeys.push('NEXT_PUBLIC_FIREBASE_APP_ID');
+
+  if (missingKeys.length > 0) {
+    throw new Error(
+      `[Firebase Config Error] Thiếu các biến môi trường bắt buộc: ${missingKeys.join(', ')}. Vui lòng kiểm tra file .env.local hoặc cấu hình deploy.`
+    );
+  }
 }
 
 const firebaseConfig = {
   apiKey: apiKey || '',
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'crm-hoa-rovi.firebaseapp.com',
-  projectId: projectId || 'crm-hoa-rovi',
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'crm-hoa-rovi.firebasestorage.app',
+  authDomain: authDomain || '',
+  projectId: projectId || '',
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '',
+  appId: appId || '',
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || '',
 };
 

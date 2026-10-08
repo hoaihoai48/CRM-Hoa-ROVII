@@ -39,8 +39,10 @@ export default function SettingsPage() {
       setStorePhone(settings.phone);
       setStoreAddress(settings.address);
       setZaloUrl(settings.zaloUrl);
-      setUserName(user.name);
-      setUserEmail(user.email);
+      if (user) {
+        setUserName(user.name);
+        setUserEmail(user.email);
+      }
     });
   }, []);
 
