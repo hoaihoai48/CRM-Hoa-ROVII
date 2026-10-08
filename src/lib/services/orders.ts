@@ -75,7 +75,8 @@ function mapDocToOrder(id: string, data: Record<string, unknown>): Order {
 }
 
 /**
- * Recalculation of a customer's aggregate stats in Firestore (repair / sync utility).
+ * Recalculation of a customer's aggregate stats in Firestore (legacy repair / sync utility only).
+ * Normal order creation and status update flows recompute aggregates directly from orders.
  */
 export async function syncCustomerAggregates(customerId: string): Promise<void> {
   if (!customerId) return;
@@ -169,6 +170,11 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
     };
   });
 
+  // Read existing orders of customer to ensure recomputed aggregates reflect Source of Truth
+  const customerOrdersQuery = query(collection(db, 'orders'), where('customerId', '==', input.customerId));
+  const existingOrdersSnap = await getDocs(customerOrdersQuery);
+  const existingCustomerOrders = existingOrdersSnap.docs.map((d) => mapDocToOrder(d.id, d.data()));
+
   return await runTransaction(db, async (tx) => {
     // 1. ALL READS FIRST (Strict Firestore rule)
     const customerSnap = await tx.get(customerRef);
@@ -239,7 +245,7 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
         discount: input.discount,
         total,
       },
-      status: 'new',
+      status: 'new' as const,
       statusHistory: [initialHistory],
       note: input.note?.trim() || null,
       createdAt: now,
@@ -247,13 +253,34 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
       deliveryDate: input.deliveryDate || null,
     };
 
-    // Calculate updated customer aggregates atomically from customer snapshot and new order
-    const currentCustomerData = customerSnap.data() || {};
-    const currentTotalOrders = Number(currentCustomerData.totalOrders || 0);
-    const currentLastOrderDate = String(currentCustomerData.lastOrderDate || '');
+    // Project new order into existing orders to recompute customer aggregates strictly from source of truth
+    const projectedNewOrder: Order = {
+      id: orderId,
+      customerId: orderData.customerId,
+      customerSnapshot: orderData.customerSnapshot,
+      items: orderData.items,
+      summary: orderData.summary,
+      status: 'new',
+      statusHistory: orderData.statusHistory,
+      note: orderData.note || undefined,
+      createdAt: orderData.createdAt,
+      createdBy: orderData.createdBy,
+      deliveryDate: orderData.deliveryDate || undefined,
+    };
+
+    const allProjectedOrders = [...existingCustomerOrders, projectedNewOrder];
+    const activeOrders = allProjectedOrders.filter((o) => o.status !== 'cancelled');
+    const completedOrders = allProjectedOrders.filter((o) => o.status === 'completed');
+
+    const totalOrders = activeOrders.length;
+    const totalSpent = completedOrders.reduce((sum, o) => sum + o.summary.total, 0);
+    const sortedDates = activeOrders.map((o) => o.createdAt).sort();
+    const lastOrderDate = sortedDates.at(-1) || '';
+
     const updatedCustomerAggregates = {
-      totalOrders: currentTotalOrders + 1,
-      lastOrderDate: now > currentLastOrderDate ? now : currentLastOrderDate,
+      totalOrders,
+      totalSpent,
+      lastOrderDate,
     };
 
     // 3. ALL WRITES AFTER READS (Atomic)
@@ -268,8 +295,26 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
   if (!id) throw new Error('Mã đơn hàng không hợp lệ.');
   const orderRef = doc(db, 'orders', id);
 
+  // Read current order to identify customer
+  const currentOrderSnap = await getDoc(orderRef);
+  if (!currentOrderSnap.exists()) {
+    throw new Error(`Không tìm thấy đơn hàng: ${id}`);
+  }
+  const currentOrderRaw = currentOrderSnap.data();
+  const customerId = String(currentOrderRaw.customerId || '');
+  if (!customerId) {
+    throw new Error(`Đơn hàng không có mã khách hàng: ${id}`);
+  }
+
+  // Preflight read customer's existing orders from source of truth
+  const customerOrdersQuery = query(collection(db, 'orders'), where('customerId', '==', customerId));
+  const existingOrdersSnap = await getDocs(customerOrdersQuery);
+  const existingCustomerOrders = existingOrdersSnap.docs.map((d) => mapDocToOrder(d.id, d.data()));
+
+  const customerRef = doc(db, 'customers', customerId);
+
   return await runTransaction(db, async (tx) => {
-    // 1. ALL READS FIRST
+    // 1. ALL READS FIRST (Strict Firestore rule)
     const orderSnap = await tx.get(orderRef);
     if (!orderSnap.exists()) {
       throw new Error(`Không tìm thấy đơn hàng: ${id}`);
@@ -282,11 +327,8 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
       throw new Error(`Không thể chuyển trạng thái từ "${currentStatus}" sang "${input.status}".`);
     }
 
-    const customerId = String(orderData.customerId || '');
-    const customerRef = customerId ? doc(db, 'customers', customerId) : null;
-    const customerSnap = customerRef ? await tx.get(customerRef) : null;
-
-    if (!customerRef || !customerSnap || !customerSnap.exists()) {
+    const customerSnap = await tx.get(customerRef);
+    if (!customerSnap.exists()) {
       throw new Error(`Không tìm thấy khách hàng của đơn hàng: ${customerId}`);
     }
 
@@ -303,32 +345,31 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
     const existingHistory = Array.isArray(orderData.statusHistory) ? orderData.statusHistory : [];
     const updatedHistory = [...existingHistory, historyEntry];
 
-    // Compute Customer Aggregate Delta atomically
-    const custData = customerSnap.data() || {};
-    let totalOrders = Number(custData.totalOrders || 0);
-    let totalSpent = Number(custData.totalSpent || 0);
-    const orderTotal = Number((orderData.summary as Record<string, unknown>)?.total || 0);
+    // Project order with new status across customer's orders and recompute all 3 aggregates strictly from orders
+    const projectedOrders = existingCustomerOrders.map((o) =>
+      o.id === id ? { ...o, status: input.status } : o
+    );
 
-    // Total orders count: active orders (status !== 'cancelled')
-    if (currentStatus !== 'cancelled' && input.status === 'cancelled') {
-      totalOrders = Math.max(0, totalOrders - 1);
-    } else if (currentStatus === 'cancelled' && input.status !== 'cancelled') {
-      totalOrders += 1;
+    // If for any reason the current order was not in existingCustomerOrders list, ensure it is included
+    if (!projectedOrders.some((o) => o.id === id)) {
+      projectedOrders.push(mapDocToOrder(id, { ...orderData, status: input.status }));
     }
 
-    // Total spent: completed orders (status === 'completed')
-    if (currentStatus !== 'completed' && input.status === 'completed') {
-      totalSpent += orderTotal;
-    } else if (currentStatus === 'completed' && input.status !== 'completed') {
-      totalSpent = Math.max(0, totalSpent - orderTotal);
-    }
+    const activeOrders = projectedOrders.filter((o) => o.status !== 'cancelled');
+    const completedOrders = projectedOrders.filter((o) => o.status === 'completed');
 
+    const totalOrders = activeOrders.length;
+    const totalSpent = completedOrders.reduce((sum, o) => sum + o.summary.total, 0);
+    const sortedDates = activeOrders.map((o) => o.createdAt).sort();
+    const lastOrderDate = sortedDates.at(-1) || '';
+
+    // 3. WRITES (Atomic)
     tx.update(customerRef, {
       totalOrders,
       totalSpent,
+      lastOrderDate,
     });
 
-    // 3. ORDER WRITE
     tx.update(orderRef, {
       status: input.status,
       statusHistory: updatedHistory,
