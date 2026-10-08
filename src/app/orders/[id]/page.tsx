@@ -23,8 +23,8 @@ function OrderDetailContent() {
   const params = useParams();
   const orderId = (params?.id as string) || 'DH-1024';
 
-  const [initialOrder, setInitialOrder] = useState<Awaited<ReturnType<typeof getOrderById>>>(null);
-  const [currentUser, setCurrentUser] = useState<Awaited<ReturnType<typeof getCurrentUser>>>(null);
+  const [initialOrder, setInitialOrder] = useState<Awaited<ReturnType<typeof getOrderById>> | null>(null);
+  const [currentUser, setCurrentUser] = useState<Awaited<ReturnType<typeof getCurrentUser>> | null>(null);
   const [currentStatus, setCurrentStatus] = useState<OrderStatus>('new');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 

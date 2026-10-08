@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 import { 
@@ -18,9 +20,16 @@ import { StatusBadge } from '@/components/common/StatusBadge';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
 import { ZaloButton } from '@/components/common/ZaloButton';
 import { listOrders } from '@/lib/services';
+import { Order } from '@/types';
 import { formatDate } from '@/lib/utils/format';
 
-export default function DashboardPage() {
+function DashboardContent() {
+  const [orders, setOrders] = React.useState<Order[]>([]);
+
+  React.useEffect(() => {
+    listOrders().then(setOrders);
+  }, []);
+
   const now = new Date();
   const todayKey = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
   const todayOrders = orders.filter((order) => order.createdAt.slice(0, 10) === todayKey);
@@ -258,5 +267,13 @@ export default function DashboardPage() {
         </div>
       </div>
     </AppShell>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <React.Suspense fallback={<div className="p-8 text-center text-sm text-stone-500">Đang tải tổng quan...</div>}>
+      <DashboardContent />
+    </React.Suspense>
   );
 }

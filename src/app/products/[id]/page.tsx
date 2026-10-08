@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { 
   Flower2, 
@@ -14,47 +14,36 @@ import { PageHeader } from '@/components/common/Cards';
 import { Input, Textarea } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { getProductById, updateProduct } from '@/lib/services';
+import { Product } from '@/types';
 import { formatVND } from '@/lib/utils/format';
 
-function EditProductContent() {
+interface ProductFormProps {
+  product: Product;
+  productId: string;
+}
+
+function ProductEditForm({ product, productId }: ProductFormProps) {
   const router = useRouter();
-  const params = useParams();
-  const productId = (params?.id as string) || 'PROD-001';
 
-  const [initialProduct, setInitialProduct] = useState<Awaited<ReturnType<typeof getProductById>>>(null);
-
-  useEffect(() => {
-    getProductById(productId).then((loadedProduct) => {
-      setInitialProduct(loadedProduct);
-    });
-  }, [productId]);
-
-  const [name, setName] = useState('');
-  const [price, setPrice] = useState<number | ''>('');
-  const [unit, setUnit] = useState('bó');
-  const [category, setCategory] = useState('Hoa bó');
-  const [note, setNote] = useState('');
-  const [isActive, setIsActive] = useState(true);
+  const [name, setName] = useState(product.name);
+  const [price, setPrice] = useState<number | ''>(product.price);
+  const [unit, setUnit] = useState(product.unit);
+  const [category, setCategory] = useState(product.category || 'Hoa bó');
+  const [note, setNote] = useState(product.note || '');
+  const [isActive, setIsActive] = useState(product.isActive);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (initialProduct) {
-      setName(initialProduct.name);
-      setPrice(initialProduct.price);
-      setUnit(initialProduct.unit);
-      setCategory(initialProduct.category || 'Hoa bó');
-      setNote(initialProduct.note || '');
-      setIsActive(initialProduct.isActive);
-    }
-  }, [initialProduct]);
-
-  if (!initialProduct) {
-    return <AppShell><div className="p-8 text-center text-sm text-stone-500">Đang tải sản phẩm...</div></AppShell>;
-  }
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    updateProduct(productId, { name: name.trim(), price: Number(price) || 0, unit, category, note, isActive })
+    updateProduct(productId, { 
+      name: name.trim(), 
+      price: Number(price) || 0, 
+      unit, 
+      category, 
+      note, 
+      isActive 
+    })
       .then(() => router.push('/products'))
       .finally(() => setIsLoading(false));
   };
@@ -62,8 +51,8 @@ function EditProductContent() {
   return (
     <AppShell>
       <PageHeader
-        title={`Chỉnh sửa: ${initialProduct.name}`}
-        subtitle={`Mã sản phẩm: ${initialProduct.id}`}
+        title={`Chỉnh sửa: ${product.name}`}
+        subtitle={`Mã sản phẩm: ${product.id}`}
         backHref="/products"
         action={
           <button
@@ -245,6 +234,29 @@ function EditProductContent() {
       </div>
     </AppShell>
   );
+}
+
+function EditProductContent() {
+  const params = useParams();
+  const productId = (params?.id as string) || 'PROD-001';
+
+  const [product, setProduct] = useState<Product | null>(null);
+
+  useEffect(() => {
+    getProductById(productId).then((loadedProduct) => {
+      setProduct(loadedProduct);
+    });
+  }, [productId]);
+
+  if (!product) {
+    return (
+      <AppShell>
+        <div className="p-8 text-center text-sm text-stone-500">Đang tải sản phẩm...</div>
+      </AppShell>
+    );
+  }
+
+  return <ProductEditForm key={product.id} product={product} productId={productId} />;
 }
 
 export default function EditProductPage() {

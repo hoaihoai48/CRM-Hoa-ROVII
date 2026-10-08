@@ -32,7 +32,7 @@ export default function CreateOrderPage() {
   // Step 1: Customer flow
   const [customers, setCustomers] = useState<Awaited<ReturnType<typeof listCustomers>>>([]);
   const [products, setProducts] = useState<Awaited<ReturnType<typeof listActiveProducts>>>([]);
-  const [currentUser, setCurrentUser] = useState<Awaited<ReturnType<typeof getCurrentUser>>>(null);
+  const [currentUser, setCurrentUser] = useState<Awaited<ReturnType<typeof getCurrentUser>> | null>(null);
   const [phoneSearch, setPhoneSearch] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
