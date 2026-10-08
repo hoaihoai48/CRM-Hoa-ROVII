@@ -15,14 +15,14 @@ import { PageHeader, StatCard } from '@/components/common/Cards';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
 import { ZaloButton } from '@/components/common/ZaloButton';
-import { getCustomerById, listOrders } from '@/lib/services';
+import { getCustomerById, listOrdersByCustomer } from '@/lib/services';
 import { formatDateShort } from '@/lib/utils/format';
 
 function CustomerDetailContent() {
   const params = useParams();
   const customerId = params?.id as string;
   const [initialCustomer, setInitialCustomer] = useState<Awaited<ReturnType<typeof getCustomerById>>>(null);
-  const [customerOrders, setCustomerOrders] = useState<Awaited<ReturnType<typeof listOrders>>>([]);
+  const [customerOrders, setCustomerOrders] = useState<Awaited<ReturnType<typeof listOrdersByCustomer>>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -34,10 +34,10 @@ function CustomerDetailContent() {
     }
     setIsLoading(true);
     setLoadError(null);
-    Promise.all([getCustomerById(customerId), listOrders()])
+    Promise.all([getCustomerById(customerId), listOrdersByCustomer(customerId)])
       .then(([customer, orders]) => {
         setInitialCustomer(customer);
-        setCustomerOrders(orders.filter((order) => order.customerId === customerId));
+        setCustomerOrders(orders);
         if (!customer) setLoadError('Không tìm thấy khách hàng.');
       })
       .catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải hồ sơ khách hàng.'))
