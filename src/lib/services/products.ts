@@ -12,3 +12,5 @@ export async function getProductById(id: string): Promise<Product | null> {
 export async function listActiveProducts(): Promise<Product[]> {
   return mockProducts.filter((product) => product.isActive);
 }
+
+export const products = mockProducts;
