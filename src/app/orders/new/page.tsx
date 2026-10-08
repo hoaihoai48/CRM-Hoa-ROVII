@@ -34,13 +34,15 @@ export default function CreateOrderPage() {
   const [customerName, setCustomerName] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [orderNote, setOrderNote] = useState('');
+  const [deliveryDate, setDeliveryDate] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
   // Suggestion match based on phone
+  const normalizedPhone = phoneSearch.replace(/\D/g, '');
   const matchedCustomer = useMemo(() => {
-    if (!phoneSearch.trim() || phoneSearch.length < 3) return null;
-    return mockCustomers.find((c) => c.phone.includes(phoneSearch.trim())) || null;
-  }, [phoneSearch]);
+    if (normalizedPhone.length < 3) return null;
+    return mockCustomers.find((c) => c.phone.replace(/\D/g, '').includes(normalizedPhone)) || null;
+  }, [normalizedPhone]);
 
   const handleSelectCustomer = (customer: Customer) => {
     setSelectedCustomer(customer);
@@ -58,10 +60,7 @@ export default function CreateOrderPage() {
 
   // Step 2: Product items
   const [productSearch, setProductSearch] = useState('');
-  const [cart, setCart] = useState<CartItem[]>([
-    { product: mockProducts[0], quantity: 2 },
-    { product: mockProducts[1], quantity: 1 },
-  ]);
+  const [cart, setCart] = useState<CartItem[]>([]);
 
   const filteredProducts = useMemo(() => {
     return mockProducts.filter((p) => {
@@ -99,18 +98,41 @@ export default function CreateOrderPage() {
   const [discount, setDiscount] = useState<number>(0);
 
   const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const total = Math.max(0, subtotal + deliveryFee - discount);
+  const total = Math.max(0, subtotal + Math.max(0, deliveryFee) - Math.min(Math.max(0, discount), subtotal));
 
-  // Mock submit
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
   const handleSaveOrder = (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+
+    if (normalizedPhone.length < 8) {
+      setFormError('Vui lòng nhập số điện thoại hợp lệ.');
+      return;
+    }
+    if (!customerName.trim() || !customerAddress.trim()) {
+      setFormError('Vui lòng nhập đầy đủ tên khách hàng và địa chỉ giao hoa.');
+      return;
+    }
+    if (cart.length === 0) {
+      setFormError('Vui lòng chọn ít nhất một sản phẩm.');
+      return;
+    }
+    if (deliveryFee < 0 || discount < 0) {
+      setFormError('Phí giao hàng và giảm giá không được âm.');
+      return;
+    }
+    if (discount > subtotal) {
+      setFormError('Giảm giá không được lớn hơn tạm tính hàng.');
+      return;
+    }
+
     setIsSubmitting(true);
-    // Simulate save order
     setTimeout(() => {
       setIsSubmitting(false);
-      router.push('/orders/DH-1024');
-    }, 500);
+      setFormError('Đã kiểm tra đơn hợp lệ. Chức năng lưu thật sẽ được kết nối với Firestore ở Phase 2.');
+    }, 450);
   };
 
   return (
@@ -324,6 +346,19 @@ export default function CreateOrderPage() {
               )}
             </div>
 
+            <div className="mb-4 pt-3 border-t border-stone-100">
+              <label className="block text-xs font-semibold text-stone-700 mb-1.5" htmlFor="deliveryDate">
+                Thời gian giao hoa
+              </label>
+              <input
+                id="deliveryDate"
+                type="datetime-local"
+                value={deliveryDate}
+                onChange={(e) => setDeliveryDate(e.target.value)}
+                className="w-full min-h-[40px] px-3 py-2 text-xs border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
+              />
+            </div>
+
             {/* Fee adjustments */}
             <div className="space-y-2.5 text-xs text-stone-600 border-t border-stone-100 pt-3">
               <div className="flex justify-between items-center">
@@ -362,6 +397,12 @@ export default function CreateOrderPage() {
                 <MoneyDisplay amount={total} size="xl" className="text-rose-600 font-bold" />
               </div>
             </div>
+
+            {formError && (
+              <div className={`mt-4 p-3 rounded-lg border text-xs ${formError.startsWith('Đã kiểm tra') ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                {formError}
+              </div>
+            )}
 
             {/* Action buttons */}
             <div className="pt-5 space-y-2">
