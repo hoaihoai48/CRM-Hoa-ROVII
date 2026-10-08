@@ -15,7 +15,7 @@ import { PageHeader, StatCard } from '@/components/common/Cards';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
 import { ZaloButton } from '@/components/common/ZaloButton';
-import { customers, orders } from '@/lib/services';
+import { getCustomerById, listOrders } from '@/lib/services';
 import { formatDateShort } from '@/lib/utils/format';
 
 function CustomerDetailContent() {
@@ -25,7 +25,7 @@ function CustomerDetailContent() {
   const customer = mockCustomers.find((c) => c.id === customerId) || mockCustomers[0];
 
   // Orders belonging to this customer
-  const customerOrders = mockOrders.filter((o) => o.customerId === customer.id);
+  const customerOrders = customerOrders.filter((o) => o.customerId === customer.id);
 
   return (
     <AppShell>
