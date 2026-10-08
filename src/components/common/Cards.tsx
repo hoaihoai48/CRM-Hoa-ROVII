@@ -30,8 +30,8 @@ export function PageHeader({
           </Link>
         )}
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-stone-900 tracking-tight">{title}</h1>
-          {subtitle && <p className="text-xs sm:text-sm text-stone-500 mt-0.5">{subtitle}</p>}
+          <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">{title}</h1>
+          {subtitle && <p className="text-xs sm:text-sm text-stone-500 dark:text-stone-400 mt-0.5">{subtitle}</p>}
         </div>
       </div>
       {action && <div className="flex items-center gap-2 shrink-0">{action}</div>}
@@ -56,19 +56,19 @@ export function StatCard({
   value,
   subtitle,
   icon: Icon,
-  iconBgColor = 'bg-emerald-50 text-emerald-700',
+  iconBgColor = 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300',
 }: StatCardProps) {
   return (
-    <div className="bg-white rounded-xl border border-stone-200/80 p-4 sm:p-5 shadow-2xs hover:border-stone-300 transition-colors">
+    <div className="bg-white dark:bg-[#1a1c22] rounded-xl border border-stone-200/80 dark:border-stone-800 p-4 sm:p-5 shadow-2xs hover:border-stone-300 dark:hover:border-stone-700 transition-colors">
       <div className="flex items-center justify-between">
-        <span className="text-xs sm:text-sm font-medium text-stone-500">{title}</span>
+        <span className="text-xs sm:text-sm font-medium text-stone-500 dark:text-stone-400">{title}</span>
         <div className={`p-2 sm:p-2.5 rounded-lg ${iconBgColor}`}>
           <Icon className="w-5 h-5" />
         </div>
       </div>
       <div className="mt-3">
-        <div className="text-xl sm:text-2xl font-bold text-stone-900 tabular-nums">{value}</div>
-        {subtitle && <p className="text-xs text-stone-500 mt-1">{subtitle}</p>}
+        <div className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-stone-100 tabular-nums">{value}</div>
+        {subtitle && <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">{subtitle}</p>}
       </div>
     </div>
   );

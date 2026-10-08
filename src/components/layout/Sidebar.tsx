@@ -49,7 +49,7 @@ export function Sidebar() {
       <div className="px-4 pt-4 pb-2">
         <Link
           href="/orders/new"
-          className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold shadow-xs transition-all hover:shadow"
+          className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-semibold shadow-xs transition-all hover:shadow dark:bg-rose-600 dark:hover:bg-rose-500"
         >
           <PlusCircle className="w-4 h-4" />
           <span>Tạo đơn mới</span>
@@ -68,11 +68,11 @@ export function Sidebar() {
               href={item.href}
               className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-rose-50 text-rose-700 font-semibold'
-                  : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'
+                  ? 'bg-rose-50 text-rose-700 font-semibold dark:bg-rose-950/60 dark:text-rose-300'
+                  : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800/50 dark:hover:text-stone-100'
               }`}
             >
-              <Icon className={`w-5 h-5 ${isActive ? 'text-rose-600' : 'text-stone-400'}`} />
+              <Icon className={`w-5 h-5 ${isActive ? 'text-rose-600 dark:text-rose-400' : 'text-stone-400 dark:text-stone-500'}`} />
               <span>{item.label}</span>
             </Link>
           );

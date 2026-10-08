@@ -1,8 +1,185 @@
 @import "tailwindcss";
+
 @custom-variant dark (&:where(.dark, .dark *));
-:root{--background:#f8fafc;--foreground:#172033;--surface:#fff;--surface-muted:#f8fafc;--border:#e2e8f0}
-.dark{--background:#0f172a;--foreground:#e5e7eb;--surface:#111827;--surface-muted:#1e293b;--border:#334155}
-@theme inline{--color-background:var(--background);--color-foreground:var(--foreground);--font-sans:var(--font-geist-sans);--font-mono:var(--font-geist-mono)}
-html{color-scheme:light}html.dark{color-scheme:dark}body{background:var(--background);color:var(--foreground);font-family:var(--font-geist-sans),Arial,Helvetica,sans-serif;transition:background-color 160ms ease,color 160ms ease}
-.dark .bg-white{background-color:var(--surface)!important}.dark .bg-stone-50,.dark .bg-stone-50\/70,.dark .bg-stone-50\/60{background-color:var(--surface-muted)!important}.dark .bg-stone-100{background-color:#273449!important}.dark .text-stone-900{color:#f8fafc!important}.dark .text-stone-800{color:#f1f5f9!important}.dark .text-stone-700{color:#e2e8f0!important}.dark .text-stone-600{color:#cbd5e1!important}.dark .text-stone-500{color:#94a3b8!important}.dark .text-stone-400{color:#64748b!important}.dark .border-stone-100,.dark .border-stone-200,.dark .border-stone-200\/80,.dark .border-stone-300{border-color:var(--border)!important}.dark .divide-stone-100>:not([hidden])~:not([hidden]){border-color:#253247!important}.dark .hover\:bg-stone-50:hover{background-color:#1e293b!important}.dark .hover\:bg-stone-100:hover{background-color:#273449!important}.dark input,.dark textarea,.dark select{background:#0f172a!important;color:#f8fafc!important;border-color:#475569!important}.dark input::placeholder,.dark textarea::placeholder{color:#64748b!important}.dark .bg-emerald-50{background:#063b2d!important}.dark .bg-blue-50{background:#172554!important}.dark .bg-amber-50{background:#422006!important}.dark .bg-rose-50{background:#3f1d2a!important}.dark .text-emerald-700{color:#6ee7b7!important}.dark .text-blue-700{color:#93c5fd!important}.dark .text-amber-700{color:#fcd34d!important}.dark .text-rose-600{color:#fb7185!important}.dark .text-rose-700{color:#fda4af!important}
-::selection{background:rgb(244 63 94 / .22)}
+
+:root {
+  /* Warm Rose & Cream Botanical Palette */
+  --background: #fbf9f6;          /* Nền màu be ngà ấm áp (warm paper/cream) */
+  --foreground: #1c1917;          /* Chữ than ấm stone-900 */
+  --surface: #ffffff;             /* Thẻ card trắng tinh tế */
+  --surface-muted: #f5f0eb;       /* Vùng nền phụ ấm */
+  --surface-subtle: #faf5f0;      /* Hover nhẹ */
+  --border: #ede4dc;              /* Viền ấm áp nhẹ nhàng */
+  --border-strong: #dbc9bc;
+  
+  /* Brand accents */
+  --primary: #e11d48;             /* Rose 600 - Tông hồng phấn / hoa hồng thanh lịch */
+  --primary-hover: #be123c;       /* Rose 700 */
+  --primary-light: #fff1f2;       /* Rose 50 */
+  
+  --secondary: #059669;           /* Emerald 600 - Tông xanh lá cây cành lá */
+  --secondary-hover: #047857;
+  --secondary-light: #ecfdf5;
+}
+
+.dark {
+  /* Elegant Velvet Charcoal & Rose Gold Dark Theme */
+  --background: #121316;          /* Nền tối nhung sâu, không bị xám xịt */
+  --foreground: #f4f4f5;          /* Chữ trắng ngà mềm mắt */
+  --surface: #1a1c22;             /* Thẻ card tối sang trọng */
+  --surface-muted: #22252c;       /* Vùng nền phụ tối */
+  --surface-subtle: #272a33;      /* Hover tối */
+  --border: #2e323b;              /* Viền mảnh tách lớp tinh tế */
+  --border-strong: #3f4450;
+
+  /* Brand accents dark */
+  --primary: #fb7185;             /* Rose 400 */
+  --primary-hover: #f43f5e;
+  --primary-light: #33151e;
+
+  --secondary: #34d399;           /* Emerald 400 */
+  --secondary-hover: #10b981;
+  --secondary-light: #062d22;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+}
+
+/* Đồng bộ toàn diện các utility Tailwind cho Dark Mode */
+.dark .bg-white {
+  background-color: var(--surface) !important;
+}
+
+.dark .bg-stone-50,
+.dark .bg-stone-50\/70,
+.dark .bg-stone-50\/60 {
+  background-color: var(--surface-muted) !important;
+}
+
+.dark .bg-stone-100 {
+  background-color: var(--surface-subtle) !important;
+}
+
+.dark .text-stone-900 {
+  color: #f8fafc !important;
+}
+
+.dark .text-stone-800 {
+  color: #f1f5f9 !important;
+}
+
+.dark .text-stone-700 {
+  color: #e2e8f0 !important;
+}
+
+.dark .text-stone-600 {
+  color: #cbd5e1 !important;
+}
+
+.dark .text-stone-500 {
+  color: #94a3b8 !important;
+}
+
+.dark .text-stone-400 {
+  color: #64748b !important;
+}
+
+.dark .border-stone-100,
+.dark .border-stone-200,
+.dark .border-stone-200\/80,
+.dark .border-stone-300 {
+  border-color: var(--border) !important;
+}
+
+.dark .divide-stone-100 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-stone-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--border) !important;
+}
+
+.dark .hover\:bg-stone-50:hover {
+  background-color: var(--surface-subtle) !important;
+}
+
+.dark .hover\:bg-stone-100:hover {
+  background-color: var(--surface-muted) !important;
+}
+
+/* Inputs & Form controls in Dark Mode */
+.dark input,
+.dark textarea,
+.dark select {
+  background: var(--surface) !important;
+  color: #f8fafc !important;
+  border-color: var(--border) !important;
+}
+
+.dark input:focus,
+.dark textarea:focus,
+.dark select:focus {
+  border-color: var(--primary) !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+/* Badges & Accents in Dark Mode */
+.dark .bg-emerald-50 {
+  background: rgba(6, 78, 59, 0.4) !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+.dark .text-emerald-700 {
+  color: #6ee7b7 !important;
+}
+
+.dark .bg-blue-50 {
+  background: rgba(30, 58, 138, 0.4) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+}
+.dark .text-blue-700 {
+  color: #93c5fd !important;
+}
+
+.dark .bg-amber-50 {
+  background: rgba(120, 53, 15, 0.4) !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+.dark .text-amber-700 {
+  color: #fcd34d !important;
+}
+
+.dark .bg-rose-50 {
+  background: rgba(136, 19, 55, 0.4) !important;
+  border-color: rgba(244, 63, 94, 0.3) !important;
+}
+.dark .text-rose-600 {
+  color: #fb7185 !important;
+}
+.dark .text-rose-700 {
+  color: #fda4af !important;
+}
+
+::selection {
+  background: rgb(225 29 72 / 0.25);
+  color: inherit;
+}

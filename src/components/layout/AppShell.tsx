@@ -9,7 +9,7 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   return (
-    <div className="min-h-screen bg-stone-50/60 flex flex-col antialiased text-stone-900 dark:bg-slate-950 dark:text-slate-100">
+    <div className="min-h-screen bg-[var(--background)] flex flex-col antialiased text-[var(--foreground)]">
       {/* Desktop Sidebar */}
       <Sidebar />
 
