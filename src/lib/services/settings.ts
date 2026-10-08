@@ -1,16 +1,15 @@
-import { StoreSettings, User } from '@/types';
-import { seedCurrentUser as seedCurrentUser, seedStoreSettings as seedStoreSettings } from '@/lib/mock';
+import { StoreSettings, User, UpdateStoreSettingsInput } from '@/types';
+import { mockCurrentUser, mockStoreSettings } from '@/lib/mock';
 
 export async function getStoreSettings(): Promise<StoreSettings> {
-  return seedStoreSettings;
+  return { ...mockStoreSettings };
+}
+
+export async function updateStoreSettings(changes: UpdateStoreSettingsInput): Promise<StoreSettings> {
+  Object.assign(mockStoreSettings, changes);
+  return { ...mockStoreSettings };
 }
 
 export async function getCurrentUser(): Promise<User> {
-  return seedCurrentUser;
+  return { ...mockCurrentUser };
 }
-
-export const currentUser = seedCurrentUser;
-export const storeSettings = seedStoreSettings;
-
-export const mockCurrentUser = currentUser;
-export const mockStoreSettings = storeSettings;
