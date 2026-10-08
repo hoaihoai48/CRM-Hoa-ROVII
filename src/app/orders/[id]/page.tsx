@@ -14,7 +14,7 @@ import { PageHeader } from '@/components/common/Cards';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
 import { ZaloButton } from '@/components/common/ZaloButton';
-import { mockOrders } from '@/lib/services';
+import { orders } from '@/lib/services';
 import { formatDate, formatVND } from '@/lib/utils/format';
 import { OrderStatus } from '@/types';
 import { getNextOrderStatuses, canTransitionOrderStatus } from '@/lib/utils/order-status';
