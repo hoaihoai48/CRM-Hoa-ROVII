@@ -1,18 +1,18 @@
 import { Product } from '@/types';
-import { mockProducts } from '@/lib/mock';
+import { seedProducts as seedProducts } from '@/lib/mock';
 
 export async function listProducts(): Promise<Product[]> {
-  return mockProducts;
+  return seedProducts;
 }
 
 export async function getProductById(id: string): Promise<Product | null> {
-  return mockProducts.find((product) => product.id === id) ?? null;
+  return seedProducts.find((product) => product.id === id) ?? null;
 }
 
 export async function listActiveProducts(): Promise<Product[]> {
-  return mockProducts.filter((product) => product.isActive);
+  return seedProducts.filter((product) => product.isActive);
 }
 
-export const products = mockProducts;
+export const products = seedProducts;
 
 export const mockProducts = products;
