@@ -22,6 +22,7 @@ export interface Customer {
   id: string;
   name: string;
   phone: string;
+  phoneNormalized: string;
   address: string;
   totalOrders: number;
   totalSpent: number;
@@ -89,6 +90,54 @@ export interface Order {
   createdAt: string;
   createdBy: string;
   deliveryDate?: string;
+}
+
+export interface CreateCustomerInput {
+  name: string;
+  phone: string;
+  address: string;
+  note?: string;
+}
+
+export interface CreateOrderItemInput {
+  productId: string;
+  quantity: number;
+}
+
+export interface CreateOrderInput {
+  customerId: string;
+  customerSnapshot: CustomerSnapshot;
+  items: CreateOrderItemInput[];
+  deliveryFee: number;
+  discount: number;
+  note?: string;
+  deliveryDate?: string;
+  createdBy: string;
+}
+
+export interface UpdateOrderStatusInput {
+  status: OrderStatus;
+  actorName: string;
+  note?: string;
+}
+
+export interface CreateProductInput {
+  name: string;
+  price: number;
+  unit: string;
+  isActive?: boolean;
+  category?: string;
+  imageUrl?: string;
+  note?: string;
+}
+
+export interface UpdateStoreSettingsInput {
+  storeName?: string;
+  phone?: string;
+  address?: string;
+  zaloUrl?: string;
+  email?: string;
+  notificationEnabled?: boolean;
 }
 
 export interface StoreSettings {
