@@ -15,7 +15,7 @@ import { PageHeader, EmptyState } from '@/components/common/Cards';
 import { SearchInput } from '@/components/common/Input';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
-import { mockOrders } from '@/lib/services';
+import { orders } from '@/lib/services';
 import { formatDate } from '@/lib/utils/format';
 import { OrderStatus } from '@/types';
 
