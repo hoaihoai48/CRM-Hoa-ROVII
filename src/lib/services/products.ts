@@ -14,3 +14,5 @@ export async function listActiveProducts(): Promise<Product[]> {
 }
 
 export const products = mockProducts;
+
+export const mockProducts = products;
