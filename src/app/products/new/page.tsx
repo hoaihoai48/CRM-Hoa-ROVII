@@ -13,6 +13,7 @@ import { PageHeader } from '@/components/common/Cards';
 import { Input, Textarea } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { formatVND } from '@/lib/utils/format';
+import { createProduct } from '@/lib/services';
 
 export default function NewProductPage() {
   const router = useRouter();
@@ -25,14 +26,17 @@ export default function NewProductPage() {
   const [isActive, setIsActive] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Mock save product
-    setTimeout(() => {
-      setIsLoading(false);
-      router.push('/products');
-    }, 400);
+    createProduct({
+      name,
+      price: Number(price) || 0,
+      unit,
+      category,
+      note,
+      isActive,
+    }).then(() => router.push('/products')).finally(() => setIsLoading(false));
   };
 
   return (
