@@ -69,8 +69,8 @@ function EditProductContent() {
           <button
             type="button"
             onClick={() => {
-              if (confirm('Bạn có chắc muốn xóa mẫu hoa này? (Mock UI)')) {
-                router.push('/products');
+              if (confirm('Bạn có chắc muốn ngừng bán mẫu hoa này?')) {
+                updateProduct(productId, { isActive: false }).then(() => router.push('/products'));
               }
             }}
             className="p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
