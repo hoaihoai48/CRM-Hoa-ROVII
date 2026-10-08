@@ -65,7 +65,7 @@ export default function SettingsPage() {
       {isSaved && (
         <div className="mb-6 p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center gap-2">
           <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>Đã lưu cài đặt tạm thời (Mock UI - CSDL sẽ kết nối ở Phase 2)</span>
+          <span>Đã lưu cài đặt.</span>
         </div>
       )}
 
