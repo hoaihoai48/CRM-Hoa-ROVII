@@ -17,7 +17,7 @@ import { PageHeader } from '@/components/common/Cards';
 import { Input, Textarea } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
-import { createCustomer, createOrder, getCurrentUser, listActiveProducts, listCustomers } from '@/lib/services';
+import { createCustomer, createOrder, findCustomerByPhone, getCurrentUser, listActiveProducts, listCustomers } from '@/lib/services';
 import { Customer, Product } from '@/types';
 import { formatVND } from '@/lib/utils/format';
 
@@ -53,7 +53,7 @@ export default function CreateOrderPage() {
   const matchedCustomer = useMemo(() => {
     if (normalizedPhone.length < 3) return null;
     return customers.find((c) => c.phoneNormalized.includes(normalizedPhone)) || null;
-  }, [normalizedPhone]);
+  }, [customers, normalizedPhone]);
 
   const handleSelectCustomer = (customer: Customer) => {
     setSelectedCustomer(customer);
@@ -146,7 +146,8 @@ export default function CreateOrderPage() {
 
     setIsSubmitting(true);
     try {
-      const customer = selectedCustomer ?? await createCustomer({
+      const existingCustomer = selectedCustomer ?? await findCustomerByPhone(phoneSearch);
+      const customer = existingCustomer ?? await createCustomer({
         name: customerName,
         phone: phoneSearch,
         address: customerAddress,
@@ -258,7 +259,7 @@ export default function CreateOrderPage() {
                 {!matchedCustomer && phoneSearch.length >= 8 && !selectedCustomer && (
                   <p className="text-xs text-amber-600 mt-1 flex items-center gap-1 font-medium">
                     <UserPlus className="w-3.5 h-3.5" />
-                    Chưa có trong danh bạ — sẽ tạo hồ sơ khách mới khi Firebase được kết nối
+                    Chưa có trong danh bạ — sẽ tạo hồ sơ khách mới khi lưu đơn
                   </p>
                 )}
               </div>
