@@ -21,7 +21,17 @@ function EditProductContent() {
   const params = useParams();
   const productId = (params?.id as string) || 'PROD-001';
 
-  const initialProduct = products.find((p) => p.id === productId) || products[0];
+  const [initialProduct, setInitialProduct] = useState<Awaited<ReturnType<typeof getProductById>>>(null);
+
+  useEffect(() => {
+    getProductById(productId).then((loadedProduct) => {
+      setInitialProduct(loadedProduct);
+    });
+  }, [productId]);
+
+  if (!initialProduct) {
+    return <AppShell><div className="p-8 text-center text-sm text-stone-500">Đang tải sản phẩm...</div></AppShell>;
+  }
 
   const [name, setName] = useState(initialProduct.name);
   const [price, setPrice] = useState<number | ''>(initialProduct.price);
