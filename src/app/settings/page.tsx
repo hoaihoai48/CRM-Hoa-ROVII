@@ -17,7 +17,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/common/Cards';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
-import { mockCurrentUser, mockStoreSettings } from '@/lib/mock';
+import { mockCurrentUser, mockStoreSettings } from '@/lib/services';
 
 export default function SettingsPage() {
   const router = useRouter();
