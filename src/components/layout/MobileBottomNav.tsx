@@ -36,10 +36,10 @@ export function MobileBottomNav() {
                 href={item.href}
                 className="flex flex-col items-center justify-center -mt-4 group"
               >
-                <div className="w-12 h-12 rounded-full bg-rose-600 text-white flex items-center justify-center shadow-md group-active:scale-95 transition-transform border-2 border-white dark:border-slate-900">
+                <div className="w-12 h-12 rounded-full bg-brand text-brand-text flex items-center justify-center shadow-md group-active:scale-95 transition-transform border-2 border-white dark:border-stone-900">
                   <PlusCircle className="w-6 h-6" />
                 </div>
-                <span className="text-[10px] font-semibold text-rose-600 dark:text-rose-400 mt-0.5">Tạo đơn</span>
+                <span className="text-[10px] font-semibold text-brand mt-0.5">Tạo đơn</span>
               </Link>
             );
           }

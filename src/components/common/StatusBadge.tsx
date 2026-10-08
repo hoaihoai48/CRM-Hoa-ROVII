@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { OrderStatus } from '@/types';
 
+import { THEME_CONFIG } from '@/lib/constants/theme';
+
 interface StatusConfig {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -17,34 +19,34 @@ interface StatusConfig {
 
 export const ORDER_STATUS_CONFIG: Record<OrderStatus, StatusConfig> = {
   new: {
-    label: 'Mới',
+    label: THEME_CONFIG.statusColors.new.label,
     icon: Sparkles,
-    badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200/70',
-    dotClass: 'bg-emerald-500',
+    badgeClass: `${THEME_CONFIG.statusColors.new.bgLight} ${THEME_CONFIG.statusColors.new.textLight} ${THEME_CONFIG.statusColors.new.borderLight} ${THEME_CONFIG.statusColors.new.bgDark} ${THEME_CONFIG.statusColors.new.textDark}`,
+    dotClass: THEME_CONFIG.statusColors.new.dot,
   },
   confirmed: {
-    label: 'Đã xác nhận',
+    label: THEME_CONFIG.statusColors.confirmed.label,
     icon: Clock,
-    badgeClass: 'bg-blue-50 text-blue-700 border-blue-200/70',
-    dotClass: 'bg-blue-500',
+    badgeClass: `${THEME_CONFIG.statusColors.confirmed.bgLight} ${THEME_CONFIG.statusColors.confirmed.textLight} ${THEME_CONFIG.statusColors.confirmed.borderLight} ${THEME_CONFIG.statusColors.confirmed.bgDark} ${THEME_CONFIG.statusColors.confirmed.textDark}`,
+    dotClass: THEME_CONFIG.statusColors.confirmed.dot,
   },
   delivering: {
-    label: 'Đang giao',
+    label: THEME_CONFIG.statusColors.delivering.label,
     icon: Truck,
-    badgeClass: 'bg-amber-50 text-amber-700 border-amber-200/70',
-    dotClass: 'bg-amber-500',
+    badgeClass: `${THEME_CONFIG.statusColors.delivering.bgLight} ${THEME_CONFIG.statusColors.delivering.textLight} ${THEME_CONFIG.statusColors.delivering.borderLight} ${THEME_CONFIG.statusColors.delivering.bgDark} ${THEME_CONFIG.statusColors.delivering.textDark}`,
+    dotClass: THEME_CONFIG.statusColors.delivering.dot,
   },
   completed: {
-    label: 'Hoàn tất',
+    label: THEME_CONFIG.statusColors.completed.label,
     icon: CheckCircle2,
-    badgeClass: 'bg-rose-50 text-rose-700 border-rose-200/70',
-    dotClass: 'bg-rose-500',
+    badgeClass: `${THEME_CONFIG.statusColors.completed.bgLight} ${THEME_CONFIG.statusColors.completed.textLight} ${THEME_CONFIG.statusColors.completed.borderLight} ${THEME_CONFIG.statusColors.completed.bgDark} ${THEME_CONFIG.statusColors.completed.textDark}`,
+    dotClass: THEME_CONFIG.statusColors.completed.dot,
   },
   cancelled: {
-    label: 'Đã hủy',
+    label: THEME_CONFIG.statusColors.cancelled.label,
     icon: XCircle,
-    badgeClass: 'bg-stone-100 text-stone-600 border-stone-200',
-    dotClass: 'bg-stone-400',
+    badgeClass: `${THEME_CONFIG.statusColors.cancelled.bgLight} ${THEME_CONFIG.statusColors.cancelled.textLight} ${THEME_CONFIG.statusColors.cancelled.borderLight} ${THEME_CONFIG.statusColors.cancelled.bgDark} ${THEME_CONFIG.statusColors.cancelled.textDark}`,
+    dotClass: THEME_CONFIG.statusColors.cancelled.dot,
   },
 };
 

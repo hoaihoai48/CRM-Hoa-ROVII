@@ -51,7 +51,7 @@ function DashboardContent() {
           <div className="flex items-center gap-2">
             <Link
               href="/orders/new"
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-sm font-semibold shadow-xs transition-colors dark:bg-rose-600 dark:hover:bg-rose-500"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-brand hover:bg-brand-hover text-brand-text rounded-lg text-sm font-semibold shadow-xs transition-colors"
             >
               <PlusCircle className="w-4 h-4" />
               <span>Tạo đơn mới</span>

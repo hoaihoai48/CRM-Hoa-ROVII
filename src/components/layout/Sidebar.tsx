@@ -49,7 +49,7 @@ export function Sidebar() {
       <div className="px-4 pt-4 pb-2">
         <Link
           href="/orders/new"
-          className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-semibold shadow-xs transition-all hover:shadow dark:bg-rose-600 dark:hover:bg-rose-500"
+          className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-brand hover:bg-brand-hover text-brand-text rounded-xl text-sm font-semibold shadow-xs transition-all hover:shadow"
         >
           <PlusCircle className="w-4 h-4" />
           <span>Tạo đơn mới</span>

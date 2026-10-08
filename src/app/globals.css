@@ -3,48 +3,82 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  /* Warm Rose & Cream Botanical Palette */
-  --background: #fbf9f6;          /* Nền màu be ngà ấm áp (warm paper/cream) */
-  --foreground: #1c1917;          /* Chữ than ấm stone-900 */
-  --surface: #ffffff;             /* Thẻ card trắng tinh tế */
-  --surface-muted: #f5f0eb;       /* Vùng nền phụ ấm */
-  --surface-subtle: #faf5f0;      /* Hover nhẹ */
-  --border: #ede4dc;              /* Viền ấm áp nhẹ nhàng */
-  --border-strong: #dbc9bc;
+  /* ==========================================================
+     🌸 TIỆM HOA DESIGN TOKENS - LIGHT MODE (Botanical Floral)
+     Thay đổi mã màu tại đây sẽ tự động cập nhật toàn bộ hệ thống
+     ========================================================== */
+  --bg-app: #fbf9f6;             /* Nền ứng dụng (warm cream) */
+  --text-main: #1c1917;          /* Chữ chính */
+  --text-muted: #78716c;         /* Chữ phụ / subtitle */
   
-  /* Brand accents */
-  --primary: #e11d48;             /* Rose 600 - Tông hồng phấn / hoa hồng thanh lịch */
-  --primary-hover: #be123c;       /* Rose 700 */
-  --primary-light: #fff1f2;       /* Rose 50 */
+  --surface-card: #ffffff;       /* Nền các thẻ Card / Box */
+  --surface-subtle: #f5f0eb;     /* Vùng nền nhẹ, bảng header, input bg */
+  --surface-hover: #ede6df;      /* Màu hover nhẹ */
   
-  --secondary: #059669;           /* Emerald 600 - Tông xanh lá cây cành lá */
-  --secondary-hover: #047857;
-  --secondary-light: #ecfdf5;
+  --border-color: #ede4dc;       /* Viền thẻ card, viền ngăn cách */
+  --border-focus: #e11d48;       /* Viền khi focus */
+
+  /* 🌺 BRAND PRIMARY: Màu chủ đạo tiệm hoa (Rose / Mauve) */
+  --brand-primary: #e11d48;      /* Rose 600 */
+  --brand-hover: #be123c;        /* Rose 700 */
+  --brand-light: #fff1f2;        /* Rose 50 */
+  --brand-text: #ffffff;         /* Chữ trên nút brand */
+
+  /* 🌿 BRAND SECONDARY / ACCENT: Tông lá xanh tươi botanical */
+  --brand-accent: #059669;       /* Emerald 600 */
+  --brand-accent-hover: #047857;
+  --brand-accent-light: #ecfdf5;
 }
 
 .dark {
-  /* Elegant Velvet Charcoal & Rose Gold Dark Theme */
-  --background: #121316;          /* Nền tối nhung sâu, không bị xám xịt */
-  --foreground: #f4f4f5;          /* Chữ trắng ngà mềm mắt */
-  --surface: #1a1c22;             /* Thẻ card tối sang trọng */
-  --surface-muted: #22252c;       /* Vùng nền phụ tối */
-  --surface-subtle: #272a33;      /* Hover tối */
-  --border: #2e323b;              /* Viền mảnh tách lớp tinh tế */
-  --border-strong: #3f4450;
+  /* ==========================================================
+     🌙 TIỆM HOA DESIGN TOKENS - DARK MODE (Velvet Charcoal)
+     Thay đổi mã màu tại đây sẽ tự động cập nhật dark theme
+     ========================================================== */
+  --bg-app: #121316;             /* Nền tối nhung sâu */
+  --text-main: #f4f4f5;          /* Chữ sáng ấm */
+  --text-muted: #a1a1aa;         /* Chữ phụ */
+  
+  --surface-card: #1a1c22;       /* Nền thẻ card tối */
+  --surface-subtle: #22252c;     /* Nền header bảng, sub-card */
+  --surface-hover: #292d36;      /* Hover tối */
+  
+  --border-color: #2e323b;       /* Viền tách lớp */
+  --border-focus: #fb7185;
 
-  /* Brand accents dark */
-  --primary: #fb7185;             /* Rose 400 */
-  --primary-hover: #f43f5e;
-  --primary-light: #33151e;
+  /* 🌺 BRAND PRIMARY (DARK) */
+  --brand-primary: #e11d48;      /* Rose 600 nổi bật */
+  --brand-hover: #f43f5e;
+  --brand-light: #33151e;
+  --brand-text: #ffffff;
 
-  --secondary: #34d399;           /* Emerald 400 */
-  --secondary-hover: #10b981;
-  --secondary-light: #062d22;
+  /* 🌿 ACCENT (DARK) */
+  --brand-accent: #10b981;
+  --brand-accent-hover: #34d399;
+  --brand-accent-light: #062d22;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--bg-app);
+  --color-foreground: var(--text-main);
+  
+  /* Semantic Design Tokens cho Tailwind */
+  --color-brand: var(--brand-primary);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-light: var(--brand-light);
+  --color-brand-text: var(--brand-text);
+
+  --color-accent: var(--brand-accent);
+  --color-accent-hover: var(--brand-accent-hover);
+  --color-accent-light: var(--brand-accent-light);
+
+  --color-surface: var(--surface-card);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-surface-hover: var(--surface-hover);
+
+  --color-border-theme: var(--border-color);
+  --color-text-muted: var(--text-muted);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -58,25 +92,28 @@ html.dark {
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background-color: var(--bg-app);
+  color: var(--text-main);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
 }
 
-/* Đồng bộ toàn diện các utility Tailwind cho Dark Mode */
+/* ==========================================================
+   🔄 BACKWARD-COMPATIBLE ADAPTER CHO CÁC CLASS CŨ
+   Đảm bảo toàn bộ component hiện tại tự động đồng bộ theo Tokens
+   ========================================================== */
 .dark .bg-white {
-  background-color: var(--surface) !important;
+  background-color: var(--surface-card) !important;
 }
 
 .dark .bg-stone-50,
 .dark .bg-stone-50\/70,
 .dark .bg-stone-50\/60 {
-  background-color: var(--surface-muted) !important;
+  background-color: var(--surface-subtle) !important;
 }
 
 .dark .bg-stone-100 {
-  background-color: var(--surface-subtle) !important;
+  background-color: var(--surface-hover) !important;
 }
 
 .dark .text-stone-900 {
@@ -100,86 +137,50 @@ body {
 }
 
 .dark .text-stone-400 {
-  color: #64748b !important;
+  color: #71717a !important;
 }
 
 .dark .border-stone-100,
 .dark .border-stone-200,
 .dark .border-stone-200\/80,
 .dark .border-stone-300 {
-  border-color: var(--border) !important;
+  border-color: var(--border-color) !important;
 }
 
 .dark .divide-stone-100 > :not([hidden]) ~ :not([hidden]),
 .dark .divide-stone-200 > :not([hidden]) ~ :not([hidden]) {
-  border-color: var(--border) !important;
+  border-color: var(--border-color) !important;
 }
 
 .dark .hover\:bg-stone-50:hover {
-  background-color: var(--surface-subtle) !important;
+  background-color: var(--surface-hover) !important;
 }
 
 .dark .hover\:bg-stone-100:hover {
-  background-color: var(--surface-muted) !important;
+  background-color: var(--surface-subtle) !important;
 }
 
-/* Inputs & Form controls in Dark Mode */
+/* Inputs & Form controls */
 .dark input,
 .dark textarea,
 .dark select {
-  background: var(--surface) !important;
+  background-color: var(--surface-card) !important;
   color: #f8fafc !important;
-  border-color: var(--border) !important;
+  border-color: var(--border-color) !important;
 }
 
 .dark input:focus,
 .dark textarea:focus,
 .dark select:focus {
-  border-color: var(--primary) !important;
+  border-color: var(--brand-primary) !important;
 }
 
 .dark input::placeholder,
 .dark textarea::placeholder {
-  color: #64748b !important;
-}
-
-/* Badges & Accents in Dark Mode */
-.dark .bg-emerald-50 {
-  background: rgba(6, 78, 59, 0.4) !important;
-  border-color: rgba(16, 185, 129, 0.3) !important;
-}
-.dark .text-emerald-700 {
-  color: #6ee7b7 !important;
-}
-
-.dark .bg-blue-50 {
-  background: rgba(30, 58, 138, 0.4) !important;
-  border-color: rgba(59, 130, 246, 0.3) !important;
-}
-.dark .text-blue-700 {
-  color: #93c5fd !important;
-}
-
-.dark .bg-amber-50 {
-  background: rgba(120, 53, 15, 0.4) !important;
-  border-color: rgba(245, 158, 11, 0.3) !important;
-}
-.dark .text-amber-700 {
-  color: #fcd34d !important;
-}
-
-.dark .bg-rose-50 {
-  background: rgba(136, 19, 55, 0.4) !important;
-  border-color: rgba(244, 63, 94, 0.3) !important;
-}
-.dark .text-rose-600 {
-  color: #fb7185 !important;
-}
-.dark .text-rose-700 {
-  color: #fda4af !important;
+  color: #71717a !important;
 }
 
 ::selection {
-  background: rgb(225 29 72 / 0.25);
-  color: inherit;
+  background: var(--brand-light);
+  color: var(--brand-primary);
 }

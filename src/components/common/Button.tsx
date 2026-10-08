@@ -26,11 +26,11 @@ export function Button({
   };
 
   const variantClasses = {
-    primary: 'bg-rose-600 hover:bg-rose-700 text-white font-medium shadow-xs focus:ring-rose-500 dark:bg-rose-600 dark:hover:bg-rose-500',
-    secondary: 'bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-xs focus:ring-emerald-500 dark:bg-emerald-600 dark:hover:bg-emerald-500',
-    outline: 'border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800 font-medium focus:ring-rose-400',
+    primary: 'bg-brand hover:bg-brand-hover text-brand-text font-medium shadow-xs focus:ring-brand',
+    secondary: 'bg-accent hover:bg-accent-hover text-white font-medium shadow-xs focus:ring-accent',
+    outline: 'border border-border-theme bg-surface text-foreground hover:bg-surface-hover font-medium focus:ring-brand',
     danger: 'bg-red-600 hover:bg-red-700 text-white font-medium shadow-xs focus:ring-red-500',
-    ghost: 'text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-white font-medium focus:ring-stone-400',
+    ghost: 'text-text-muted hover:bg-surface-subtle hover:text-foreground font-medium focus:ring-brand',
   };
 
   return (
