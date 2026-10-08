@@ -31,29 +31,46 @@ function OrderDetailContent() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    let ignore = false;
     if (!orderId) {
-      setLoadError('Mã đơn hàng không hợp lệ.');
-      setIsLoading(false);
       return;
     }
-    setIsLoading(true);
-    setLoadError(null);
+
     Promise.all([getOrderById(orderId), getCurrentUser()])
       .then(([order, user]) => {
+        if (ignore) return;
         setInitialOrder(order);
         setCurrentUser(user);
         if (order) setCurrentStatus(order.status);
-        if (!order) setLoadError('Không tìm thấy đơn hàng.');
+        if (!order) {
+          setLoadError('Không tìm thấy đơn hàng.');
+        } else {
+          setLoadError(null);
+        }
       })
-      .catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải đơn hàng.'))
-      .finally(() => setIsLoading(false));
+      .catch((error) => {
+        if (!ignore) {
+          setLoadError(error instanceof Error ? error.message : 'Không thể tải đơn hàng.');
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
   }, [orderId]);
 
-  if (isLoading) {
+  const effectiveLoadError = !orderId ? 'Mã đơn hàng không hợp lệ.' : loadError;
+
+  if (isLoading && orderId) {
     return <AppShell><div className="p-8 text-center text-sm text-stone-500">Đang tải chi tiết đơn hàng...</div></AppShell>;
   }
-  if (loadError || !initialOrder) {
-    return <AppShell><div className="p-8 text-center text-sm text-red-600">{loadError || 'Không tìm thấy đơn hàng.'}</div></AppShell>;
+  if (effectiveLoadError || !initialOrder) {
+    return <AppShell><div className="p-8 text-center text-sm text-red-600">{effectiveLoadError || 'Không tìm thấy đơn hàng.'}</div></AppShell>;
   }
   const handleUpdateStatus = async (newStatus: OrderStatus) => {
     if (!canTransitionOrderStatus(currentStatus, newStatus)) return;

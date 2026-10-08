@@ -96,18 +96,18 @@ export async function createCustomer(input: CreateCustomerInput): Promise<Custom
     limit(1),
   );
 
-  // Read deterministic and legacy records in the same transaction so concurrent
-  // create requests cannot race through a separate preflight lookup.
+  // Preflight check for legacy customer ID (querying is not supported on client tx.get)
+  const legacySnap = await getDocs(legacyQuery);
+  if (!legacySnap.empty) {
+    const legacyDoc = legacySnap.docs[0];
+    return mapDocToCustomer(legacyDoc.id, legacyDoc.data());
+  }
+
+  // Use transaction with deterministic docRef to eliminate race condition
   return await runTransaction(db, async (tx) => {
     const existingSnap = await tx.get(customerRef);
     if (existingSnap.exists()) {
       return mapDocToCustomer(existingSnap.id, existingSnap.data());
-    }
-
-    const legacySnap = await tx.get(legacyQuery);
-    if (!legacySnap.empty) {
-      const legacyDoc = legacySnap.docs[0];
-      return mapDocToCustomer(legacyDoc.id, legacyDoc.data());
     }
 
     const now = new Date().toISOString();

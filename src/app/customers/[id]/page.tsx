@@ -27,28 +27,45 @@ function CustomerDetailContent() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    let ignore = false;
     if (!customerId) {
-      setLoadError('Mã khách hàng không hợp lệ.');
-      setIsLoading(false);
       return;
     }
-    setIsLoading(true);
-    setLoadError(null);
+
     Promise.all([getCustomerById(customerId), listOrdersByCustomer(customerId)])
       .then(([customer, orders]) => {
+        if (ignore) return;
         setInitialCustomer(customer);
         setCustomerOrders(orders);
-        if (!customer) setLoadError('Không tìm thấy khách hàng.');
+        if (!customer) {
+          setLoadError('Không tìm thấy khách hàng.');
+        } else {
+          setLoadError(null);
+        }
       })
-      .catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải hồ sơ khách hàng.'))
-      .finally(() => setIsLoading(false));
+      .catch((error) => {
+        if (!ignore) {
+          setLoadError(error instanceof Error ? error.message : 'Không thể tải hồ sơ khách hàng.');
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
   }, [customerId]);
 
-  if (isLoading) {
+  const effectiveLoadError = !customerId ? 'Mã khách hàng không hợp lệ.' : loadError;
+
+  if (isLoading && customerId) {
     return <AppShell><div className="p-8 text-center text-sm text-stone-500">Đang tải hồ sơ khách hàng...</div></AppShell>;
   }
-  if (loadError || !initialCustomer) {
-    return <AppShell><div className="p-8 text-center text-sm text-red-600">{loadError || 'Không tìm thấy khách hàng.'}</div></AppShell>;
+  if (effectiveLoadError || !initialCustomer) {
+    return <AppShell><div className="p-8 text-center text-sm text-red-600">{effectiveLoadError || 'Không tìm thấy khách hàng.'}</div></AppShell>;
   }
 
   const customer = initialCustomer;

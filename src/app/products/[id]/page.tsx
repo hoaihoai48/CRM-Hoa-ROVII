@@ -252,27 +252,44 @@ function EditProductContent() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    let ignore = false;
     if (!productId) {
-      setLoadError('Mã sản phẩm không hợp lệ.');
-      setIsLoading(false);
       return;
     }
-    setIsLoading(true);
-    setLoadError(null);
+
     getProductById(productId)
       .then((loadedProduct) => {
+        if (ignore) return;
         setProduct(loadedProduct);
-        if (!loadedProduct) setLoadError('Không tìm thấy sản phẩm.');
+        if (!loadedProduct) {
+          setLoadError('Không tìm thấy sản phẩm.');
+        } else {
+          setLoadError(null);
+        }
       })
-      .catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải sản phẩm.'))
-      .finally(() => setIsLoading(false));
+      .catch((error) => {
+        if (!ignore) {
+          setLoadError(error instanceof Error ? error.message : 'Không thể tải sản phẩm.');
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
   }, [productId]);
 
-  if (isLoading) {
+  const effectiveLoadError = !productId ? 'Mã sản phẩm không hợp lệ.' : loadError;
+
+  if (isLoading && productId) {
     return <AppShell><div className="p-8 text-center text-sm text-stone-500">Đang tải sản phẩm...</div></AppShell>;
   }
-  if (loadError || !product) {
-    return <AppShell><div className="p-8 text-center text-sm text-red-600">{loadError || 'Không tìm thấy sản phẩm.'}</div></AppShell>;
+  if (effectiveLoadError || !product) {
+    return <AppShell><div className="p-8 text-center text-sm text-red-600">{effectiveLoadError || 'Không tìm thấy sản phẩm.'}</div></AppShell>;
   }
 
   return <ProductEditForm key={product.id} product={product} productId={productId} />;
