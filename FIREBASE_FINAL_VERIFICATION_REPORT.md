@@ -3,7 +3,8 @@
 **Repository**: `hoaihoai48/CRM-Hoa-ROVII`  
 **Branch**: `main`  
 **Baseline SHA**: `32361ef` (docs: add final aggregate invariant closure prompt)  
-**Changes**: Enforce customer aggregate invariants recomputed from orders in transaction  
+**Changes Commit**: `8068b2c` (fix: enforce customer aggregate invariants)  
+**Final SHA**: `8068b2c`  
 **Date**: 2026-10-08  
 **Auditor**: Antigravity Tech Lead  
 **Audit Prompt**: `docs/ANTIGRAVITY_FIREBASE_AGGREGATE_CLOSURE_PROMPT.md`
