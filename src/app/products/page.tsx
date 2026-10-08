@@ -10,7 +10,7 @@ import {
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader, EmptyState } from '@/components/common/Cards';
 import { SearchInput } from '@/components/common/Input';
-import { mockProducts } from '@/lib/mock';
+import { mockProducts } from '@/lib/services';
 import { formatVND } from '@/lib/utils/format';
 
 export default function ProductsPage() {
