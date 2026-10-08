@@ -7,7 +7,7 @@ import { Timestamp } from 'firebase/firestore';
  */
 export function normalizeIsoString(val: unknown, fallback?: string): string {
   if (!val) {
-    return fallback || new Date().toISOString();
+    return fallback ?? '';
   }
 
   if (typeof val === 'string') {
@@ -34,5 +34,5 @@ export function normalizeIsoString(val: unknown, fallback?: string): string {
     return new Date(val).toISOString();
   }
 
-  return fallback || new Date().toISOString();
+  return fallback ?? '';
 }
