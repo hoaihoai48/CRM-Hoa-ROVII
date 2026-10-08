@@ -3,7 +3,7 @@
 **Repository**: `hoaihoai48/CRM-Hoa-ROVII`  
 **Branch**: `main`  
 **Date**: 2026-10-08  
-**Auditor**: Antigravity Tech Lead  
+**Auditor**: Repository source audit  
 **Audit Prompt**: `docs/ANTIGRAVITY_FIREBASE_FINAL_FIX_PROMPT.md`
 
 ---
