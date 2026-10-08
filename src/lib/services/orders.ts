@@ -3,7 +3,6 @@ import {
   doc, 
   getDocs, 
   getDoc, 
-  updateDoc, 
   query, 
   orderBy, 
   runTransaction,
@@ -78,37 +77,76 @@ function mapDocToOrder(id: string, data: Record<string, unknown>): Order {
 /**
  * Recalculation of a customer's aggregate stats in Firestore (legacy repair / sync utility only).
  * Normal order creation and status update flows recompute aggregates directly from transactional order summaries.
+ * 
+ * Concurrency-safe: Runs transactional verification on the customer document so repair cannot overwrite
+ * concurrent order mutations that happened after orders were queried.
  */
 export async function syncCustomerAggregates(customerId: string): Promise<void> {
   if (!customerId) return;
   const customerRef = doc(db, 'customers', customerId);
 
-  // Fetch all orders of this customer
+  // 1. Fetch current orders of this customer from collection (Source of Truth)
   const ordersColl = collection(db, 'orders');
   const q = query(ordersColl, where('customerId', '==', customerId));
   const snapshot = await getDocs(q);
 
   const customerOrders = snapshot.docs.map((d) => mapDocToOrder(d.id, d.data()));
-  const activeOrders = customerOrders.filter((order) => order.status !== 'cancelled');
-  const completedOrders = customerOrders.filter((order) => order.status === 'completed');
 
-  const totalOrders = activeOrders.length;
-  const totalSpent = completedOrders.reduce((sum, order) => sum + order.summary.total, 0);
-  const sortedDates = activeOrders.map((order) => order.createdAt).sort();
-  const lastOrderDate = sortedDates.at(-1) || '';
+  // 2. Commit inside a transaction to prevent race conditions with ongoing createOrder / updateOrderStatus
+  await runTransaction(db, async (tx) => {
+    const customerSnap = await tx.get(customerRef);
+    if (!customerSnap.exists()) return;
 
-  const orderSummaries = customerOrders.map((o) => ({
-    id: o.id,
-    status: o.status,
-    total: o.summary.total,
-    createdAt: o.createdAt,
-  }));
+    const custRaw = customerSnap.data() || {};
+    const existingSummaries: CustomerOrderSummary[] = Array.isArray(custRaw.orderSummaries)
+      ? custRaw.orderSummaries.map((s: Record<string, unknown>) => ({
+          id: String(s.id || ''),
+          status: (s.status as Order['status']) || 'new',
+          total: Number(s.total || 0),
+          createdAt: normalizeIsoString(s.createdAt),
+        }))
+      : [];
 
-  await updateDoc(customerRef, {
-    totalOrders,
-    totalSpent,
-    lastOrderDate,
-    orderSummaries,
+    // Map scanned orders into summary map
+    const summaryMap = new Map<string, CustomerOrderSummary>();
+    for (const o of customerOrders) {
+      summaryMap.set(o.id, {
+        id: o.id,
+        status: o.status,
+        total: o.summary.total,
+        createdAt: o.createdAt,
+      });
+    }
+
+    // Merge any newer order mutations that were written into customer.orderSummaries during repair read
+    for (const s of existingSummaries) {
+      if (!summaryMap.has(s.id)) {
+        // Order was created concurrently right after getDocs
+        summaryMap.set(s.id, s);
+      } else {
+        // If order in customer doc has newer status or timestamp, preserve it
+        const scanned = summaryMap.get(s.id)!;
+        if (s.status !== scanned.status) {
+          summaryMap.set(s.id, s);
+        }
+      }
+    }
+
+    const mergedSummaries = Array.from(summaryMap.values());
+    const activeOrders = mergedSummaries.filter((order) => order.status !== 'cancelled');
+    const completedOrders = mergedSummaries.filter((order) => order.status === 'completed');
+
+    const totalOrders = activeOrders.length;
+    const totalSpent = completedOrders.reduce((sum, order) => sum + order.total, 0);
+    const sortedDates = activeOrders.map((order) => order.createdAt).sort();
+    const lastOrderDate = sortedDates.at(-1) || '';
+
+    tx.update(customerRef, {
+      totalOrders,
+      totalSpent,
+      lastOrderDate,
+      orderSummaries: mergedSummaries,
+    });
   });
 }
 
