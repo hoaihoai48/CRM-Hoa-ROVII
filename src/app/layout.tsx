@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   description: "Hệ thống quản lý đơn hàng nội bộ dành cho tiệm hoa",
 };
 
+import { AuthProvider } from "@/components/auth/AuthProvider";
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
@@ -24,7 +26,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { getCurrentUser } from '@/lib/services';
 import { ThemeToggle } from './ThemeToggle';
+import { useAuth } from '@/components/auth/AuthProvider';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard },
@@ -26,8 +27,21 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [user, setUser] = React.useState<{ name: string; email: string } | null>(null);
-  React.useEffect(() => { getCurrentUser().then(setUser); }, []);
+  const { user: firebaseUser, logout } = useAuth();
+  const [mockUser, setMockUser] = React.useState<{ name: string; email: string } | null>(null);
+
+  React.useEffect(() => {
+    if (!firebaseUser) {
+      getCurrentUser().then(setMockUser);
+    }
+  }, [firebaseUser]);
+
+  const user = firebaseUser
+    ? {
+        name: firebaseUser.displayName || firebaseUser.phoneNumber || firebaseUser.email?.split('@')[0] || 'Nhân viên tiệm',
+        email: firebaseUser.email || firebaseUser.phoneNumber || 'Tài khoản hoạt động',
+      }
+    : mockUser;
 
   return (
     <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-white border-r border-stone-200 z-30 dark:bg-slate-900 dark:border-slate-800">
@@ -91,13 +105,14 @@ export function Sidebar() {
               <p className="text-[11px] text-stone-500 truncate">{user?.email ?? ""}</p>
             </div>
           </div>
-          <Link
-            href="/login"
-            className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-stone-100 rounded-lg transition-colors"
+          <button
+            type="button"
+            onClick={logout}
+            className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors cursor-pointer"
             title="Đăng xuất"
           >
             <LogOut className="w-4 h-4" />
-          </Link>
+          </button>
         </div>
       </div>
     </aside>
