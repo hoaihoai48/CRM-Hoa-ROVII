@@ -21,23 +21,39 @@ import { getNextOrderStatuses, canTransitionOrderStatus } from '@/lib/utils/orde
 
 function OrderDetailContent() {
   const params = useParams();
-  const orderId = (params?.id as string) || 'DH-1024';
+  const orderId = params?.id as string;
 
   const [initialOrder, setInitialOrder] = useState<Awaited<ReturnType<typeof getOrderById>> | null>(null);
   const [currentUser, setCurrentUser] = useState<Awaited<ReturnType<typeof getCurrentUser>> | null>(null);
   const [currentStatus, setCurrentStatus] = useState<OrderStatus>('new');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([getOrderById(orderId), getCurrentUser()]).then(([order, user]) => {
-      setInitialOrder(order);
-      setCurrentUser(user);
-      if (order) setCurrentStatus(order.status);
-    });
+    if (!orderId) {
+      setLoadError('Mã đơn hàng không hợp lệ.');
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    setLoadError(null);
+    Promise.all([getOrderById(orderId), getCurrentUser()])
+      .then(([order, user]) => {
+        setInitialOrder(order);
+        setCurrentUser(user);
+        if (order) setCurrentStatus(order.status);
+        if (!order) setLoadError('Không tìm thấy đơn hàng.');
+      })
+      .catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải đơn hàng.'))
+      .finally(() => setIsLoading(false));
   }, [orderId]);
 
-  if (!initialOrder) {
+  if (isLoading) {
     return <AppShell><div className="p-8 text-center text-sm text-stone-500">Đang tải chi tiết đơn hàng...</div></AppShell>;
+  }
+  if (loadError || !initialOrder) {
+    return <AppShell><div className="p-8 text-center text-sm text-red-600">{loadError || 'Không tìm thấy đơn hàng.'}</div></AppShell>;
   }
   const handleUpdateStatus = async (newStatus: OrderStatus) => {
     if (!canTransitionOrderStatus(currentStatus, newStatus)) return;
