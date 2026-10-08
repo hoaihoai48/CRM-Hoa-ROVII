@@ -1,26 +1,8 @@
 @import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+@custom-variant dark (&:where(.dark, .dark *));
+:root{--background:#f8fafc;--foreground:#172033;--surface:#fff;--surface-muted:#f8fafc;--border:#e2e8f0}
+.dark{--background:#0f172a;--foreground:#e5e7eb;--surface:#111827;--surface-muted:#1e293b;--border:#334155}
+@theme inline{--color-background:var(--background);--color-foreground:var(--foreground);--font-sans:var(--font-geist-sans);--font-mono:var(--font-geist-mono)}
+html{color-scheme:light}html.dark{color-scheme:dark}body{background:var(--background);color:var(--foreground);font-family:var(--font-geist-sans),Arial,Helvetica,sans-serif;transition:background-color 160ms ease,color 160ms ease}
+.dark .bg-white{background-color:var(--surface)!important}.dark .bg-stone-50,.dark .bg-stone-50\/70,.dark .bg-stone-50\/60{background-color:var(--surface-muted)!important}.dark .bg-stone-100{background-color:#273449!important}.dark .text-stone-900{color:#f8fafc!important}.dark .text-stone-800{color:#f1f5f9!important}.dark .text-stone-700{color:#e2e8f0!important}.dark .text-stone-600{color:#cbd5e1!important}.dark .text-stone-500{color:#94a3b8!important}.dark .text-stone-400{color:#64748b!important}.dark .border-stone-100,.dark .border-stone-200,.dark .border-stone-200\/80,.dark .border-stone-300{border-color:var(--border)!important}.dark .divide-stone-100>:not([hidden])~:not([hidden]){border-color:#253247!important}.dark .hover\:bg-stone-50:hover{background-color:#1e293b!important}.dark .hover\:bg-stone-100:hover{background-color:#273449!important}.dark input,.dark textarea,.dark select{background:#0f172a!important;color:#f8fafc!important;border-color:#475569!important}.dark input::placeholder,.dark textarea::placeholder{color:#64748b!important}.dark .bg-emerald-50{background:#063b2d!important}.dark .bg-blue-50{background:#172554!important}.dark .bg-amber-50{background:#422006!important}.dark .bg-rose-50{background:#3f1d2a!important}.dark .text-emerald-700{color:#6ee7b7!important}.dark .text-blue-700{color:#93c5fd!important}.dark .text-amber-700{color:#fcd34d!important}.dark .text-rose-600{color:#fb7185!important}.dark .text-rose-700{color:#fda4af!important}
+::selection{background:rgb(244 63 94 / .22)}
