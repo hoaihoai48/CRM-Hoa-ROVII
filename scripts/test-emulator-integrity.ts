@@ -7,7 +7,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { db, auth } from '../src/lib/firebase/config';
 import { createCustomer, getCustomerById } from '../src/lib/services/customers';
-import { createOrder, syncCustomerAggregates, updateOrderStatus } from '../src/lib/services/orders';
+import { createOrder, getOrderById, syncCustomerAggregates, updateOrderStatus } from '../src/lib/services/orders';
 import { Product } from '../src/types';
 
 function assert(condition: boolean, message: string) {
@@ -315,6 +315,35 @@ async function runTestSuite() {
   );
 
   console.log('\n======================================================');
+  // Case K: concurrent status changes must leave order and customer projection consistent.
+  console.log('\n--- CASE K: Concurrent Status Mutations ---');
+  const raceOrder = await createOrder({
+    customerId: custConc.id,
+    customerSnapshot: { name: custConc.name, phone: custConc.phone, address: custConc.address },
+    items: [{ productId: p1.id, quantity: 1 }],
+    deliveryFee: 0,
+    discount: 0,
+    createdBy: 'Concurrent Status Tester',
+  });
+  const statusAttempts = await Promise.all([
+    updateOrderStatus(raceOrder.id, { status: 'confirmed', actorName: 'Tester A' }).then(() => true).catch(() => false),
+    updateOrderStatus(raceOrder.id, { status: 'cancelled', actorName: 'Tester B' }).then(() => true).catch(() => false),
+  ]);
+  assert(statusAttempts.some(Boolean), 'Case K: at least one concurrent status change commits');
+  const storedRaceOrder = await getOrderById(raceOrder.id);
+  const raceCustomer = await getCustomerById(custConc.id);
+  const raceSummary = raceCustomer!.orderSummaries?.find((summary) => summary.id === raceOrder.id);
+  assert(storedRaceOrder !== null, 'Case K: order remains present after concurrent status changes');
+  assert(raceSummary?.status === storedRaceOrder!.status, 'Case K: order status matches customer projection');
+  assert(
+    raceCustomer!.totalOrders === (raceCustomer!.orderSummaries ?? []).filter((summary) => summary.status !== 'cancelled').length,
+    'Case K: totalOrders matches projection after concurrent status changes'
+  );
+  assert(
+    raceCustomer!.totalSpent === (raceCustomer!.orderSummaries ?? []).filter((summary) => summary.status === 'completed').reduce((sum, summary) => sum + summary.total, 0),
+    'Case K: totalSpent matches projection after concurrent status changes'
+  );
+
   console.log('🎉 ALL INTEGRATION & INVARIANT TESTS PASSED 100%!');
   console.log('======================================================\n');
   process.exit(0);
