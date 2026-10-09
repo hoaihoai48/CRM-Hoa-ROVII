@@ -3,12 +3,12 @@
 **Repository**: `hoaihoai48/CRM-Hoa-ROVII`  
 **Branch**: `main`  
 **Baseline SHA**: `814163630472fc8a7ad21d02f2b309a262271066`  
-**Code commit tested & verified**: `cc1d781e17f3719aa83b5a5a8bf14de8f1bbc6b4` (includes `a45d460`, `8da7fa3`, `c787a07`)  
+**Code commit tested & verified**: `091bfbf70c6e8d6b4429ad892d536de7525e94cc`  
 **Report status**: **PASS WITH EXPLICIT SECURITY & SCALE LIMITATIONS**  
 **Audit date**: 2026-10-09  
 **Execution Environment**: Local macOS terminal with OpenJDK 21 & Firebase Emulator Suite (`firebase-tools` v15.33.0)
 
-> SHA note: this report identifies the exact code commit tested (`cc1d781`). Its own report-sync commit is intentionally not written into this file because a commit cannot reliably contain its own final SHA.
+> SHA note: this report identifies the exact code commit tested (`091bfbf`). Its own report-sync commit is intentionally not written into this file because a commit cannot reliably contain its own final SHA.
 
 ---
 
@@ -16,9 +16,9 @@
 
 ### **PASS WITH EXPLICIT SECURITY & SCALE LIMITATIONS**
 
-All 4 mandatory gates and business regression suites have executed successfully in the real local checkout with zero errors:
+All 4 mandatory gates and business regression suites have executed successfully in the real local checkout on code commit `091bfbf` with zero errors:
 
-1. **`npm run test:emulator`**: **PASS** (Exit code 0). 100% of integration & invariant tests pass, including new direct Case H aggregate repair and Case K concurrent status mutations.
+1. **`npm run test:emulator`**: **PASS** (Exit code 0). 100% of integration & invariant tests pass, including hardened Case H (purging fake projection `CORRUPTED-ORDER`, full identity & aggregate restoration) and Case K (concurrent status mutations).
 2. **`npm run lint`**: **PASS** (Exit code 0, 0 errors, 0 warnings).
 3. **`npx tsc --noEmit`**: **PASS** (Exit code 0).
 4. **`npm run build`**: **PASS** (Exit code 0, 15/15 routes compiled with Turbopack).
@@ -29,17 +29,17 @@ All 4 mandatory gates and business regression suites have executed successfully 
 
 | Gate | Status | Command | Exit Code | Real Log / Evidence Summary |
 |---|:---:|---|:---:|---|
-| **Emulator Integration Suite** | **PASS** | `npm run test:emulator` | `0` | Started Firestore & Auth emulators. Seeded products, validated product guards, Case A (first order), Cases B & C (multiple orders/aggregates), Cases D–G (lifecycle transitions), Case H (repair via `syncCustomerAggregates`), Cases I & J (OCC 5 concurrent creates), Case K (concurrent status mutations). `Script exited successfully (code 0)`. |
+| **Emulator Integration Suite** | **PASS** | `npm run test:emulator` | `0` | Started Firestore & Auth emulators. Seeded products, validated product guards, Case A (first order), Cases B & C (multiple orders/aggregates), Cases D–G (lifecycle transitions), **Hardened Case H** (purged `CORRUPTED-ORDER`, verified exact order summaries, aggregates, and subsequent create invariant), Cases I & J (OCC 5 concurrent creates), Case K (concurrent status mutations). `Script exited successfully (code 0)`. |
 | **ESLint** | **PASS** | `npm run lint` | `0` | `eslint` passed with 0 errors and 0 warnings. |
 | **TypeScript Compiler** | **PASS** | `npx tsc --noEmit` | `0` | Zero type errors across services, test runner, and UI pages. |
-| **Next.js Production Build** | **PASS** | `npm run build` | `0` | Turbopack compiled successfully in 1237ms; static page generation 15/15 routes pass. |
-| **Repair Utility Direct Test** | **PASS** | Executed in test runner (Case H) | `0` | Directly tested `syncCustomerAggregates()`. Correctly restored projection from orders, recalculated `totalOrders` (1 active) and `totalSpent` (1,650,000), preserved cancelled order in projection, and retained invariant on subsequent create. |
-| **Concurrent Status Updates** | **PASS** | Executed in test runner (Case K) | `0` | Raced `confirmed` vs `cancelled` transitions. Preserved consistency: persisted order matches customer projection, `totalOrders` and `totalSpent` remain fully consistent with final projection. |
+| **Next.js Production Build** | **PASS** | `npm run build` | `0` | Turbopack compiled successfully in 935ms; static page generation 15/15 routes pass. |
+| **Repair Utility Direct Test (Hardened Case H)** | **PASS** | Executed in test runner (Case H) | `0` | Injected fake summary `CORRUPTED-ORDER` and corrupt aggregate values into Firestore. Executed `syncCustomerAggregates()`. Confirmed fake summary purged, restored both real orders (`oTrans` completed, `oCancel` cancelled) with verified ID, status, total, and createdAt. Recalculated `totalOrders = 1`, `totalSpent = 1,650,000`. Verified subsequent create retains invariant consistency (`totalOrders = 2`, `totalSpent = 1,650,000`, 3 order summaries). |
+| **Concurrent Status Updates (Case K)** | **PASS** | Executed in test runner (Case K) | `0` | Raced `confirmed` vs `cancelled` transitions. Preserved consistency: persisted order matches customer projection, `totalOrders` and `totalSpent` remain fully consistent with final projection. |
 | **Firestore Rules Hardening** | **LIMITATION REMAINS** | Documented limitation | N/A | Existing rules allow any authenticated user to read/write documents. Client transactions do not prevent a signed-in client from directly writing inconsistent data outside these service functions. |
 
 ---
 
-## 3. Real Execution Logs
+## 3. Real Execution Logs on Code SHA `091bfbf`
 
 ### A. `npm run test:emulator` (Exit code: 0)
 
@@ -83,13 +83,29 @@ i  Running script: npx tsx scripts/test-emulator-integrity.ts
   ✓ Case G: cancelled order decrements totalOrders back to 1 (got 1)
   ✓ Case G: cancelled order does not affect previous completed totalSpent
 
---- CASE H: Self-Healing Against Inconsistent Document Aggregates ---
-  ✓ Corrupted data injected
-  ✓ Case H: repair recomputes totalOrders from orders (got 1)
-  ✓ Case H: repair recomputes totalSpent from completed orders (got 1650000)
-  ✓ Case H: repair restores both existing order summaries, including cancelled order (got 2)
+--- CASE H: Self-Healing Against Inconsistent Document Aggregates & Projection ---
+  ✓ Customer must exist
+  ✓ Corrupted totalOrders injected
+  ✓ Corrupted totalSpent injected
+  ✓ Corrupted fake order summary injected into projection
+  ✓ Repaired customer must exist
+  ✓ Case H: fake summary CORRUPTED-ORDER must be purged from projection
+  ✓ Case H: repair restores exactly 2 real order summaries (got 2)
+  ✓ Case H: projection contains completed order DH-5dd6be83-ddd4-4b88-b298-8441d7ffe8b4
+  ✓ Case H: oTrans summary status must be completed
+  ✓ Case H: oTrans summary total must be 1,650,000 (got 1650000)
+  ✓ Case H: oTrans summary createdAt matches order
+  ✓ Case H: projection contains cancelled order DH-95a0a800-0b5e-417b-b743-f9414e2f6291
+  ✓ Case H: oCancel summary status must be cancelled
+  ✓ Case H: oCancel summary total must be 350,000 (got 350000)
+  ✓ Case H: oCancel summary createdAt matches order
+  ✓ Case H: totalOrders excludes cancelled order (got 1)
+  ✓ Case H: totalSpent sums only completed order (got 1650000)
+  ✓ Case H: lastOrderDate matches latest active order
   ✓ Case H: totalOrders remains correct after next create (got 2)
   ✓ Case H: totalSpent remains 1,650,000 after next create (got 1650000)
+  ✓ Case H: lastOrderDate updated to new order createdAt
+  ✓ Case H: projection has all 3 orders
 
 --- CASE I & J: Concurrency & Race-Condition Simulation ---
   Firing 5 simultaneous orders for the same customer via Promise.all()...
@@ -137,16 +153,16 @@ i  logging: Stopping Logging Emulator
 
 ▲ Next.js 16.4.0 (Turbopack)
 - Environments: .env.local
-✓ Running next.config.ts took 134ms
+✓ Running next.config.ts took 125ms
 - Cache Components enabled
 - Partial Prefetching enabled
 
   Creating an optimized production build ...
-✓ Compiled successfully in 1237ms
-  Finished TypeScript in 1472ms
-  Collecting page data using 7 workers in 441ms
-✓ Generating static pages using 7 workers (15/15) in 414ms
-  Finalizing page optimization in 21ms
+✓ Compiled successfully in 935ms
+  Finished TypeScript in 1187ms
+  Collecting page data using 7 workers in 603ms
+✓ Generating static pages using 7 workers (15/15) in 646ms
+  Finalizing page optimization in 18ms
 
 Route (app)
 ┌ ○ /
