@@ -241,29 +241,63 @@ async function runTestSuite() {
   // ==========================================
   // CASE H: Self-Healing Invariant / Inconsistent Aggregate Repair
   // ==========================================
-  console.log('\n--- CASE H: Self-Healing Against Inconsistent Document Aggregates ---');
-  // Intentionally corrupt customer aggregates in DB directly
+  console.log('\n--- CASE H: Self-Healing Against Inconsistent Document Aggregates & Projection ---');
+  // Intentionally corrupt customer aggregates AND orderSummaries projection in DB directly
   const corruptedRef = doc(db, 'customers', custTrans.id);
+  const corruptedFakeSummary = {
+    id: 'CORRUPTED-ORDER',
+    status: 'completed',
+    total: 99999999,
+    createdAt: '2020-01-01T00:00:00.000Z',
+  };
+
   await setDoc(corruptedRef, {
     totalOrders: 99999,
     totalSpent: 88888888,
+    orderSummaries: [corruptedFakeSummary],
   }, { merge: true });
 
   const corruptedSnap = await getCustomerById(custTrans.id);
-  assert(corruptedSnap!.totalOrders === 99999, 'Corrupted data injected');
-
-  // Directly exercise the repair utility; it must rebuild projection and aggregates from orders.
-  await syncCustomerAggregates(custTrans.id);
-  const repairedSnap = await getCustomerById(custTrans.id);
-  assert(repairedSnap!.totalOrders === 1, `Case H: repair recomputes totalOrders from orders (got ${repairedSnap!.totalOrders})`);
-  assert(repairedSnap!.totalSpent === 1650000, `Case H: repair recomputes totalSpent from completed orders (got ${repairedSnap!.totalSpent})`);
+  assert(corruptedSnap !== null, 'Customer must exist');
+  assert(corruptedSnap!.totalOrders === 99999, 'Corrupted totalOrders injected');
+  assert(corruptedSnap!.totalSpent === 88888888, 'Corrupted totalSpent injected');
   assert(
-    (repairedSnap!.orderSummaries?.length ?? 0) === 2,
-    `Case H: repair restores both existing order summaries, including cancelled order (got ${repairedSnap!.orderSummaries?.length})`
+    corruptedSnap!.orderSummaries?.length === 1 && corruptedSnap!.orderSummaries[0].id === 'CORRUPTED-ORDER',
+    'Corrupted fake order summary injected into projection'
   );
 
+  // Directly exercise the repair utility; it must rebuild projection and aggregates from orders collection.
+  await syncCustomerAggregates(custTrans.id);
+  const repairedSnap = await getCustomerById(custTrans.id);
+  assert(repairedSnap !== null, 'Repaired customer must exist');
+
+  // Verify fake summary is purged
+  const hasCorrupted = (repairedSnap!.orderSummaries ?? []).some((s) => s.id === 'CORRUPTED-ORDER');
+  assert(!hasCorrupted, 'Case H: fake summary CORRUPTED-ORDER must be purged from projection');
+
+  // Verify projection contains exactly the 2 real orders: oTrans (completed) and oCancel (cancelled)
+  const summaries = repairedSnap!.orderSummaries ?? [];
+  assert(summaries.length === 2, `Case H: repair restores exactly 2 real order summaries (got ${summaries.length})`);
+
+  const summaryCompleted = summaries.find((s) => s.id === oTrans.id);
+  assert(summaryCompleted !== undefined, `Case H: projection contains completed order ${oTrans.id}`);
+  assert(summaryCompleted!.status === 'completed', 'Case H: oTrans summary status must be completed');
+  assert(summaryCompleted!.total === 1650000, `Case H: oTrans summary total must be 1,650,000 (got ${summaryCompleted!.total})`);
+  assert(summaryCompleted!.createdAt === oTrans.createdAt, 'Case H: oTrans summary createdAt matches order');
+
+  const summaryCancelled = summaries.find((s) => s.id === oCancel.id);
+  assert(summaryCancelled !== undefined, `Case H: projection contains cancelled order ${oCancel.id}`);
+  assert(summaryCancelled!.status === 'cancelled', 'Case H: oCancel summary status must be cancelled');
+  assert(summaryCancelled!.total === 350000, `Case H: oCancel summary total must be 350,000 (got ${summaryCancelled!.total})`);
+  assert(summaryCancelled!.createdAt === oCancel.createdAt, 'Case H: oCancel summary createdAt matches order');
+
+  // Verify aggregates recomputed correctly from restored projection
+  assert(repairedSnap!.totalOrders === 1, `Case H: totalOrders excludes cancelled order (got ${repairedSnap!.totalOrders})`);
+  assert(repairedSnap!.totalSpent === 1650000, `Case H: totalSpent sums only completed order (got ${repairedSnap!.totalSpent})`);
+  assert(repairedSnap!.lastOrderDate === oTrans.createdAt, 'Case H: lastOrderDate matches latest active order');
+
   // Creating another order after repair must still preserve all aggregate invariants.
-  await createOrder({
+  const oAfterRepair = await createOrder({
     customerId: custTrans.id,
     customerSnapshot: { name: custTrans.name, phone: custTrans.phone, address: custTrans.address },
     items: [{ productId: p1.id, quantity: 1 }],
@@ -273,9 +307,11 @@ async function runTestSuite() {
   });
 
   const healedSnap = await getCustomerById(custTrans.id);
-  // Expected: completed order + new order = 2 active orders; totalSpent = 1650000
+  // Expected: oTrans (completed, 1650k) + oAfterRepair (new, 350k) = 2 active orders; totalSpent = 1650000
   assert(healedSnap!.totalOrders === 2, `Case H: totalOrders remains correct after next create (got ${healedSnap!.totalOrders})`);
   assert(healedSnap!.totalSpent === 1650000, `Case H: totalSpent remains 1,650,000 after next create (got ${healedSnap!.totalSpent})`);
+  assert(healedSnap!.lastOrderDate === oAfterRepair.createdAt, 'Case H: lastOrderDate updated to new order createdAt');
+  assert((healedSnap!.orderSummaries ?? []).length === 3, 'Case H: projection has all 3 orders');
 
   // ==========================================
   // CASE I & J: Optimistic Concurrency Control (OCC) Simulator
