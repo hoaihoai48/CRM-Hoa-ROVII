@@ -54,31 +54,31 @@ export async function getCurrentUser(): Promise<User | null> {
     return null;
   }
 
-  let role: User['role'] = 'staff';
-  let status: User['status'] = 'active';
-
   try {
     const userDocRef = doc(db, 'users', current.uid);
     const userDocSnap = await getDoc(userDocRef);
-    if (userDocSnap.exists()) {
-      const data = userDocSnap.data();
-      if (data.role === 'admin' || data.role === 'staff') {
-        role = data.role;
-      }
-      if (data.status === 'active' || data.status === 'inactive') {
-        status = data.status;
-      }
+    if (!userDocSnap.exists()) {
+      return null;
     }
-  } catch {
-    // If user record read fails or is restricted, fallback gracefully to auth profile
-  }
 
-  return {
-    id: current.uid,
-    name: current.displayName || current.phoneNumber || current.email?.split('@')[0] || 'Nhân viên tiệm',
-    email: current.email || current.phoneNumber || '',
-    role,
-    status,
-    avatarUrl: current.photoURL || undefined,
-  };
+    const data = userDocSnap.data();
+    if (
+      (data.role !== 'admin' && data.role !== 'staff') ||
+      (data.status !== 'active' && data.status !== 'inactive')
+    ) {
+      return null;
+    }
+
+    return {
+      id: current.uid,
+      name: current.displayName || current.phoneNumber || current.email?.split('@')[0] || 'Nhân viên tiệm',
+      email: current.email || current.phoneNumber || '',
+      role: data.role,
+      status: data.status,
+      avatarUrl: current.photoURL || undefined,
+    };
+  } catch {
+    // Fail closed: missing/unreadable membership must never imply an active staff account.
+    return null;
+  }
 }

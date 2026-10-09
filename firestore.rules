@@ -1,61 +1,50 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function: kiểm tra user đã xác thực qua Firebase Auth
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Helper function: lấy document profile membership của user hiện tại
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    function membershipPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
     }
 
-    // Helper function: kiểm tra user có bản ghi thành viên trong hệ thống
-    function isMember() {
-      return isAuthenticated() &&
-        exists(/databases/$(database)/documents/users/$(request.auth.uid));
-    }
-
-    // Helper function: kiểm tra user là thành viên đang kích hoạt (active)
     function isActiveMember() {
-      return isAuthenticated() &&
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'active';
+      return isAuthenticated()
+        && exists(membershipPath())
+        && get(membershipPath()).data.status == 'active'
+        && get(membershipPath()).data.role in ['admin', 'staff'];
     }
 
-    // Helper function: kiểm tra thành viên có vai trò quản trị viên (admin)
     function isAdmin() {
-      return isActiveMember() &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isActiveMember()
+        && get(membershipPath()).data.role == 'admin';
     }
 
-    // Membership documents: Lưu trữ vai trò và trạng thái nhân sự do Server/Admin quản lý
+    // Membership records are provisioned only by a trusted administrative path.
     match /users/{userId} {
-      // Thành viên chỉ được đọc hồ sơ của chính mình; cấm list danh sách và cấm ghi từ phía client
       allow get: if isAuthenticated() && request.auth.uid == userId;
       allow list: if false;
-      allow write: if false;
+      allow create, update, delete: if false;
     }
 
-    // Orders: Quản lý đơn hàng tiệm hoa cho active members (admin & staff)
+    // Active staff and admins may manage day-to-day CRM records.
     match /orders/{orderId} {
       allow read, write: if isActiveMember();
     }
 
-    // Customers: Quản lý khách hàng tiệm hoa cho active members (admin & staff)
     match /customers/{customerId} {
       allow read, write: if isActiveMember();
     }
 
-    // Products: Bảng giá & sản phẩm tiệm hoa cho active members
     match /products/{productId} {
       allow read, write: if isActiveMember();
     }
 
-    // Settings: Cấu hình thông tin tiệm hoa (settings/store) cho active members
+    // Store configuration is readable by active members, but editable only by admins.
     match /settings/{settingId} {
-      allow read, write: if isActiveMember();
+      allow read: if isActiveMember();
+      allow create, update, delete: if isAdmin();
     }
   }
 }
