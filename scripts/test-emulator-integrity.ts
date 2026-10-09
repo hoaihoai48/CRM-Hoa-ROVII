@@ -505,8 +505,41 @@ async function runTestSuite() {
   }
   assert(inactiveReadBlocked, 'Inactive user must be denied read access');
 
-  // 5. Unauthenticated user denied
-  console.log('  5. Testing UNAUTHENTICATED user...');
+  // 5. Role-based settings differentiation: staff read-only, admin can write
+  console.log('  5. Testing role-based settings access (staff read-only, admin can write)...');
+  // Staff is currently signed in; read should succeed, write should fail
+  await signInWithEmailAndPassword(auth, testStaffEmail, testStaffPass);
+  let staffSettingsWriteBlocked = false;
+  try {
+    await setDoc(doc(db, 'settings', 'store'), { storeName: 'Hacked Store' }, { merge: true });
+  } catch (err: unknown) {
+    staffSettingsWriteBlocked = true;
+    console.log(`     ✓ Staff settings write blocked: ${(err as Error).message}`);
+  }
+  assert(staffSettingsWriteBlocked, 'Staff user must be denied write access to settings');
+
+  // Create & provision an admin user
+  const adminEmail = 'admin.tester@cuatiemhoa.vn';
+  const adminPass = 'AdminPass123!';
+  let adminUid = '';
+  try {
+    const adminCred = await createUserWithEmailAndPassword(auth, adminEmail, adminPass);
+    adminUid = adminCred.user.uid;
+  } catch {
+    const adminCred = await signInWithEmailAndPassword(auth, adminEmail, adminPass);
+    adminUid = adminCred.user.uid;
+  }
+  await provisionUserMembership(adminUid, {
+    email: adminEmail,
+    role: 'admin',
+    status: 'active',
+  });
+  await signInWithEmailAndPassword(auth, adminEmail, adminPass);
+  await setDoc(doc(db, 'settings', 'store'), { storeName: 'Tiệm Hoa ROVII' }, { merge: true });
+  console.log('     ✓ Admin settings write succeeded as expected');
+
+  // 6. Unauthenticated user denied
+  console.log('  6. Testing UNAUTHENTICATED user...');
   await signOut(auth);
   let unauthReadBlocked = false;
   try {
