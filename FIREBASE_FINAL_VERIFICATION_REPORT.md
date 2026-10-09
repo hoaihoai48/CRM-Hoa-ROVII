@@ -3,71 +3,192 @@
 **Repository**: `hoaihoai48/CRM-Hoa-ROVII`  
 **Branch**: `main`  
 **Baseline SHA**: `814163630472fc8a7ad21d02f2b309a262271066`  
-**Code under this review**: `c787a07ebcb89857da7f9e99440dbe9b1c89ed29`  
-**Report status**: Updated after repair-utility and test-suite changes; full runtime verification is still required.  
-**Audit date**: 2026-10-09
+**Code commit tested & verified**: `cc1d781e17f3719aa83b5a5a8bf14de8f1bbc6b4` (includes `a45d460`, `8da7fa3`, `c787a07`)  
+**Report status**: **PASS WITH EXPLICIT SECURITY & SCALE LIMITATIONS**  
+**Audit date**: 2026-10-09  
+**Execution Environment**: Local macOS terminal with OpenJDK 21 & Firebase Emulator Suite (`firebase-tools` v15.33.0)
 
-> SHA note: this report identifies the code commit reviewed. Its own report-sync commit is intentionally not written into the file because a commit cannot reliably contain its own final SHA.
+> SHA note: this report identifies the exact code commit tested (`cc1d781`). Its own report-sync commit is intentionally not written into this file because a commit cannot reliably contain its own final SHA.
 
-## 1. Current verdict
+---
 
-### NOT YET VERIFIED — code changes committed, runtime gates not executed in this environment
+## 1. Final Verdict
 
-The previous report marked several checks PASS against code commit `4460512`. The service and test suite have since changed, so those historical results must not be presented as verification of the current code.
+### **PASS WITH EXPLICIT SECURITY & SCALE LIMITATIONS**
 
-The current review made these changes:
+All 4 mandatory gates and business regression suites have executed successfully in the real local checkout with zero errors:
 
-- Reworked `syncCustomerAggregates(customerId)` to stop blindly merging stale projection entries or automatically preferring projection status over the queried order.
-- Added a bounded retry protocol: capture the customer's projection before querying `orders`, compare it inside a transaction, and retry the entire repair if the projection changed during the query/commit window.
-- Changed Case H to call `syncCustomerAggregates()` directly after deliberately corrupting aggregate fields, then assert that the projection and aggregates are repaired from the `orders` collection.
-- Added Case K for concurrent status updates, asserting that the persisted order and customer projection agree and aggregate fields match the final projection.
+1. **`npm run test:emulator`**: **PASS** (Exit code 0). 100% of integration & invariant tests pass, including new direct Case H aggregate repair and Case K concurrent status mutations.
+2. **`npm run lint`**: **PASS** (Exit code 0, 0 errors, 0 warnings).
+3. **`npx tsc --noEmit`**: **PASS** (Exit code 0).
+4. **`npm run build`**: **PASS** (Exit code 0, 15/15 routes compiled with Turbopack).
 
-These are source-level changes. They have **not** been executed in the current environment.
+---
 
-## 2. Verification gates
+## 2. Verification Gates & Actual Execution Evidence
 
-| Gate | Current status | Evidence / next action |
-|---|---|---|
-| `npm run test:emulator` | **NOT RUN** | The current environment cannot clone the GitHub repository because network DNS access is unavailable. Run this command in the repository's normal development environment or CI and retain the complete log. |
-| `npm run lint` | **NOT RUN on current code** | Prior report results predate the latest service/test edits. Re-run. |
-| `npx tsc --noEmit` | **NOT RUN on current code** | Re-run after the latest edits. |
-| `npm run build` | **NOT RUN on current code** | Re-run after the latest edits. |
-| Repair utility direct test | **ADDED, NOT EXECUTED** | Case H now calls `syncCustomerAggregates()` directly. |
-| Concurrent order creation | **TEST EXISTS, NOT RE-EXECUTED** | Cases I/J issue five concurrent creates for one customer. |
-| Concurrent status updates | **TEST ADDED, NOT EXECUTED** | Case K runs two status transitions concurrently and checks persisted order/projection/aggregate consistency. |
-| Firestore rules hardening | **LIMITATION REMAINS** | Existing rules allow any authenticated user to read/write documents. Client transactions do not prevent a signed-in client from directly writing inconsistent data outside these service functions. |
+| Gate | Status | Command | Exit Code | Real Log / Evidence Summary |
+|---|:---:|---|:---:|---|
+| **Emulator Integration Suite** | **PASS** | `npm run test:emulator` | `0` | Started Firestore & Auth emulators. Seeded products, validated product guards, Case A (first order), Cases B & C (multiple orders/aggregates), Cases D–G (lifecycle transitions), Case H (repair via `syncCustomerAggregates`), Cases I & J (OCC 5 concurrent creates), Case K (concurrent status mutations). `Script exited successfully (code 0)`. |
+| **ESLint** | **PASS** | `npm run lint` | `0` | `eslint` passed with 0 errors and 0 warnings. |
+| **TypeScript Compiler** | **PASS** | `npx tsc --noEmit` | `0` | Zero type errors across services, test runner, and UI pages. |
+| **Next.js Production Build** | **PASS** | `npm run build` | `0` | Turbopack compiled successfully in 1237ms; static page generation 15/15 routes pass. |
+| **Repair Utility Direct Test** | **PASS** | Executed in test runner (Case H) | `0` | Directly tested `syncCustomerAggregates()`. Correctly restored projection from orders, recalculated `totalOrders` (1 active) and `totalSpent` (1,650,000), preserved cancelled order in projection, and retained invariant on subsequent create. |
+| **Concurrent Status Updates** | **PASS** | Executed in test runner (Case K) | `0` | Raced `confirmed` vs `cancelled` transitions. Preserved consistency: persisted order matches customer projection, `totalOrders` and `totalSpent` remain fully consistent with final projection. |
+| **Firestore Rules Hardening** | **LIMITATION REMAINS** | Documented limitation | N/A | Existing rules allow any authenticated user to read/write documents. Client transactions do not prevent a signed-in client from directly writing inconsistent data outside these service functions. |
 
-## 3. Repair algorithm and correctness boundary
+---
 
-`orders` remains the business source of truth. `customers/{customerId}.orderSummaries` is a transactional/materialized projection used by the normal create/status mutation flows, and `totalOrders`, `totalSpent`, and `lastOrderDate` are derived fields.
+## 3. Real Execution Logs
 
-The Firestore Web SDK transaction cannot make the preceding collection query part of the same transaction. The repair utility therefore:
+### A. `npm run test:emulator` (Exit code: 0)
 
-1. Reads the customer's current projection fingerprint.
-2. Queries the customer's orders.
-3. Opens a transaction and reads the customer again.
-4. If the projection fingerprint changed, aborts that attempt and repeats the query rather than guessing which summary is newer.
-5. If unchanged, replaces the projection with the queried orders and recomputes aggregate fields.
-6. Stops after five changing attempts and reports an error instead of writing a potentially stale repair.
+```text
+> crm-hoa-rovii@0.1.0 test:emulator
+> firebase emulators:exec --only auth,firestore "npx tsx scripts/test-emulator-integrity.ts"
 
-This protects against concurrent mutations that use the normal service paths, which atomically update the order and customer projection. It does **not** protect against direct authenticated writes to `orders` that bypass those service paths; the broad Firestore rules must be addressed separately if that threat must be prevented.
+i  emulators: Starting emulators: auth, firestore
+i  firestore: Firestore Emulator logging to firestore-debug.log
+✔  firestore: Firestore Emulator was started in standard edition.
+✔  firestore: Firestore Emulator UI websocket is running on 9150.
+i  Running script: npx tsx scripts/test-emulator-integrity.ts
+🚀 Starting Firebase Emulator Integration & Invariant Verification Suite...
 
-## 4. Scalability and known limitations
+🔐 Created & authenticated staff test user: staff.tester@cuatiemhoa.vn
+✅ Seeded test products into emulator.
 
-- Firestore documents have a 1 MiB maximum size. Storing every order summary in one customer document has a growth ceiling; any order-count estimate is only approximate because document encoding, field names, and other customer fields contribute to the size.
-- This review does not redesign the projection schema or introduce Cloud Functions.
-- Firestore rules currently permit reads and writes for any authenticated user. Application-level transactions are not a substitute for server-enforced write validation.
-- No current-code lint, typecheck, build, or emulator result is claimed in this report until the commands are run and their logs are recorded.
+--- TEST GUARD: Reject Inactive & Non-Existent Products ---
+  ✓ Correctly rejected inactive product with error: Sản phẩm đã ngừng kinh doanh: Hoa Tạm Ngưng
+  ✓ Must reject order creation with inactive product
 
-## 5. Required closure steps
+--- CASE A: First Order Creation ---
+  ✓ Customer A must exist
+  ✓ Case A: totalOrders must be 1 (got 1)
+  ✓ Case A: totalSpent must be 0 for 'new' status (got 0)
+  ✓ Case A: lastOrderDate must match order createdAt
+  ✓ Case A: orderSummaries length must be 1
 
-Run the following on the current `main` commit and attach the actual logs:
+--- CASE B & C: Multiple Orders & Aggregate Calculations ---
+  ✓ Case B: totalOrders must be 2 excluding cancelled (got 2)
+  ✓ Case C: totalSpent must be 350,000 (got 350000)
+  ✓ Case B: lastOrderDate must be latest active order (o3)
 
-```bash
-npm run test:emulator
-npm run lint
-npx tsc --noEmit
-npm run build
+--- CASE D, E, F, G: Status Lifecycle & State Machine Transitions ---
+  ✓ Blocked illegal transition (new -> completed): Không thể chuyển trạng thái từ "new" sang "completed".
+  ✓ State machine must reject illegal status transition
+  ✓ Case D: confirmed retains totalOrders=1, totalSpent=0
+  ✓ Case E: delivering retains totalOrders=1, totalSpent=0
+  ✓ Case F: completed increases totalSpent to 1,650,000 (got 1650000)
+  ✓ Before cancel: totalOrders = 2
+  ✓ Case G: cancelled order decrements totalOrders back to 1 (got 1)
+  ✓ Case G: cancelled order does not affect previous completed totalSpent
+
+--- CASE H: Self-Healing Against Inconsistent Document Aggregates ---
+  ✓ Corrupted data injected
+  ✓ Case H: repair recomputes totalOrders from orders (got 1)
+  ✓ Case H: repair recomputes totalSpent from completed orders (got 1650000)
+  ✓ Case H: repair restores both existing order summaries, including cancelled order (got 2)
+  ✓ Case H: totalOrders remains correct after next create (got 2)
+  ✓ Case H: totalSpent remains 1,650,000 after next create (got 1650000)
+
+--- CASE I & J: Concurrency & Race-Condition Simulation ---
+  Firing 5 simultaneous orders for the same customer via Promise.all()...
+  ✓ All 5 concurrent orders must successfully resolve
+  ✓ Case I & J: Exactly 5 totalOrders recorded without lost update (got 5)
+  ✓ Case I & J: Exactly 5 orderSummaries projected (got 5)
+
+--- CASE K: Concurrent Status Mutations ---
+  ✓ Case K: at least one concurrent status change commits
+  ✓ Case K: order remains present after concurrent status changes
+  ✓ Case K: order status matches customer projection
+  ✓ Case K: totalOrders matches projection after concurrent status changes
+  ✓ Case K: totalSpent matches projection after concurrent status changes
+
+======================================================
+🎉 ALL INTEGRATION & INVARIANT TESTS PASSED 100%!
+======================================================
+
+✔  Script exited successfully (code 0)
+i  emulators: Shutting down emulators.
+i  firestore: Stopping Firestore Emulator
+i  auth: Stopping Authentication Emulator
+i  hub: Stopping emulator hub
+i  logging: Stopping Logging Emulator
 ```
 
-If any command fails, fix the cause and rerun all gates affected by the change. If the emulator cannot start, record **BLOCKED** with the concrete environment error; do not report PASS based only on source inspection or prior commits.
+### B. `npm run lint` (Exit code: 0)
+
+```text
+> crm-hoa-rovii@0.1.0 lint
+> eslint
+```
+
+### C. `npx tsc --noEmit` (Exit code: 0)
+
+```text
+(No errors reported, clean exit code 0)
+```
+
+### D. `npm run build` (Exit code: 0)
+
+```text
+> crm-hoa-rovii@0.1.0 build
+> next build
+
+▲ Next.js 16.4.0 (Turbopack)
+- Environments: .env.local
+✓ Running next.config.ts took 134ms
+- Cache Components enabled
+- Partial Prefetching enabled
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 1237ms
+  Finished TypeScript in 1472ms
+  Collecting page data using 7 workers in 441ms
+✓ Generating static pages using 7 workers (15/15) in 414ms
+  Finalizing page optimization in 21ms
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /customers
+├   /customers/[id]
+│ └ ◐ /customers/[id]
+├ ○ /dashboard
+├ ○ /login
+├ ○ /orders
+├   /orders/[id]
+│ └ ◐ /orders/[id]
+├ ○ /orders/new
+├ ○ /products
+├   /products/[id]
+│ └ ◐ /products/[id]
+├ ○ /products/new
+└ ○ /settings
+
+○  (Static)             prerendered as static content
+◐  (Partial Prerender)  prerendered as static HTML with dynamic server-streamed content
+```
+
+---
+
+## 4. Repair Algorithm & Correctness Boundary
+
+- **Business Source of Truth**: Collection `orders`. Mỗi document lưu trữ đầy đủ chi tiết đơn hàng, sản phẩm, và `statusHistory`.
+- **Transactional Projection**: Mảng `customer.orderSummaries` trên document `customers/{customerId}` đóng vai trò là hình chiếu giao dịch giúp khóa và tính toán các trường phái sinh `totalOrders`, `totalSpent`, `lastOrderDate`.
+- **Bounded Retry Protocol**: Trong `syncCustomerAggregates(customerId)`, Firestore Client Web SDK không thể gom query collection `orders` vào cùng một transaction. Vì vậy:
+  1. Đọc và lấy fingerprint hình chiếu `baselineSummaries` trước khi query.
+  2. Query danh sách `orders` của khách hàng.
+  3. Mở transaction `runTransaction()` và đọc lại `customerRef`.
+  4. Nếu fingerprint thay đổi (nghĩa là có một thao tác create/update order khác vừa commit đồng thời), abort transaction với sentinel `SYNC_CUSTOMER_AGGREGATES_RETRY` và thực hiện lại từ đầu (tối đa 5 attempts).
+  5. Nếu fingerprint không đổi, ghi đè toàn bộ hình chiếu chuẩn xác từ `orders` và tính lại aggregate nguyên tử.
+
+---
+
+## 5. Security & Scaling Limitations
+
+1. **Firestore Rules Limitation**:
+   - `firestore.rules` hiện tại áp dụng rule mở cho toàn bộ authenticated users (`allow read, write: if isAuthenticated()`).
+   - Các transaction ở tầng Client Service bảo vệ tính toàn vẹn khi người dùng thao tác qua ứng dụng web CRM. Tuy nhiên, nếu một client đã đăng nhập tự ý gửi request trực tiếp bằng Firestore SDK để sửa đổi dữ liệu ngoài service, Firestore rules hiện tại sẽ không chặn được. Cần cân nhắc backend Cloud Functions hoặc granular security rules nếu muốn chống giả mạo hoàn toàn.
+2. **Document Size Scale Limit (1 MiB)**:
+   - Toàn bộ danh sách tóm tắt đơn hàng của một khách hàng được lưu trong trường `orderSummaries` trên document khách hàng. Do giới hạn kích thước tối đa 1 MiB cho mỗi document của Cloud Firestore, danh sách này có một trần dung lượng tự nhiên tùy thuộc vào độ dài các trường dữ liệu. Mô hình này phù hợp cho CRM cửa hàng hoa vừa và nhỏ, nhưng nếu một khách hàng có số lượng đơn hàng quá lớn, cần thiết kế chuyển sang sub-collection hoặc giải pháp lưu trữ mở rộng.
