@@ -7,7 +7,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { db, auth } from '../src/lib/firebase/config';
 import { createCustomer, getCustomerById } from '../src/lib/services/customers';
-import { createOrder, updateOrderStatus } from '../src/lib/services/orders';
+import { createOrder, syncCustomerAggregates, updateOrderStatus } from '../src/lib/services/orders';
 import { Product } from '../src/types';
 
 function assert(condition: boolean, message: string) {
@@ -252,7 +252,17 @@ async function runTestSuite() {
   const corruptedSnap = await getCustomerById(custTrans.id);
   assert(corruptedSnap!.totalOrders === 99999, 'Corrupted data injected');
 
-  // Now create a new order through the service; the transaction recomputes derived aggregates strictly from orderSummaries projection
+  // Directly exercise the repair utility; it must rebuild projection and aggregates from orders.
+  await syncCustomerAggregates(custTrans.id);
+  const repairedSnap = await getCustomerById(custTrans.id);
+  assert(repairedSnap!.totalOrders === 1, `Case H: repair recomputes totalOrders from orders (got ${repairedSnap!.totalOrders})`);
+  assert(repairedSnap!.totalSpent === 1650000, `Case H: repair recomputes totalSpent from completed orders (got ${repairedSnap!.totalSpent})`);
+  assert(
+    (repairedSnap!.orderSummaries?.length ?? 0) === 2,
+    `Case H: repair restores both existing order summaries, including cancelled order (got ${repairedSnap!.orderSummaries?.length})`
+  );
+
+  // Creating another order after repair must still preserve all aggregate invariants.
   await createOrder({
     customerId: custTrans.id,
     customerSnapshot: { name: custTrans.name, phone: custTrans.phone, address: custTrans.address },
@@ -263,9 +273,9 @@ async function runTestSuite() {
   });
 
   const healedSnap = await getCustomerById(custTrans.id);
-  // Expected: oTrans (completed, 1650k) + new order (new, 350k) = 2 active orders; totalSpent = 1650000
-  assert(healedSnap!.totalOrders === 2, `Case H: totalOrders healed back to 2 (got ${healedSnap!.totalOrders})`);
-  assert(healedSnap!.totalSpent === 1650000, `Case H: totalSpent healed back to 1,650,000 (got ${healedSnap!.totalSpent})`);
+  // Expected: completed order + new order = 2 active orders; totalSpent = 1650000
+  assert(healedSnap!.totalOrders === 2, `Case H: totalOrders remains correct after next create (got ${healedSnap!.totalOrders})`);
+  assert(healedSnap!.totalSpent === 1650000, `Case H: totalSpent remains 1,650,000 after next create (got ${healedSnap!.totalSpent})`);
 
   // ==========================================
   // CASE I & J: Optimistic Concurrency Control (OCC) Simulator
