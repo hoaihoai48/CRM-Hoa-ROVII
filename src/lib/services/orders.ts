@@ -75,79 +75,93 @@ function mapDocToOrder(id: string, data: Record<string, unknown>): Order {
 }
 
 /**
- * Recalculation of a customer's aggregate stats in Firestore (legacy repair / sync utility only).
- * Normal order creation and status update flows recompute aggregates directly from transactional order summaries.
- * 
- * Concurrency-safe: Runs transactional verification on the customer document so repair cannot overwrite
- * concurrent order mutations that happened after orders were queried.
+ * Rebuild the customer's materialized order projection from the orders collection and
+ * derive aggregate fields from that projection.
+ *
+ * The orders query cannot be included in a Firestore Web SDK transaction. To avoid
+ * overwriting a concurrent create/status mutation, snapshot the customer's current
+ * projection before querying orders, then compare it inside the transaction. If it
+ * changed at any point, abort this repair attempt and repeat the query from scratch.
  */
 export async function syncCustomerAggregates(customerId: string): Promise<void> {
   if (!customerId) return;
   const customerRef = doc(db, 'customers', customerId);
-
-  // 1. Fetch current orders of this customer from collection (Source of Truth)
   const ordersColl = collection(db, 'orders');
   const q = query(ordersColl, where('customerId', '==', customerId));
-  const snapshot = await getDocs(q);
+  const maxAttempts = 5;
 
-  const customerOrders = snapshot.docs.map((d) => mapDocToOrder(d.id, d.data()));
+  const readProjection = (raw: Record<string, unknown>): CustomerOrderSummary[] => {
+    const summaries = Array.isArray(raw.orderSummaries) ? raw.orderSummaries : [];
+    return summaries.map((s: Record<string, unknown>) => ({
+      id: String(s.id || ''),
+      status: (s.status as Order['status']) || 'new',
+      total: Number(s.total || 0),
+      createdAt: normalizeIsoString(s.createdAt),
+    }));
+  };
 
-  // 2. Commit inside a transaction to prevent race conditions with ongoing createOrder / updateOrderStatus
-  await runTransaction(db, async (tx) => {
-    const customerSnap = await tx.get(customerRef);
-    if (!customerSnap.exists()) return;
+  const projectionFingerprint = (summaries: CustomerOrderSummary[]): string =>
+    JSON.stringify(
+      summaries
+        .map((s) => ({ id: s.id, status: s.status, total: s.total, createdAt: s.createdAt }))
+        .sort((a, b) => a.id.localeCompare(b.id))
+    );
 
-    const custRaw = customerSnap.data() || {};
-    const existingSummaries: CustomerOrderSummary[] = Array.isArray(custRaw.orderSummaries)
-      ? custRaw.orderSummaries.map((s: Record<string, unknown>) => ({
-          id: String(s.id || ''),
-          status: (s.status as Order['status']) || 'new',
-          total: Number(s.total || 0),
-          createdAt: normalizeIsoString(s.createdAt),
-        }))
-      : [];
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    // Capture the projection version before the collection query.
+    const beforeQuerySnap = await getDoc(customerRef);
+    if (!beforeQuerySnap.exists()) return;
+    const baselineSummaries = readProjection((beforeQuerySnap.data() || {}) as Record<string, unknown>);
+    const baselineFingerprint = projectionFingerprint(baselineSummaries);
 
-    // Map scanned orders into summary map
-    const summaryMap = new Map<string, CustomerOrderSummary>();
-    for (const o of customerOrders) {
-      summaryMap.set(o.id, {
-        id: o.id,
-        status: o.status,
-        total: o.summary.total,
-        createdAt: o.createdAt,
-      });
-    }
-
-    // Merge any newer order mutations that were written into customer.orderSummaries during repair read
-    for (const s of existingSummaries) {
-      if (!summaryMap.has(s.id)) {
-        // Order was created concurrently right after getDocs
-        summaryMap.set(s.id, s);
-      } else {
-        // If order in customer doc has newer status or timestamp, preserve it
-        const scanned = summaryMap.get(s.id)!;
-        if (s.status !== scanned.status) {
-          summaryMap.set(s.id, s);
-        }
-      }
-    }
-
-    const mergedSummaries = Array.from(summaryMap.values());
-    const activeOrders = mergedSummaries.filter((order) => order.status !== 'cancelled');
-    const completedOrders = mergedSummaries.filter((order) => order.status === 'completed');
-
-    const totalOrders = activeOrders.length;
-    const totalSpent = completedOrders.reduce((sum, order) => sum + order.total, 0);
-    const sortedDates = activeOrders.map((order) => order.createdAt).sort();
-    const lastOrderDate = sortedDates.at(-1) || '';
-
-    tx.update(customerRef, {
-      totalOrders,
-      totalSpent,
-      lastOrderDate,
-      orderSummaries: mergedSummaries,
+    const ordersSnapshot = await getDocs(q);
+    const scannedSummaries: CustomerOrderSummary[] = ordersSnapshot.docs.map((d) => {
+      const order = mapDocToOrder(d.id, d.data());
+      return {
+        id: order.id,
+        status: order.status,
+        total: order.summary.total,
+        createdAt: order.createdAt,
+      };
     });
-  });
+
+    try {
+      await runTransaction(db, async (tx) => {
+        const customerSnap = await tx.get(customerRef);
+        if (!customerSnap.exists()) return;
+        const currentSummaries = readProjection((customerSnap.data() || {}) as Record<string, unknown>);
+
+        // A create/status mutation updates the projection atomically with its order.
+        // If it raced with our query, do not merge guesses: retry the whole repair.
+        if (projectionFingerprint(currentSummaries) !== baselineFingerprint) {
+          throw new Error('SYNC_CUSTOMER_AGGREGATES_RETRY');
+        }
+
+        const activeOrders = scannedSummaries.filter((order) => order.status !== 'cancelled');
+        const completedOrders = scannedSummaries.filter((order) => order.status === 'completed');
+        const totalOrders = activeOrders.length;
+        const totalSpent = completedOrders.reduce((sum, order) => sum + order.total, 0);
+        const sortedDates = activeOrders.map((order) => order.createdAt).sort();
+
+        tx.update(customerRef, {
+          totalOrders,
+          totalSpent,
+          lastOrderDate: sortedDates.at(-1) || '',
+          orderSummaries: scannedSummaries,
+        });
+      });
+      return;
+    } catch (error) {
+      if (error instanceof Error && error.message === 'SYNC_CUSTOMER_AGGREGATES_RETRY') {
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw new Error(
+    `Could not repair aggregates for customer ${customerId}: customer orders changed during ${maxAttempts} consecutive attempts.`
+  );
 }
 
 export async function listOrders(): Promise<Order[]> {
