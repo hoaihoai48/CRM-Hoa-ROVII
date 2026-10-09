@@ -9,13 +9,25 @@
 // settings/store
 
 export type OrderStatus = 'new' | 'confirmed' | 'delivering' | 'completed' | 'cancelled';
+export type UserRole = 'admin' | 'staff';
+export type MembershipStatus = 'active' | 'inactive';
+
+export interface UserMembership {
+  uid: string;
+  email: string;
+  role: UserRole;
+  status: MembershipStatus;
+  createdAt: string;
+  updatedAt?: string;
+}
 
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'staff';
+  role: UserRole;
   avatarUrl?: string;
+  status?: MembershipStatus;
 }
 
 export interface CustomerOrderSummary {

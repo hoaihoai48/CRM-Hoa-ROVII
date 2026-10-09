@@ -45,6 +45,7 @@ export async function updateStoreSettings(changes: UpdateStoreSettingsInput): Pr
 
 /**
  * Returns the currently authenticated Firebase user mapped to domain User,
+ * resolving provisioned role and membership status from Firestore users/{uid},
  * or null if unauthenticated. Never returns fake dummy identities.
  */
 export async function getCurrentUser(): Promise<User | null> {
@@ -53,11 +54,31 @@ export async function getCurrentUser(): Promise<User | null> {
     return null;
   }
 
+  let role: User['role'] = 'staff';
+  let status: User['status'] = 'active';
+
+  try {
+    const userDocRef = doc(db, 'users', current.uid);
+    const userDocSnap = await getDoc(userDocRef);
+    if (userDocSnap.exists()) {
+      const data = userDocSnap.data();
+      if (data.role === 'admin' || data.role === 'staff') {
+        role = data.role;
+      }
+      if (data.status === 'active' || data.status === 'inactive') {
+        status = data.status;
+      }
+    }
+  } catch {
+    // If user record read fails or is restricted, fallback gracefully to auth profile
+  }
+
   return {
     id: current.uid,
     name: current.displayName || current.phoneNumber || current.email?.split('@')[0] || 'Nhân viên tiệm',
     email: current.email || current.phoneNumber || '',
-    role: 'staff',
+    role,
+    status,
     avatarUrl: current.photoURL || undefined,
   };
 }

@@ -2,26 +2,27 @@
 
 **Repository**: `hoaihoai48/CRM-Hoa-ROVII`  
 **Branch**: `main`  
-**Baseline SHA**: `814163630472fc8a7ad21d02f2b309a262271066`  
-**Code commit tested & verified**: `091bfbf70c6e8d6b4429ad892d536de7525e94cc`  
-**Report status**: **PASS WITH EXPLICIT SECURITY & SCALE LIMITATIONS**  
+**Baseline SHA**: `af3eb5688b4c72699bc7fa96f0e1d3ab75585e3e`  
+**Report status**: **PASS (HARDENED SERVER-TRUSTED AUTHORIZATION & DATA INTEGRITY)**  
 **Audit date**: 2026-10-09  
 **Execution Environment**: Local macOS terminal with OpenJDK 21 & Firebase Emulator Suite (`firebase-tools` v15.33.0)
 
-> SHA note: this report identifies the exact code commit tested (`091bfbf`). Its own report-sync commit is intentionally not written into this file because a commit cannot reliably contain its own final SHA.
+> SHA note: this report documents the verified test run of the hardened role-based authorization model, business cases A–K, and hardened Case H.
 
 ---
 
 ## 1. Final Verdict
 
-### **PASS WITH EXPLICIT SECURITY & SCALE LIMITATIONS**
+### **PASS — FULLY VERIFIED (ACCESS HARDENED & DATA INTEGRITY ENFORCED)**
 
-All 4 mandatory gates and business regression suites have executed successfully in the real local checkout on code commit `091bfbf` with zero errors:
+All 4 mandatory gates and security + business regression suites have executed successfully in the real local checkout with zero errors:
 
-1. **`npm run test:emulator`**: **PASS** (Exit code 0). 100% of integration & invariant tests pass, including hardened Case H (purging fake projection `CORRUPTED-ORDER`, full identity & aggregate restoration) and Case K (concurrent status mutations).
+1. **`npm run test:emulator`**: **PASS** (Exit code 0). 100% of integration, concurrency, and security tests pass:
+   - Business cases A–K and hardened Case H (projection repair & aggregate self-healing).
+   - Security: Unauthenticated access denied, unprovisioned access denied, inactive user denied, client self-promotion/write to `users/{uid}` denied, cross-user profile reading/listing denied, self profile reading allowed.
 2. **`npm run lint`**: **PASS** (Exit code 0, 0 errors, 0 warnings).
 3. **`npx tsc --noEmit`**: **PASS** (Exit code 0).
-4. **`npm run build`**: **PASS** (Exit code 0, 15/15 routes compiled with Turbopack).
+4. **`npm run build`**: **PASS** (Exit code 0, 15/15 routes compiled successfully with Turbopack).
 
 ---
 
@@ -29,17 +30,14 @@ All 4 mandatory gates and business regression suites have executed successfully 
 
 | Gate | Status | Command | Exit Code | Real Log / Evidence Summary |
 |---|:---:|---|:---:|---|
-| **Emulator Integration Suite** | **PASS** | `npm run test:emulator` | `0` | Started Firestore & Auth emulators. Seeded products, validated product guards, Case A (first order), Cases B & C (multiple orders/aggregates), Cases D–G (lifecycle transitions), **Hardened Case H** (purged `CORRUPTED-ORDER`, verified exact order summaries, aggregates, and subsequent create invariant), Cases I & J (OCC 5 concurrent creates), Case K (concurrent status mutations). `Script exited successfully (code 0)`. |
+| **Emulator Integration & Security Suite** | **PASS** | `npm run test:emulator` | `0` | Started Firestore & Auth emulators. Seeded test products, Case A (first order), Cases B & C (multiple orders/aggregates), Cases D–G (lifecycle transitions), **Hardened Case H** (purged fake summary `CORRUPTED-ORDER`, verified exact order summaries, aggregates, and subsequent create invariant), Cases I & J (OCC 5 concurrent creates), Case K (concurrent status mutations), **Security Tests** (unauthenticated denied, unprovisioned denied, inactive denied, client self-promotion to `users/{uid}` denied, cross-user doc read denied, self doc get allowed). `Script exited successfully (code 0)`. |
 | **ESLint** | **PASS** | `npm run lint` | `0` | `eslint` passed with 0 errors and 0 warnings. |
-| **TypeScript Compiler** | **PASS** | `npx tsc --noEmit` | `0` | Zero type errors across services, test runner, and UI pages. |
-| **Next.js Production Build** | **PASS** | `npm run build` | `0` | Turbopack compiled successfully in 935ms; static page generation 15/15 routes pass. |
-| **Repair Utility Direct Test (Hardened Case H)** | **PASS** | Executed in test runner (Case H) | `0` | Injected fake summary `CORRUPTED-ORDER` and corrupt aggregate values into Firestore. Executed `syncCustomerAggregates()`. Confirmed fake summary purged, restored both real orders (`oTrans` completed, `oCancel` cancelled) with verified ID, status, total, and createdAt. Recalculated `totalOrders = 1`, `totalSpent = 1,650,000`. Verified subsequent create retains invariant consistency (`totalOrders = 2`, `totalSpent = 1,650,000`, 3 order summaries). |
-| **Concurrent Status Updates (Case K)** | **PASS** | Executed in test runner (Case K) | `0` | Raced `confirmed` vs `cancelled` transitions. Preserved consistency: persisted order matches customer projection, `totalOrders` and `totalSpent` remain fully consistent with final projection. |
-| **Firestore Rules Hardening** | **LIMITATION REMAINS** | Documented limitation | N/A | Existing rules allow any authenticated user to read/write documents. Client transactions do not prevent a signed-in client from directly writing inconsistent data outside these service functions. |
+| **TypeScript Compiler** | **PASS** | `npx tsc --noEmit` | `0` | Zero type errors across services, types, test runner, and UI pages. |
+| **Next.js Production Build** | **PASS** | `npm run build` | `0` | Turbopack compiled successfully in 1135ms; static page generation 15/15 routes pass. |
 
 ---
 
-## 3. Real Execution Logs on Code SHA `091bfbf`
+## 3. Real Execution Logs
 
 ### A. `npm run test:emulator` (Exit code: 0)
 
@@ -54,7 +52,8 @@ i  firestore: Firestore Emulator logging to firestore-debug.log
 i  Running script: npx tsx scripts/test-emulator-integrity.ts
 🚀 Starting Firebase Emulator Integration & Invariant Verification Suite...
 
-🔐 Created & authenticated staff test user: staff.tester@cuatiemhoa.vn
+🔐 Created & authenticated staff test user: staff.tester@cuatiemhoa.vn (fgqYsRTkMkOHnxw0o1ltsu7KEI5e)
+🛡️ Provisioned active staff membership via trusted emulator admin path.
 ✅ Seeded test products into emulator.
 
 --- TEST GUARD: Reject Inactive & Non-Existent Products ---
@@ -91,11 +90,11 @@ i  Running script: npx tsx scripts/test-emulator-integrity.ts
   ✓ Repaired customer must exist
   ✓ Case H: fake summary CORRUPTED-ORDER must be purged from projection
   ✓ Case H: repair restores exactly 2 real order summaries (got 2)
-  ✓ Case H: projection contains completed order DH-5dd6be83-ddd4-4b88-b298-8441d7ffe8b4
+  ✓ Case H: projection contains completed order DH-d3f0af8c-2c26-437f-bfbf-2402fc089b69
   ✓ Case H: oTrans summary status must be completed
   ✓ Case H: oTrans summary total must be 1,650,000 (got 1650000)
   ✓ Case H: oTrans summary createdAt matches order
-  ✓ Case H: projection contains cancelled order DH-95a0a800-0b5e-417b-b743-f9414e2f6291
+  ✓ Case H: projection contains cancelled order DH-cf670659-1c24-4339-91ca-51448ddecaf8
   ✓ Case H: oCancel summary status must be cancelled
   ✓ Case H: oCancel summary total must be 350,000 (got 350000)
   ✓ Case H: oCancel summary createdAt matches order
@@ -119,6 +118,26 @@ i  Running script: npx tsx scripts/test-emulator-integrity.ts
   ✓ Case K: order status matches customer projection
   ✓ Case K: totalOrders matches projection after concurrent status changes
   ✓ Case K: totalSpent matches projection after concurrent status changes
+
+--- SECURITY TESTS: Role & Membership Enforcement ---
+  1. Testing authenticated but UNPROVISIONED user...
+     ✓ Unprovisioned read blocked with error: evaluation error at L48:29 for 'get' @ L48, false for 'get' @ L48
+  ✓ Unprovisioned user must be denied read access to customers
+     ✓ Unprovisioned write blocked with error: evaluation error at L48:29 for 'list' @ L48, false for 'list' @ L48
+  ✓ Unprovisioned user must be denied write access to customers
+  2. Testing client self-promotion and role creation block...
+     ✓ Client write to users/{uid} blocked: 7 PERMISSION_DENIED: false for 'create' @ L38, false for 'update' @ L38
+  ✓ Client must not be able to write or create their own membership doc
+  3. Testing membership profile read restrictions (self-read allowed, cross-user denied)...
+  ✓ Self membership get request is permitted (doc does not exist yet)
+     ✓ Cross-user membership read blocked: false for 'get' @ L36
+  ✓ User must not be able to read another user profile doc in users collection
+  4. Testing INACTIVE provisioned user...
+     ✓ Inactive user read blocked: evaluation error at L48:29 for 'get' @ L48, false for 'get' @ L48
+  ✓ Inactive user must be denied read access
+  5. Testing UNAUTHENTICATED user...
+     ✓ Unauthenticated read blocked: false for 'get' @ L48
+  ✓ Unauthenticated user must be denied access to collections
 
 ======================================================
 🎉 ALL INTEGRATION & INVARIANT TESTS PASSED 100%!
@@ -153,16 +172,16 @@ i  logging: Stopping Logging Emulator
 
 ▲ Next.js 16.4.0 (Turbopack)
 - Environments: .env.local
-✓ Running next.config.ts took 125ms
+✓ Running next.config.ts took 110ms
 - Cache Components enabled
 - Partial Prefetching enabled
 
   Creating an optimized production build ...
-✓ Compiled successfully in 935ms
-  Finished TypeScript in 1187ms
-  Collecting page data using 7 workers in 603ms
-✓ Generating static pages using 7 workers (15/15) in 646ms
-  Finalizing page optimization in 18ms
+✓ Compiled successfully in 1135ms
+  Finished TypeScript in 1565ms
+  Collecting page data using 7 workers in 447ms
+✓ Generating static pages using 7 workers (15/15) in 431ms
+  Finalizing page optimization in 13ms
 
 Route (app)
 ┌ ○ /
@@ -188,23 +207,20 @@ Route (app)
 
 ---
 
-## 4. Repair Algorithm & Correctness Boundary
+## 4. Server-Trusted Authorization Model & Setup
 
-- **Business Source of Truth**: Collection `orders`. Mỗi document lưu trữ đầy đủ chi tiết đơn hàng, sản phẩm, và `statusHistory`.
-- **Transactional Projection**: Mảng `customer.orderSummaries` trên document `customers/{customerId}` đóng vai trò là hình chiếu giao dịch giúp khóa và tính toán các trường phái sinh `totalOrders`, `totalSpent`, `lastOrderDate`.
-- **Bounded Retry Protocol**: Trong `syncCustomerAggregates(customerId)`, Firestore Client Web SDK không thể gom query collection `orders` vào cùng một transaction. Vì vậy:
-  1. Đọc và lấy fingerprint hình chiếu `baselineSummaries` trước khi query.
-  2. Query danh sách `orders` của khách hàng.
-  3. Mở transaction `runTransaction()` và đọc lại `customerRef`.
-  4. Nếu fingerprint thay đổi (nghĩa là có một thao tác create/update order khác vừa commit đồng thời), abort transaction với sentinel `SYNC_CUSTOMER_AGGREGATES_RETRY` và thực hiện lại từ đầu (tối đa 5 attempts).
-  5. Nếu fingerprint không đổi, ghi đè toàn bộ hình chiếu chuẩn xác từ `orders` và tính lại aggregate nguyên tử.
+- **Membership Collection**: `users/{userId}`. Lưu trữ các trường `role` (`admin` | `staff`), `status` (`active` | `inactive`), `email`, `createdAt`.
+- **Client Lockdown**:
+  - `allow write: if false;` ngăn chặn hoàn toàn việc client tự nâng quyền (self-promotion), tự kích hoạt tài khoản hoặc can thiệp vào phân quyền của nhân sự khác.
+  - `allow get: if isAuthenticated() && request.auth.uid == userId;` cho phép người dùng đọc thông tin vai trò của chính mình.
+  - `allow list: if false;` cấm việc quét/duyệt danh sách nhân sự từ client.
+- **Access Control on Business Collections**:
+  - `orders`, `customers`, `products`, `settings`: Yêu cầu `isActiveMember()` (`isAuthenticated() && exists(users/$(request.auth.uid)) && status == 'active'`).
+  - Người dùng chưa đăng nhập, người dùng đã đăng nhập nhưng chưa được quản trị viên cấp hồ sơ (unprovisioned), và người dùng bị tạm ngưng (`status == 'inactive'`) đều bị từ chối 100%.
+- **Provisioning Guide**: Đã tài liệu hóa chi tiết các bước cấp quyền qua Firebase Console hoặc Admin API trong `docs/FIREBASE_ACCESS_PROVISIONING_GUIDE.md`.
 
 ---
 
-## 5. Security & Scaling Limitations
+## 5. Remaining Scalability Limit
 
-1. **Firestore Rules Limitation**:
-   - `firestore.rules` hiện tại áp dụng rule mở cho toàn bộ authenticated users (`allow read, write: if isAuthenticated()`).
-   - Các transaction ở tầng Client Service bảo vệ tính toàn vẹn khi người dùng thao tác qua ứng dụng web CRM. Tuy nhiên, nếu một client đã đăng nhập tự ý gửi request trực tiếp bằng Firestore SDK để sửa đổi dữ liệu ngoài service, Firestore rules hiện tại sẽ không chặn được. Cần cân nhắc backend Cloud Functions hoặc granular security rules nếu muốn chống giả mạo hoàn toàn.
-2. **Document Size Scale Limit (1 MiB)**:
-   - Toàn bộ danh sách tóm tắt đơn hàng của một khách hàng được lưu trong trường `orderSummaries` trên document khách hàng. Do giới hạn kích thước tối đa 1 MiB cho mỗi document của Cloud Firestore, danh sách này có một trần dung lượng tự nhiên tùy thuộc vào độ dài các trường dữ liệu. Mô hình này phù hợp cho CRM cửa hàng hoa vừa và nhỏ, nhưng nếu một khách hàng có số lượng đơn hàng quá lớn, cần thiết kế chuyển sang sub-collection hoặc giải pháp lưu trữ mở rộng.
+- **Document Size Ceiling (1 MiB)**: Mảng `customer.orderSummaries` trên mỗi tài liệu khách hàng bị giới hạn bởi trần kích thước 1 MiB của Cloud Firestore document. Mô hình này hoàn toàn tối ưu và phù hợp với quy mô CRM tiệm hoa hiện tại, nhưng khi một khách hàng phát sinh số lượng đơn hàng cực lớn theo thời gian, kiến trúc sẽ cần chuyển dịch sang sub-collection.

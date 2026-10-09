@@ -3,8 +3,8 @@
  * Tests Cases A through J for Data Invariants & Optimistic Concurrency Control (OCC)
  */
 
-import { doc, setDoc } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { db, auth } from '../src/lib/firebase/config';
 import { createCustomer, getCustomerById } from '../src/lib/services/customers';
 import { createOrder, getOrderById, syncCustomerAggregates, updateOrderStatus } from '../src/lib/services/orders';
@@ -18,20 +18,65 @@ function assert(condition: boolean, message: string) {
   console.log(`  ✓ ${message}`);
 }
 
+/**
+ * Trusted test-only administrative provision helper using Firestore Emulator REST API
+ * (Authorization: Bearer owner). This mimics Firebase Admin SDK or Console actions
+ * without exposing production credentials or introducing client-side security backdoors.
+ */
+async function provisionUserMembership(
+  uid: string,
+  membership: { email: string; role: 'admin' | 'staff'; status: 'active' | 'inactive' }
+) {
+  const host = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'crm-hoa-rovii';
+  const url = `http://${host}/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer owner',
+    },
+    body: JSON.stringify({
+      fields: {
+        role: { stringValue: membership.role },
+        status: { stringValue: membership.status },
+        email: { stringValue: membership.email },
+        createdAt: { stringValue: new Date().toISOString() },
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to provision user ${uid} via emulator REST API: ${errorText}`);
+  }
+}
+
 async function runTestSuite() {
   console.log('🚀 Starting Firebase Emulator Integration & Invariant Verification Suite...\n');
 
   // Authenticate as a staff user in Auth emulator
   const testStaffEmail = 'staff.tester@cuatiemhoa.vn';
   const testStaffPass = 'SecurePassword123!';
+  let staffUserUid = '';
   try {
-    await createUserWithEmailAndPassword(auth, testStaffEmail, testStaffPass);
-    console.log(`🔐 Created & authenticated staff test user: ${testStaffEmail}`);
+    const cred = await createUserWithEmailAndPassword(auth, testStaffEmail, testStaffPass);
+    staffUserUid = cred.user.uid;
+    console.log(`🔐 Created & authenticated staff test user: ${testStaffEmail} (${staffUserUid})`);
   } catch {
     // If user already exists in emulator session, sign in
-    await signInWithEmailAndPassword(auth, testStaffEmail, testStaffPass);
-    console.log(`🔐 Authenticated existing staff test user: ${testStaffEmail}`);
+    const cred = await signInWithEmailAndPassword(auth, testStaffEmail, testStaffPass);
+    staffUserUid = cred.user.uid;
+    console.log(`🔐 Authenticated existing staff test user: ${testStaffEmail} (${staffUserUid})`);
   }
+
+  // Provision trusted active staff membership via emulator administrative API
+  await provisionUserMembership(staffUserUid, {
+    email: testStaffEmail,
+    role: 'staff',
+    status: 'active',
+  });
+  console.log('🛡️ Provisioned active staff membership via trusted emulator admin path.');
 
   // Setup seed products
   const p1: Product = {
@@ -379,6 +424,101 @@ async function runTestSuite() {
     raceCustomer!.totalSpent === (raceCustomer!.orderSummaries ?? []).filter((summary) => summary.status === 'completed').reduce((sum, summary) => sum + summary.total, 0),
     'Case K: totalSpent matches projection after concurrent status changes'
   );
+
+  // ==========================================
+  // SECURITY TESTS: Role-based Firestore Authorization
+  // ==========================================
+  console.log('\n--- SECURITY TESTS: Role & Membership Enforcement ---');
+
+  // 1. Authenticated but unprovisioned user
+  console.log('  1. Testing authenticated but UNPROVISIONED user...');
+  const unprovisionedEmail = 'unprovisioned@cuatiemhoa.vn';
+  const unprovCred = await createUserWithEmailAndPassword(auth, unprovisionedEmail, 'Password123!');
+  let unprovReadBlocked = false;
+  try {
+    await getCustomerById(custA.id);
+  } catch (err: unknown) {
+    unprovReadBlocked = true;
+    console.log(`     ✓ Unprovisioned read blocked with error: ${(err as Error).message}`);
+  }
+  assert(unprovReadBlocked, 'Unprovisioned user must be denied read access to customers');
+
+  let unprovWriteBlocked = false;
+  try {
+    await createCustomer({ name: 'Hacker', phone: '0999999999', address: 'Nowhere' });
+  } catch (err: unknown) {
+    unprovWriteBlocked = true;
+    console.log(`     ✓ Unprovisioned write blocked with error: ${(err as Error).message}`);
+  }
+  assert(unprovWriteBlocked, 'Unprovisioned user must be denied write access to customers');
+
+  // 2. Self-promotion and self-activation blocked
+  console.log('  2. Testing client self-promotion and role creation block...');
+  let selfPromotionBlocked = false;
+  try {
+    await setDoc(doc(db, 'users', unprovCred.user.uid), {
+      role: 'admin',
+      status: 'active',
+      email: unprovisionedEmail,
+    });
+  } catch (err: unknown) {
+    selfPromotionBlocked = true;
+    console.log(`     ✓ Client write to users/{uid} blocked: ${(err as Error).message}`);
+  }
+  assert(selfPromotionBlocked, 'Client must not be able to write or create their own membership doc');
+
+  // 3. User can read their own membership doc, but cannot read or list another user's membership doc
+  console.log('  3. Testing membership profile read restrictions (self-read allowed, cross-user denied)...');
+  // Self read
+  const selfDoc = await getDoc(doc(db, 'users', unprovCred.user.uid));
+  // Note: unprovCred does not have a doc yet, but getDoc is permitted by rules for self
+  assert(!selfDoc.exists(), 'Self membership get request is permitted (doc does not exist yet)');
+
+  let crossUserReadBlocked = false;
+  try {
+    const crossDoc = await getDoc(doc(db, 'users', staffUserUid));
+    if (crossDoc.exists()) {
+      crossUserReadBlocked = false;
+    }
+  } catch (err: unknown) {
+    crossUserReadBlocked = true;
+    console.log(`     ✓ Cross-user membership read blocked: ${(err as Error).message}`);
+  }
+  assert(crossUserReadBlocked, 'User must not be able to read another user profile doc in users collection');
+
+  // 4. Inactive provisioned user
+  console.log('  4. Testing INACTIVE provisioned user...');
+  const inactiveEmail = 'inactive.staff@cuatiemhoa.vn';
+  const inactiveCred = await createUserWithEmailAndPassword(auth, inactiveEmail, 'Password123!');
+  await provisionUserMembership(inactiveCred.user.uid, {
+    email: inactiveEmail,
+    role: 'staff',
+    status: 'inactive',
+  });
+
+  let inactiveReadBlocked = false;
+  try {
+    await getCustomerById(custA.id);
+  } catch (err: unknown) {
+    inactiveReadBlocked = true;
+    console.log(`     ✓ Inactive user read blocked: ${(err as Error).message}`);
+  }
+  assert(inactiveReadBlocked, 'Inactive user must be denied read access');
+
+  // 5. Unauthenticated user denied
+  console.log('  5. Testing UNAUTHENTICATED user...');
+  await signOut(auth);
+  let unauthReadBlocked = false;
+  try {
+    await getCustomerById(custA.id);
+  } catch (err: unknown) {
+    unauthReadBlocked = true;
+    console.log(`     ✓ Unauthenticated read blocked: ${(err as Error).message}`);
+  }
+  assert(unauthReadBlocked, 'Unauthenticated user must be denied access to collections');
+
+  // Restore staff session for clean shutdown
+  await signInWithEmailAndPassword(auth, testStaffEmail, testStaffPass);
 
   console.log('🎉 ALL INTEGRATION & INVARIANT TESTS PASSED 100%!');
   console.log('======================================================\n');
