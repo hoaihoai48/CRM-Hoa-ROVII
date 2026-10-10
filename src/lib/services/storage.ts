@@ -86,6 +86,15 @@ export async function uploadProductImage(
   const compressedDataUrl = await compressImageToDataUrl(file);
   if (onProgress) onProgress(60);
 
+  // Zero-cost mode (default): Firebase Storage on new projects requires the
+  // Blaze plan. Skip the upload entirely and store the compressed Data URL
+  // (~80-150KB) in Firestore. Set NEXT_PUBLIC_FIREBASE_STORAGE_ENABLED=true
+  // only after a Storage bucket is provisioned (and CORS configured).
+  if (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_ENABLED !== 'true') {
+    if (onProgress) onProgress(100);
+    return compressedDataUrl;
+  }
+
   const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
   const rawExtension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
   const extension = allowedExtensions.includes(rawExtension) ? rawExtension : 'jpg';
@@ -100,6 +109,15 @@ export async function uploadProductImage(
     });
 
     return await new Promise<string>((resolve, reject) => {
+      // Fail fast: resumable uploads retry with backoff for minutes on
+      // CORS/unprovisioned-bucket errors. Cancel early so the caller falls
+      // back to the compressed Data URL instead of hanging at 60%.
+      const UPLOAD_TIMEOUT_MS = 25000;
+      const timer = setTimeout(() => {
+        uploadTask.cancel();
+        reject(new Error('Upload timed out, falling back to compressed image.'));
+      }, UPLOAD_TIMEOUT_MS);
+
       uploadTask.on(
         'state_changed',
         (snapshot) => {
@@ -108,8 +126,12 @@ export async function uploadProductImage(
           );
           if (onProgress) onProgress(pct);
         },
-        (error) => reject(error),
+        (error) => {
+          clearTimeout(timer);
+          reject(error);
+        },
         async () => {
+          clearTimeout(timer);
           try {
             const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
             resolve(downloadUrl);
