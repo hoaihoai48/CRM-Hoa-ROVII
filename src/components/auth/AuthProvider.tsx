@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { User as FirebaseUser } from 'firebase/auth';
 import { subscribeToAuth, logoutUser } from '@/lib/firebase/authService';
 import { getCurrentUser } from '@/lib/services/settings';
@@ -40,8 +40,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [membershipAttempt, setMembershipAttempt] = useState(0);
   const [membershipState, setMembershipState] = useState<MembershipState | null>(null);
+  const lastAuthUid = useRef<string | null | undefined>(undefined);
 
   useEffect(() => subscribeToAuth((currentUser) => {
+    const nextUid = currentUser?.uid ?? null;
+    if (lastAuthUid.current !== nextUid) {
+      lastAuthUid.current = nextUid;
+      // Invalidate a prior session's membership even when the same UID signs back in.
+      setMembershipAttempt((attempt) => attempt + 1);
+    }
     setUser(currentUser);
     setLoading(false);
   }), []);
