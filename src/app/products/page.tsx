@@ -13,7 +13,7 @@ import { SearchInput } from '@/components/common/Input';
 import { listProducts } from '@/lib/services';
 import { formatVND } from '@/lib/utils/format';
 
-export default function ProductsPage() {
+function ProductsPageContent() {
   const [products, setProducts] = useState<Awaited<ReturnType<typeof listProducts>>>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -64,7 +64,7 @@ export default function ProductsPage() {
   }, [products, searchTerm, statusFilter]);
 
   return (
-    <AppShell>
+    
       <PageHeader
         title="Sản phẩm"
         subtitle="Quản lý danh mục hoa, bảng giá và mẫu hoa của tiệm"
@@ -215,6 +215,15 @@ export default function ProductsPage() {
           ))}
         </div>
       ) : null}
+    
+  );
+}
+
+
+export default function ProductsPage() {
+  return (
+    <AppShell>
+      <ProductsPageContent />
     </AppShell>
   );
 }

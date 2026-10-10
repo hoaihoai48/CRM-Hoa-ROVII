@@ -43,7 +43,7 @@ function DashboardContent() {
   const recentOrders = orders.slice(0, 6);
 
   return (
-    <AppShell>
+    
       {/* Page Header */}
       <PageHeader
         title="Tổng quan"
@@ -269,14 +269,23 @@ function DashboardContent() {
           ))}
         </div>
       </div>
-    </AppShell>
+    
   );
 }
 
-export default function DashboardPage() {
+function DashboardPageContent() {
   return (
     <React.Suspense fallback={<div className="p-8 text-center text-sm text-stone-500">Đang tải tổng quan...</div>}>
       <DashboardContent />
     </React.Suspense>
+  );
+}
+
+
+export default function DashboardPage() {
+  return (
+    <AppShell>
+      <DashboardPageContent />
+    </AppShell>
   );
 }

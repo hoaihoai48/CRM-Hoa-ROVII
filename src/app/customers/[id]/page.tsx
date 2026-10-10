@@ -62,16 +62,16 @@ function CustomerDetailContent() {
   const effectiveLoadError = !customerId ? 'Mã khách hàng không hợp lệ.' : loadError;
 
   if (isLoading && customerId) {
-    return <AppShell><div className="p-8 text-center text-sm text-stone-500">Đang tải hồ sơ khách hàng...</div></AppShell>;
+    return <div className="p-8 text-center text-sm text-stone-500">Đang tải hồ sơ khách hàng...</div>;
   }
   if (effectiveLoadError || !initialCustomer) {
-    return <AppShell><div className="p-8 text-center text-sm text-red-600">{effectiveLoadError || 'Không tìm thấy khách hàng.'}</div></AppShell>;
+    return <div className="p-8 text-center text-sm text-red-600">{effectiveLoadError || 'Không tìm thấy khách hàng.'}</div>;
   }
 
   const customer = initialCustomer;
 
   return (
-    <AppShell>
+    
       <PageHeader
         title={customer.name}
         subtitle={`Mã khách: ${customer.id} • Thành viên từ ${formatDateShort(customer.createdAt)}`}
@@ -201,14 +201,23 @@ function CustomerDetailContent() {
           </div>
         </div>
       </div>
-    </AppShell>
+    
   );
 }
 
-export default function CustomerDetailPage() {
+function CustomerDetailPageContent() {
   return (
     <React.Suspense fallback={<div className="p-8 text-center text-sm text-stone-500">Đang tải thông tin khách hàng...</div>}>
       <CustomerDetailContent />
     </React.Suspense>
+  );
+}
+
+
+export default function CustomerDetailPage() {
+  return (
+    <AppShell>
+      <CustomerDetailPageContent />
+    </AppShell>
   );
 }

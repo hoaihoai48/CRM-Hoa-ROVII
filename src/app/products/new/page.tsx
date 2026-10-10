@@ -15,7 +15,7 @@ import { formatVND } from '@/lib/utils/format';
 import { createProduct } from '@/lib/services';
 import { ImageUploader } from '@/components/common/ImageUploader';
 
-export default function NewProductPage() {
+function NewProductPageContent() {
   const router = useRouter();
 
   const [name, setName] = useState('');
@@ -46,7 +46,7 @@ export default function NewProductPage() {
   };
 
   return (
-    <AppShell>
+    
       <PageHeader
         title="Thêm mẫu hoa mới"
         subtitle="Tạo mới sản phẩm hoa vào danh mục của tiệm"
@@ -216,6 +216,15 @@ export default function NewProductPage() {
           </div>
         </div>
       </div>
+    
+  );
+}
+
+
+export default function NewProductPage() {
+  return (
+    <AppShell>
+      <NewProductPageContent />
     </AppShell>
   );
 }

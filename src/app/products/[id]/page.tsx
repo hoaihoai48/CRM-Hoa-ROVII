@@ -54,7 +54,7 @@ function ProductEditForm({ product, productId }: ProductFormProps) {
   };
 
   return (
-    <AppShell>
+    
       <PageHeader
         title={`Chỉnh sửa: ${product.name}`}
         subtitle={`Mã sản phẩm: ${product.id}`}
@@ -237,7 +237,7 @@ function ProductEditForm({ product, productId }: ProductFormProps) {
           </div>
         </div>
       </div>
-    </AppShell>
+    
   );
 }
 
@@ -284,19 +284,28 @@ function EditProductContent() {
   const effectiveLoadError = !productId ? 'Mã sản phẩm không hợp lệ.' : loadError;
 
   if (isLoading && productId) {
-    return <AppShell><div className="p-8 text-center text-sm text-stone-500">Đang tải sản phẩm...</div></AppShell>;
+    return <div className="p-8 text-center text-sm text-stone-500">Đang tải sản phẩm...</div>;
   }
   if (effectiveLoadError || !product) {
-    return <AppShell><div className="p-8 text-center text-sm text-red-600">{effectiveLoadError || 'Không tìm thấy sản phẩm.'}</div></AppShell>;
+    return <div className="p-8 text-center text-sm text-red-600">{effectiveLoadError || 'Không tìm thấy sản phẩm.'}</div>;
   }
 
   return <ProductEditForm key={product.id} product={product} productId={productId} />;
 }
 
-export default function EditProductPage() {
+function EditProductPageContent() {
   return (
     <React.Suspense fallback={<div className="p-8 text-center text-sm text-stone-500">Đang tải thông tin sản phẩm...</div>}>
       <EditProductContent />
     </React.Suspense>
+  );
+}
+
+
+export default function EditProductPage() {
+  return (
+    <AppShell>
+      <EditProductPageContent />
+    </AppShell>
   );
 }

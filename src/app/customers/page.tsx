@@ -17,7 +17,7 @@ import { ZaloButton } from '@/components/common/ZaloButton';
 import { createCustomer, listCustomers } from '@/lib/services';
 import { formatDateShort } from '@/lib/utils/format';
 
-export default function CustomersPage() {
+function CustomersPageContent() {
   const [customers, setCustomers] = useState<Awaited<ReturnType<typeof listCustomers>>>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -76,7 +76,7 @@ export default function CustomersPage() {
   }, [customers, searchTerm]);
 
   return (
-    <AppShell>
+    
       <PageHeader
         title="Khách hàng"
         subtitle="Quản lý danh sách khách và lịch sử đặt hoa"
@@ -250,6 +250,15 @@ export default function CustomersPage() {
           </div>
         </div>
       )}
+    
+  );
+}
+
+
+export default function CustomersPage() {
+  return (
+    <AppShell>
+      <CustomersPageContent />
     </AppShell>
   );
 }

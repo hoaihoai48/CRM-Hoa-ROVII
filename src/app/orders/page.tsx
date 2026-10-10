@@ -28,7 +28,7 @@ const STATUS_FILTERS: { id: string; label: string; value?: OrderStatus }[] = [
   { id: 'cancelled', label: 'Đã hủy', value: 'cancelled' },
 ];
 
-export default function OrdersPage() {
+function OrdersPageContent() {
   const [orders, setOrders] = useState<Awaited<ReturnType<typeof listOrders>>>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -86,7 +86,7 @@ export default function OrdersPage() {
   }, [orders, searchTerm, selectedStatus]);
 
   return (
-    <AppShell>
+    
       <PageHeader
         title="Đơn hàng"
         subtitle="Quản lý toàn bộ danh sách đơn đặt hoa và trạng thái xử lý"
@@ -252,6 +252,15 @@ export default function OrdersPage() {
           </div>
         </div>
       ) : null}
+    
+  );
+}
+
+
+export default function OrdersPage() {
+  return (
+    <AppShell>
+      <OrdersPageContent />
     </AppShell>
   );
 }
