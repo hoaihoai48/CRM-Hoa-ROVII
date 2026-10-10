@@ -71,7 +71,6 @@ function CustomerDetailContent() {
   const customer = initialCustomer;
 
   return (
-    
       <PageHeader
         title={customer.name}
         subtitle={`Mã khách: ${customer.id} • Thành viên từ ${formatDateShort(customer.createdAt)}`}
@@ -201,7 +200,6 @@ function CustomerDetailContent() {
           </div>
         </div>
       </div>
-    
   );
 }
 

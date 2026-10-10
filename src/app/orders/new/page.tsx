@@ -191,7 +191,6 @@ function CreateOrderPageContent() {
   };
 
   return (
-    
       <PageHeader
         title="Tạo đơn hàng"
         subtitle="Nhập đơn nhanh từ cuộc gọi hoặc tin nhắn Zalo"
@@ -485,7 +484,6 @@ function CreateOrderPageContent() {
           </div>
         </div>
       </form>
-    
   );
 }
 

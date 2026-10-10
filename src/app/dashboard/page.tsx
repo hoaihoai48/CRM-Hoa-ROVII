@@ -269,7 +269,6 @@ function DashboardContent() {
           ))}
         </div>
       </div>
-    
   );
 }
 
