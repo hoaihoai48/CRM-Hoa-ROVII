@@ -2,8 +2,9 @@
 
 **Repository**: `hoaihoai48/CRM-Hoa-ROVII`  
 **Branch**: `main`  
-**Verified Code Base**: `1636f2358a0d0624acf760db45646c75e281d0c9` (với các bản vá sửa test và cú pháp/lint trên working tree)  
-**Verification Verdict**: **ALL 4 GATES PASSED (100%)**  
+**Last locally tested code base**: `1ebd11314ad0c85c3032248d44f57cd0b4bf7689` (the local test run included uncommitted fixes before that commit)  
+**Current HEAD**: pending re-verification after commits `b6b4d33`, `ada0e25`, and `8a86971`  
+**Current verification verdict**: **PENDING — do not treat historical PASS logs as verification of current HEAD**  
 **Audit Date**: 2026-10-10  
 **Execution Environment**: Local macOS terminal with OpenJDK 21 & Firebase Emulator Suite (`firebase-tools` v15.33.0, Node v22.16.0, Next.js 16.4.0)
 
@@ -11,9 +12,9 @@
 
 ## 1. Overall Verdict
 
-### **ALL 4 MANDATORY GATES PASSED (100%)**
+### **Historical result: all 4 gates passed on the previously tested working tree; current HEAD is not yet re-verified**
 
-Tất cả 4 cổng kiểm tra bắt buộc đã được thực thi trực tiếp trên môi trường và vượt qua 100% với exit code 0:
+Các log dưới đây ghi nhận kết quả chạy trên máy ở lần xác minh trước. Sau đó đã có ba commit sửa lỗi membership verification và nhãn thao tác sản phẩm; vì vậy không được dùng log lịch sử này để khẳng định bốn cổng hiện tại vẫn PASS. Cần chạy lại cả bốn lệnh trên HEAD mới nhất trước khi chốt.
 
 1. **`npm run test:emulator`**: **PASS** (Exit code 0). 100% of integration, invariant, and security checks pass:
    - Business cases A–K and hardened Case H (projection repair & aggregate self-healing).
