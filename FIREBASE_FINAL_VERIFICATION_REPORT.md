@@ -3,19 +3,21 @@
 **Repository**: `hoaihoai48/CRM-Hoa-ROVII`  
 **Branch**: `main`  
 **Baseline SHA**: `af3eb5688b4c72699bc7fa96f0e1d3ab75585e3e`  
-**Report status**: **PASS (HARDENED SERVER-TRUSTED AUTHORIZATION & DATA INTEGRITY)**  
+**Report status**: **HISTORICAL EVIDENCE ONLY — CURRENT HEAD NOT YET VERIFIED**  
 **Audit date**: 2026-10-09  
 **Execution Environment**: Local macOS terminal with OpenJDK 21 & Firebase Emulator Suite (`firebase-tools` v15.33.0)
 
-> SHA note: this report documents the verified test run of the hardened role-based authorization model, business cases A–K, and hardened Case H.
+> IMPORTANT: The execution logs below are historical evidence from an earlier checkout, not a verification of the current `main` HEAD. Subsequent commits changed settings authorization, route guards, list/form error handling, order validation, and emulator security assertions. Those changes have not been executed in this environment. Do not treat the historical PASS results below as a PASS for the current HEAD.
 
 ---
 
-## 1. Final Verdict
+## 1. Current Verdict
 
-### **PASS — FULLY VERIFIED (ACCESS HARDENED & DATA INTEGRITY ENFORCED)**
+### **NOT VERIFIED — CURRENT HEAD REQUIRES A FRESH TEST RUN**
 
-All 4 mandatory gates and security + business regression suites have executed successfully in the real local checkout with zero errors:
+The successful execution logs below refer to an earlier revision. The current repository includes newer changes that must be tested again before any overall PASS can be claimed. The previous test evidence remains below for historical traceability only.
+
+The following commands must be rerun against the current HEAD:
 
 1. **`npm run test:emulator`**: **PASS** (Exit code 0). 100% of integration, concurrency, and security tests pass:
    - Business cases A–K and hardened Case H (projection repair & aggregate self-healing).
@@ -26,7 +28,7 @@ All 4 mandatory gates and security + business regression suites have executed su
 
 ---
 
-## 2. Verification Gates & Actual Execution Evidence
+## 2. Historical Verification Gates (Earlier Revision; Not Evidence for Current HEAD)
 
 | Gate | Status | Command | Exit Code | Real Log / Evidence Summary |
 |---|:---:|---|:---:|---|
@@ -37,7 +39,7 @@ All 4 mandatory gates and security + business regression suites have executed su
 
 ---
 
-## 3. Real Execution Logs
+## 3. Historical Execution Logs (Earlier Revision)
 
 ### A. `npm run test:emulator` (Exit code: 0)
 
