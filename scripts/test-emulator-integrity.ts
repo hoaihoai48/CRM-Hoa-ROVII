@@ -3,7 +3,7 @@
  * Tests Cases A through J for Data Invariants & Optimistic Concurrency Control (OCC)
  */
 
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { db, auth } from '../src/lib/firebase/config';
 import { createCustomer, getCustomerById } from '../src/lib/services/customers';
@@ -469,10 +469,19 @@ async function runTestSuite() {
 
   // 3. User can read their own membership doc, but cannot read or list another user's membership doc
   console.log('  3. Testing membership profile read restrictions (self-read allowed, cross-user denied)...');
-  // Self read
-  const selfDoc = await getDoc(doc(db, 'users', unprovCred.user.uid));
-  // Note: unprovCred does not have a doc yet, but getDoc is permitted by rules for self
-  assert(!selfDoc.exists(), 'Self membership get request is permitted (doc does not exist yet)');
+  // Verify self-read against an existing provisioned membership document.
+  await signInWithEmailAndPassword(auth, testStaffEmail, testStaffPass);
+  const selfDoc = await getDoc(doc(db, 'users', staffUserUid));
+  assert(selfDoc.exists(), 'Active staff can read their own existing membership document');
+
+  let usersListBlocked = false;
+  try {
+    await getDocs(collection(db, 'users'));
+  } catch (err: unknown) {
+    usersListBlocked = true;
+    console.log(`     ✓ Listing users blocked: ${(err as Error).message}`);
+  }
+  assert(usersListBlocked, 'Client must not be able to list membership documents');
 
   let crossUserReadBlocked = false;
   try {
@@ -507,8 +516,17 @@ async function runTestSuite() {
 
   // 5. Role-based settings differentiation: staff read-only, admin can write
   console.log('  5. Testing role-based settings access (staff read-only, admin can write)...');
-  // Staff is currently signed in; read should succeed, write should fail
+  // Staff is currently signed in; read should succeed, write should fail.
   await signInWithEmailAndPassword(auth, testStaffEmail, testStaffPass);
+  let staffSettingsReadSucceeded = false;
+  try {
+    await getDoc(doc(db, 'settings', 'store'));
+    staffSettingsReadSucceeded = true;
+  } catch (err: unknown) {
+    console.log(`     ✗ Staff settings read failed: ${(err as Error).message}`);
+  }
+  assert(staffSettingsReadSucceeded, 'Staff user must be allowed to read settings');
+
   let staffSettingsWriteBlocked = false;
   try {
     await setDoc(doc(db, 'settings', 'store'), { storeName: 'Hacked Store' }, { merge: true });
