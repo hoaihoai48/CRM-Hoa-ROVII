@@ -6,6 +6,13 @@ import { subscribeToAuth, logoutUser } from '@/lib/firebase/authService';
 import { getCurrentUser } from '@/lib/services/settings';
 import { User as MembershipUser } from '@/types';
 
+interface MembershipState {
+  uid: string;
+  attempt: number;
+  user: MembershipUser | null;
+  error: string | null;
+}
+
 interface AuthContextType {
   user: FirebaseUser | null;
   loading: boolean;
@@ -18,75 +25,76 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null, loading: true, membership: null, membershipUserId: null,
-  membershipLoading: true, membershipError: null, retryMembership: () => {},
+  user: null,
+  loading: true,
+  membership: null,
+  membershipUserId: null,
+  membershipLoading: true,
+  membershipError: null,
+  retryMembership: () => {},
   logout: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [membership, setMembership] = useState<MembershipUser | null>(null);
-  const [membershipUserId, setMembershipUserId] = useState<string | null>(null);
-  const [membershipLoading, setMembershipLoading] = useState(true);
-  const [membershipError, setMembershipError] = useState<string | null>(null);
   const [membershipAttempt, setMembershipAttempt] = useState(0);
+  const [membershipState, setMembershipState] = useState<MembershipState | null>(null);
 
   useEffect(() => subscribeToAuth((currentUser) => {
     setUser(currentUser);
     setLoading(false);
-    if (!currentUser) {
-      setMembership(null);
-      setMembershipUserId(null);
-      setMembershipLoading(false);
-      setMembershipError(null);
-    }
   }), []);
 
   const userId = user?.uid ?? null;
 
-  // Membership belongs to the auth session, not an individual route.
+  // Resolve membership once per authenticated UID; route changes reuse this state.
+  // Loading is derived from the UID/attempt key so no synchronous state reset is needed in this effect.
   useEffect(() => {
-    if (loading) return;
-    if (!userId) {
-      setMembership(null);
-      setMembershipUserId(null);
-      setMembershipLoading(false);
-      setMembershipError(null);
-      return;
-    }
+    if (loading || !userId) return;
 
     let cancelled = false;
-    setMembershipLoading(true);
-    setMembershipError(null);
-    setMembership(null);
-    setMembershipUserId(userId);
-
     getCurrentUser()
-      .then((result) => { if (!cancelled) setMembership(result); })
-      .catch((error: unknown) => {
+      .then((membership) => {
         if (!cancelled) {
-          setMembership(null);
-          setMembershipError(error instanceof Error ? error.message : 'Không thể xác minh quyền truy cập do lỗi kết nối.');
+          setMembershipState({ uid: userId, attempt: membershipAttempt, user: membership, error: null });
         }
       })
-      .finally(() => { if (!cancelled) setMembershipLoading(false); });
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setMembershipState({
+            uid: userId,
+            attempt: membershipAttempt,
+            user: null,
+            error: error instanceof Error ? error.message : 'Không thể xác minh quyền truy cập do lỗi kết nối.',
+          });
+        }
+      });
 
     return () => { cancelled = true; };
   }, [loading, userId, membershipAttempt]);
 
   const retryMembership = () => {
-    setMembershipLoading(true);
-    setMembershipError(null);
     setMembershipAttempt((attempt) => attempt + 1);
   };
 
   const logout = async () => { await logoutUser(); };
 
+  const stateMatchesCurrentAttempt = Boolean(
+    userId && membershipState?.uid === userId && membershipState.attempt === membershipAttempt
+  );
+  const membershipLoading = loading || Boolean(userId && !stateMatchesCurrentAttempt);
+
   return (
     <AuthContext.Provider value={{
-      user, loading, membership, membershipUserId, membershipLoading,
-      membershipError, retryMembership, logout,
+      user,
+      loading,
+      membership: stateMatchesCurrentAttempt ? membershipState?.user ?? null : null,
+      membershipUserId: stateMatchesCurrentAttempt ? membershipState?.uid ?? null : null,
+      membershipLoading,
+      membershipError: stateMatchesCurrentAttempt ? membershipState?.error ?? null : null,
+      retryMembership,
+      logout,
     }}>
       {children}
     </AuthContext.Provider>
