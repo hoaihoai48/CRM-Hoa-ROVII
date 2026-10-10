@@ -6,19 +6,42 @@ import { Sidebar } from './Sidebar';
 import { MobileHeader } from './MobileHeader';
 import { MobileBottomNav } from './MobileBottomNav';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { getCurrentUser } from '@/lib/services/settings';
+import { User as MembershipUser } from '@/types';
 
 interface AppShellProps {
   children: React.ReactNode;
 }
 
 export function AppShell({ children }: AppShellProps) {
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
   const router = useRouter();
+  const [membership, setMembership] = React.useState<MembershipUser | null>(null);
+  const [membershipLoading, setMembershipLoading] = React.useState(true);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading) return;
+    if (!user) {
+      setMembership(null);
+      setMembershipLoading(false);
       router.replace('/login');
+      return;
     }
+
+    let cancelled = false;
+    setMembershipLoading(true);
+    getCurrentUser()
+      .then((currentMembership) => {
+        if (!cancelled) setMembership(currentMembership);
+      })
+      .catch(() => {
+        if (!cancelled) setMembership(null);
+      })
+      .finally(() => {
+        if (!cancelled) setMembershipLoading(false);
+      });
+
+    return () => { cancelled = true; };
   }, [user, loading, router]);
 
   if (loading) {
@@ -34,6 +57,29 @@ export function AppShell({ children }: AppShellProps) {
 
   if (!user) {
     return null;
+  }
+
+  if (membershipLoading) {
+    return (
+      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-3 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-xs text-stone-500 font-medium">Đang xác minh tài khoản nhân viên...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!membership || membership.status !== 'active' || !['admin', 'staff'].includes(membership.role)) {
+    return (
+      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center p-6">
+        <div className="max-w-md rounded-2xl border border-stone-200 bg-white p-6 text-center shadow-sm">
+          <h1 className="text-lg font-bold text-stone-900">Tài khoản chưa được cấp quyền</h1>
+          <p className="mt-2 text-sm text-stone-600">Tài khoản đã đăng nhập nhưng chưa có hồ sơ nhân viên hợp lệ hoặc đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.</p>
+          <button type="button" onClick={() => logout().then(() => router.replace('/login'))} className="mt-5 rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Đăng xuất</button>
+        </div>
+      </div>
+    );
   }
 
   return (
