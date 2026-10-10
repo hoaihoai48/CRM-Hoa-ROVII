@@ -1,0 +1,21 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isImageFile() {
+      return request.resource.contentType.matches('image/.*')
+        && request.resource.size < 10 * 1024 * 1024;
+    }
+
+    // Public read for product images so customers & web views can render them
+    // Writes restricted to authenticated staff/admins
+    match /products/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isImageFile();
+      allow delete: if isAuthenticated();
+    }
+  }
+}

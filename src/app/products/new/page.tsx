@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 import { 
   Flower2, 
   Check, 
-  Eye, 
-  Image as ImageIcon 
+  Eye 
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/common/Cards';
@@ -14,6 +13,7 @@ import { Input, Textarea } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { formatVND } from '@/lib/utils/format';
 import { createProduct } from '@/lib/services';
+import { ImageUploader } from '@/components/common/ImageUploader';
 
 export default function NewProductPage() {
   const router = useRouter();
@@ -22,6 +22,7 @@ export default function NewProductPage() {
   const [price, setPrice] = useState<number | ''>(250000);
   const [unit, setUnit] = useState('bó');
   const [category, setCategory] = useState('Hoa bó');
+  const [imageUrl, setImageUrl] = useState('');
   const [note, setNote] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -36,6 +37,7 @@ export default function NewProductPage() {
       price: Number(price) || 0,
       unit,
       category,
+      imageUrl: imageUrl.trim() || undefined,
       note,
       isActive,
     }).then(() => router.push('/products')).catch((error) => {
@@ -115,19 +117,12 @@ export default function NewProductPage() {
               </select>
             </div>
 
-            {/* Image Placeholder Upload Section */}
-            <div>
-              <label className="block text-xs font-semibold text-stone-700 mb-1.5">
-                Hình ảnh sản phẩm (Placeholder UI)
-              </label>
-              <div className="border-2 border-dashed border-stone-200 rounded-xl p-6 text-center hover:border-rose-300 transition-colors bg-stone-50/50">
-                <ImageIcon className="w-8 h-8 text-stone-400 mx-auto mb-2" />
-                <p className="text-xs font-semibold text-stone-700">Tải ảnh mẫu hoa lên</p>
-                <p className="text-[11px] text-stone-400 mt-1">
-                  (Phase 1 dùng gradient placeholder • Firebase Storage sẽ kết nối ở Phase 2)
-                </p>
-              </div>
-            </div>
+            <ImageUploader
+              currentImageUrl={imageUrl}
+              onImageUploaded={(url) => setImageUrl(url)}
+              onImageRemoved={() => setImageUrl('')}
+              disabled={isLoading}
+            />
 
             <Textarea
               label="Mô tả / Lưu ý cắm hoa"
@@ -186,8 +181,11 @@ export default function NewProductPage() {
             </h3>
 
             <div className="rounded-xl border border-stone-200 overflow-hidden shadow-xs">
-              <div className="h-32 bg-gradient-to-tr from-rose-200 via-pink-100 to-amber-100 flex items-center justify-center relative">
-                <Flower2 className="w-10 h-10 text-rose-400" />
+              <div
+                className="h-32 bg-gradient-to-tr from-rose-200 via-pink-100 to-amber-100 flex items-center justify-center relative bg-cover bg-center"
+                style={imageUrl ? { backgroundImage: `url(${imageUrl})` } : undefined}
+              >
+                {!imageUrl && <Flower2 className="w-10 h-10 text-rose-400" />}
                 <span
                   className={`absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${
                     isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-600'
@@ -195,7 +193,7 @@ export default function NewProductPage() {
                 >
                   {isActive ? 'Đang bán' : 'Ngừng bán'}
                 </span>
-                <span className="absolute bottom-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded bg-black/40 text-white">
+                <span className="absolute bottom-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded bg-black/40 text-white backdrop-blur-xs">
                   {category}
                 </span>
               </div>

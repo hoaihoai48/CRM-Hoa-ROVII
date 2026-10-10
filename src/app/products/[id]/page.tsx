@@ -6,8 +6,7 @@ import {
   Flower2, 
   Check, 
   Eye, 
-  Trash2, 
-  Image as ImageIcon 
+  Trash2 
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/common/Cards';
@@ -16,6 +15,7 @@ import { Button } from '@/components/common/Button';
 import { getProductById, updateProduct } from '@/lib/services';
 import { Product } from '@/types';
 import { formatVND } from '@/lib/utils/format';
+import { ImageUploader } from '@/components/common/ImageUploader';
 
 interface ProductFormProps {
   product: Product;
@@ -29,6 +29,7 @@ function ProductEditForm({ product, productId }: ProductFormProps) {
   const [price, setPrice] = useState<number | ''>(product.price);
   const [unit, setUnit] = useState(product.unit);
   const [category, setCategory] = useState(product.category || 'Hoa bó');
+  const [imageUrl, setImageUrl] = useState(product.imageUrl || '');
   const [note, setNote] = useState(product.note || '');
   const [isActive, setIsActive] = useState(product.isActive);
   const [isLoading, setIsLoading] = useState(false);
@@ -43,6 +44,7 @@ function ProductEditForm({ product, productId }: ProductFormProps) {
       price: Number(price) || 0, 
       unit, 
       category, 
+      imageUrl: imageUrl.trim() || undefined,
       note, 
       isActive 
     })
@@ -137,19 +139,12 @@ function ProductEditForm({ product, productId }: ProductFormProps) {
               </select>
             </div>
 
-            {/* Image Placeholder */}
-            <div>
-              <label className="block text-xs font-semibold text-stone-700 mb-1.5">
-                Hình ảnh sản phẩm (Placeholder UI)
-              </label>
-              <div className="border-2 border-dashed border-stone-200 rounded-xl p-6 text-center hover:border-rose-300 transition-colors bg-stone-50/50">
-                <ImageIcon className="w-8 h-8 text-stone-400 mx-auto mb-2" />
-                <p className="text-xs font-semibold text-stone-700">Thay đổi hình ảnh</p>
-                <p className="text-[11px] text-stone-400 mt-1">
-                  (Phase 1 dùng gradient placeholder • Firebase Storage sẽ kết nối ở Phase 2)
-                </p>
-              </div>
-            </div>
+            <ImageUploader
+              currentImageUrl={imageUrl}
+              onImageUploaded={(url) => setImageUrl(url)}
+              onImageRemoved={() => setImageUrl('')}
+              disabled={isLoading}
+            />
 
             <Textarea
               label="Mô tả / Lưu ý cắm hoa"
@@ -207,8 +202,11 @@ function ProductEditForm({ product, productId }: ProductFormProps) {
             </h3>
 
             <div className="rounded-xl border border-stone-200 overflow-hidden shadow-xs">
-              <div className="h-32 bg-gradient-to-tr from-rose-200 via-pink-100 to-amber-100 flex items-center justify-center relative">
-                <Flower2 className="w-10 h-10 text-rose-400" />
+              <div
+                className="h-32 bg-gradient-to-tr from-rose-200 via-pink-100 to-amber-100 flex items-center justify-center relative bg-cover bg-center"
+                style={imageUrl ? { backgroundImage: `url(${imageUrl})` } : undefined}
+              >
+                {!imageUrl && <Flower2 className="w-10 h-10 text-rose-400" />}
                 <span
                   className={`absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${
                     isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-600'
@@ -216,7 +214,7 @@ function ProductEditForm({ product, productId }: ProductFormProps) {
                 >
                   {isActive ? 'Đang bán' : 'Ngừng bán'}
                 </span>
-                <span className="absolute bottom-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded bg-black/40 text-white">
+                <span className="absolute bottom-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded bg-black/40 text-white backdrop-blur-xs">
                   {category}
                 </span>
               </div>
