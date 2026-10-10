@@ -483,6 +483,8 @@ async function runTestSuite() {
   }
   assert(usersListBlocked, 'Client must not be able to list membership documents');
 
+  // Verify that an authenticated user cannot read another user's membership doc
+  await signInWithEmailAndPassword(auth, unprovisionedEmail, 'Password123!');
   let crossUserReadBlocked = false;
   try {
     const crossDoc = await getDoc(doc(db, 'users', staffUserUid));

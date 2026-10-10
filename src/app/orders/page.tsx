@@ -37,13 +37,37 @@ export default function OrdersPage() {
   const loadOrders = useCallback(() => {
     setIsLoading(true);
     setLoadError(null);
-    listOrders().then(setOrders).catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải danh sách đơn hàng.')).finally(() => setIsLoading(false));
+    listOrders()
+      .then(setOrders)
+      .catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải danh sách đơn hàng.'))
+      .finally(() => setIsLoading(false));
   }, []);
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
 
   useEffect(() => {
-    loadOrders();
-  }, [loadOrders]);
+    let ignore = false;
+    listOrders()
+      .then((data) => {
+        if (!ignore) {
+          setOrders(data);
+          setLoadError(null);
+        }
+      })
+      .catch((error) => {
+        if (!ignore) {
+          setLoadError(error instanceof Error ? error.message : 'Không thể tải danh sách đơn hàng.');
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
@@ -227,7 +251,7 @@ export default function OrdersPage() {
             ))}
           </div>
         </div>
-      )}
+      ) : null}
     </AppShell>
   );
 }

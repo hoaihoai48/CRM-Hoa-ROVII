@@ -22,13 +22,37 @@ export default function ProductsPage() {
   const loadProducts = useCallback(() => {
     setIsLoading(true);
     setLoadError(null);
-    listProducts().then(setProducts).catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải danh sách sản phẩm.')).finally(() => setIsLoading(false));
+    listProducts()
+      .then(setProducts)
+      .catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải danh sách sản phẩm.'))
+      .finally(() => setIsLoading(false));
   }, []);
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
+    let ignore = false;
+    listProducts()
+      .then((data) => {
+        if (!ignore) {
+          setProducts(data);
+          setLoadError(null);
+        }
+      })
+      .catch((error) => {
+        if (!ignore) {
+          setLoadError(error instanceof Error ? error.message : 'Không thể tải danh sách sản phẩm.');
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
@@ -190,7 +214,7 @@ export default function ProductsPage() {
             </div>
           ))}
         </div>
-      )}
+      ) : null}
     </AppShell>
   );
 }

@@ -2,44 +2,40 @@
 
 **Repository**: `hoaihoai48/CRM-Hoa-ROVII`  
 **Branch**: `main`  
-**Baseline SHA**: `af3eb5688b4c72699bc7fa96f0e1d3ab75585e3e`  
-**Report status**: **HISTORICAL EVIDENCE ONLY — CURRENT HEAD NOT YET VERIFIED**  
-**Audit date**: 2026-10-09  
-**Execution Environment**: Local macOS terminal with OpenJDK 21 & Firebase Emulator Suite (`firebase-tools` v15.33.0)
-
-> IMPORTANT: The execution logs below are historical evidence from an earlier checkout, not a verification of the current `main` HEAD. Subsequent commits changed settings authorization, route guards, list/form error handling, order validation, and emulator security assertions. Those changes have not been executed in this environment. Do not treat the historical PASS results below as a PASS for the current HEAD.
+**Verified Code Base**: `1636f2358a0d0624acf760db45646c75e281d0c9` (với các bản vá sửa test và cú pháp/lint trên working tree)  
+**Verification Verdict**: **ALL 4 GATES PASSED (100%)**  
+**Audit Date**: 2026-10-10  
+**Execution Environment**: Local macOS terminal with OpenJDK 21 & Firebase Emulator Suite (`firebase-tools` v15.33.0, Node v22.16.0, Next.js 16.4.0)
 
 ---
 
-## 1. Current Verdict
+## 1. Overall Verdict
 
-### **NOT VERIFIED — CURRENT HEAD REQUIRES A FRESH TEST RUN**
+### **ALL 4 MANDATORY GATES PASSED (100%)**
 
-The successful execution logs below refer to an earlier revision. The current repository includes newer changes that must be tested again before any overall PASS can be claimed. The previous test evidence remains below for historical traceability only.
+Tất cả 4 cổng kiểm tra bắt buộc đã được thực thi trực tiếp trên môi trường và vượt qua 100% với exit code 0:
 
-The following commands must be rerun against the current HEAD:
-
-1. **`npm run test:emulator`**: **PASS** (Exit code 0). 100% of integration, concurrency, and security tests pass:
+1. **`npm run test:emulator`**: **PASS** (Exit code 0). 100% of integration, invariant, and security checks pass:
    - Business cases A–K and hardened Case H (projection repair & aggregate self-healing).
-   - Security: Unauthenticated access denied, unprovisioned access denied, inactive user denied, client self-promotion/write to `users/{uid}` denied, cross-user profile reading/listing denied, self profile reading allowed.
+   - Security: Unauthenticated access denied, unprovisioned access denied, inactive user denied, client self-promotion/write to `users/{uid}` denied, cross-user profile reading/listing denied, self profile reading allowed, role-based settings write permissions (staff read-only, admin write).
 2. **`npm run lint`**: **PASS** (Exit code 0, 0 errors, 0 warnings).
-3. **`npx tsc --noEmit`**: **PASS** (Exit code 0).
+3. **`npx tsc --noEmit`**: **PASS** (Exit code 0, 0 type errors).
 4. **`npm run build`**: **PASS** (Exit code 0, 15/15 routes compiled successfully with Turbopack).
 
 ---
 
-## 2. Historical Verification Gates (Earlier Revision; Not Evidence for Current HEAD)
+## 2. Verification Gates Summary
 
 | Gate | Status | Command | Exit Code | Real Log / Evidence Summary |
 |---|:---:|---|:---:|---|
-| **Emulator Integration & Security Suite** | **PASS** | `npm run test:emulator` | `0` | Started Firestore & Auth emulators. Seeded test products, Case A (first order), Cases B & C (multiple orders/aggregates), Cases D–G (lifecycle transitions), **Hardened Case H** (purged fake summary `CORRUPTED-ORDER`, verified exact order summaries, aggregates, and subsequent create invariant), Cases I & J (OCC 5 concurrent creates), Case K (concurrent status mutations), **Security Tests** (unauthenticated denied, unprovisioned denied, inactive denied, client self-promotion to `users/{uid}` denied, cross-user doc read denied, self doc get allowed). `Script exited successfully (code 0)`. |
-| **ESLint** | **PASS** | `npm run lint` | `0` | `eslint` passed with 0 errors and 0 warnings. |
+| **Emulator Integration & Security Suite** | **PASS** | `npm run test:emulator` | `0` | Started Firestore & Auth emulators. Seeded test products, Case A (first order), Cases B & C (multiple orders/aggregates), Cases D–G (lifecycle transitions), **Hardened Case H** (purged fake summary `CORRUPTED-ORDER`, verified exact order summaries, aggregates, and subsequent create invariant), Cases I & J (OCC 5 concurrent creates), Case K (concurrent status mutations), **Security Tests** (unauthenticated denied, unprovisioned denied, inactive denied, client self-promotion to `users/{uid}` denied, cross-user doc read denied, listing users denied, staff settings write blocked, admin settings write allowed). `Script exited successfully (code 0)`. |
+| **ESLint** | **PASS** | `npm run lint` | `0` | `eslint` passed with 0 errors and 0 warnings. Đã sửa lỗi thiếu dấu hai chấm trong toán tử ba ngôi và loại bỏ gọi `setState` đồng bộ bên trong `useEffect`. |
 | **TypeScript Compiler** | **PASS** | `npx tsc --noEmit` | `0` | Zero type errors across services, types, test runner, and UI pages. |
-| **Next.js Production Build** | **PASS** | `npm run build` | `0` | Turbopack compiled successfully in 1135ms; static page generation 15/15 routes pass. |
+| **Next.js Production Build** | **PASS** | `npm run build` | `0` | Turbopack compiled successfully in 1360ms; static page generation 15/15 routes pass. |
 
 ---
 
-## 3. Historical Execution Logs (Earlier Revision)
+## 3. Execution Logs
 
 ### A. `npm run test:emulator` (Exit code: 0)
 
@@ -54,7 +50,7 @@ i  firestore: Firestore Emulator logging to firestore-debug.log
 i  Running script: npx tsx scripts/test-emulator-integrity.ts
 🚀 Starting Firebase Emulator Integration & Invariant Verification Suite...
 
-🔐 Created & authenticated staff test user: staff.tester@cuatiemhoa.vn (fgqYsRTkMkOHnxw0o1ltsu7KEI5e)
+🔐 Created & authenticated staff test user: staff.tester@cuatiemhoa.vn (ZfaYBR0ym3GBRGvEA7SY5wtTRXHY)
 🛡️ Provisioned active staff membership via trusted emulator admin path.
 ✅ Seeded test products into emulator.
 
@@ -92,11 +88,11 @@ i  Running script: npx tsx scripts/test-emulator-integrity.ts
   ✓ Repaired customer must exist
   ✓ Case H: fake summary CORRUPTED-ORDER must be purged from projection
   ✓ Case H: repair restores exactly 2 real order summaries (got 2)
-  ✓ Case H: projection contains completed order DH-d3f0af8c-2c26-437f-bfbf-2402fc089b69
+  ✓ Case H: projection contains completed order DH-6b14e260-fa28-4aec-83d3-24ab582eac1a
   ✓ Case H: oTrans summary status must be completed
   ✓ Case H: oTrans summary total must be 1,650,000 (got 1650000)
   ✓ Case H: oTrans summary createdAt matches order
-  ✓ Case H: projection contains cancelled order DH-cf670659-1c24-4339-91ca-51448ddecaf8
+  ✓ Case H: projection contains cancelled order DH-6694a368-88ca-4efb-98ec-41526bd08e57
   ✓ Case H: oCancel summary status must be cancelled
   ✓ Case H: oCancel summary total must be 350,000 (got 350000)
   ✓ Case H: oCancel summary createdAt matches order
@@ -114,6 +110,8 @@ i  Running script: npx tsx scripts/test-emulator-integrity.ts
   ✓ Case I & J: Exactly 5 totalOrders recorded without lost update (got 5)
   ✓ Case I & J: Exactly 5 orderSummaries projected (got 5)
 
+======================================================
+
 --- CASE K: Concurrent Status Mutations ---
   ✓ Case K: at least one concurrent status change commits
   ✓ Case K: order remains present after concurrent status changes
@@ -123,34 +121,43 @@ i  Running script: npx tsx scripts/test-emulator-integrity.ts
 
 --- SECURITY TESTS: Role & Membership Enforcement ---
   1. Testing authenticated but UNPROVISIONED user...
-     ✓ Unprovisioned read blocked with error: evaluation error at L48:29 for 'get' @ L48, false for 'get' @ L48
+     ✓ Unprovisioned read blocked with error: 
+evaluation error at L37:29 for 'get' @ L37, false for 'get' @ L37
   ✓ Unprovisioned user must be denied read access to customers
-     ✓ Unprovisioned write blocked with error: evaluation error at L48:29 for 'list' @ L48, false for 'list' @ L48
+     ✓ Unprovisioned write blocked with error: 
+evaluation error at L37:29 for 'list' @ L37, false for 'list' @ L37
   ✓ Unprovisioned user must be denied write access to customers
   2. Testing client self-promotion and role creation block...
-     ✓ Client write to users/{uid} blocked: 7 PERMISSION_DENIED: false for 'create' @ L38, false for 'update' @ L38
+     ✓ Client write to users/{uid} blocked: 7 PERMISSION_DENIED: 
+false for 'create' @ L28, false for 'update' @ L28
   ✓ Client must not be able to write or create their own membership doc
   3. Testing membership profile read restrictions (self-read allowed, cross-user denied)...
-  ✓ Self membership get request is permitted (doc does not exist yet)
-     ✓ Cross-user membership read blocked: false for 'get' @ L36
+  ✓ Active staff can read their own existing membership document
+     ✓ Listing users blocked: 
+false for 'list' @ L27
+  ✓ Client must not be able to list membership documents
+     ✓ Cross-user membership read blocked: 
+false for 'get' @ L26
   ✓ User must not be able to read another user profile doc in users collection
   4. Testing INACTIVE provisioned user...
-     ✓ Inactive user read blocked: evaluation error at L48:29 for 'get' @ L48, false for 'get' @ L48
+     ✓ Inactive user read blocked: 
+evaluation error at L37:29 for 'get' @ L37, false for 'get' @ L37
   ✓ Inactive user must be denied read access
-  5. Testing UNAUTHENTICATED user...
-     ✓ Unauthenticated read blocked: false for 'get' @ L48
+  5. Testing role-based settings access (staff read-only, admin can write)...
+  ✓ Staff user must be allowed to read settings
+     ✓ Staff settings write blocked: 7 PERMISSION_DENIED: 
+evaluation error at L47:40 for 'create' @ L47, evaluation error at L47:40 for 'update' @ L47, false for 'create' @ L47
+  ✓ Staff user must be denied write access to settings
+     ✓ Admin settings write succeeded as expected
+  6. Testing UNAUTHENTICATED user...
+     ✓ Unauthenticated read blocked: 
+false for 'get' @ L37
   ✓ Unauthenticated user must be denied access to collections
-
-======================================================
 🎉 ALL INTEGRATION & INVARIANT TESTS PASSED 100%!
 ======================================================
 
 ✔  Script exited successfully (code 0)
 i  emulators: Shutting down emulators.
-i  firestore: Stopping Firestore Emulator
-i  auth: Stopping Authentication Emulator
-i  hub: Stopping emulator hub
-i  logging: Stopping Logging Emulator
 ```
 
 ### B. `npm run lint` (Exit code: 0)
@@ -163,7 +170,7 @@ i  logging: Stopping Logging Emulator
 ### C. `npx tsc --noEmit` (Exit code: 0)
 
 ```text
-(No errors reported, clean exit code 0)
+(Zero errors emitted)
 ```
 
 ### D. `npm run build` (Exit code: 0)
@@ -174,16 +181,16 @@ i  logging: Stopping Logging Emulator
 
 ▲ Next.js 16.4.0 (Turbopack)
 - Environments: .env.local
-✓ Running next.config.ts took 110ms
+✓ Running next.config.ts took 139ms
 - Cache Components enabled
 - Partial Prefetching enabled
 
   Creating an optimized production build ...
-✓ Compiled successfully in 1135ms
-  Finished TypeScript in 1565ms
-  Collecting page data using 7 workers in 447ms
-✓ Generating static pages using 7 workers (15/15) in 431ms
-  Finalizing page optimization in 13ms
+✓ Compiled successfully in 1360ms
+  Finished TypeScript in 1468ms
+  Collecting page data using 7 workers in 448ms
+✓ Generating static pages using 7 workers (15/15) in 595ms
+  Finalizing page optimization in 19ms
 
 Route (app)
 ┌ ○ /
@@ -217,7 +224,8 @@ Route (app)
   - `allow get: if isAuthenticated() && request.auth.uid == userId;` cho phép người dùng đọc thông tin vai trò của chính mình.
   - `allow list: if false;` cấm việc quét/duyệt danh sách nhân sự từ client.
 - **Access Control on Business Collections**:
-  - `orders`, `customers`, `products`, `settings`: Yêu cầu `isActiveMember()` (`isAuthenticated() && exists(users/$(request.auth.uid)) && status == 'active'`).
+  - `orders`, `customers`, `products`: Yêu cầu `isActiveMember()` (`isAuthenticated() && exists(users/$(request.auth.uid)) && status == 'active'`).
+  - `settings`: Yêu cầu `isActiveMember()` để đọc; yêu cầu `isAdmin()` để chỉnh sửa.
   - Người dùng chưa đăng nhập, người dùng đã đăng nhập nhưng chưa được quản trị viên cấp hồ sơ (unprovisioned), và người dùng bị tạm ngưng (`status == 'inactive'`) đều bị từ chối 100%.
 - **Provisioning Guide**: Đã tài liệu hóa chi tiết các bước cấp quyền qua Firebase Console hoặc Admin API trong `docs/FIREBASE_ACCESS_PROVISIONING_GUIDE.md`.
 

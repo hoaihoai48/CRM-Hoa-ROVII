@@ -22,14 +22,11 @@ export function AppShell({ children }: AppShellProps) {
   useEffect(() => {
     if (loading) return;
     if (!user) {
-      setMembership(null);
-      setMembershipLoading(false);
       router.replace('/login');
       return;
     }
 
     let cancelled = false;
-    setMembershipLoading(true);
     getCurrentUser()
       .then((currentMembership) => {
         if (!cancelled) setMembership(currentMembership);

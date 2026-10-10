@@ -40,8 +40,29 @@ export default function CustomersPage() {
   }, []);
 
   useEffect(() => {
-    loadCustomers();
-  }, [loadCustomers]);
+    let ignore = false;
+    listCustomers()
+      .then((data) => {
+        if (!ignore) {
+          setCustomers(data);
+          setLoadError(null);
+        }
+      })
+      .catch((error) => {
+        if (!ignore) {
+          setLoadError(error instanceof Error ? error.message : 'Không thể tải danh sách khách hàng.');
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const filteredCustomers = useMemo(() => {
     if (!searchTerm.trim()) return customers;

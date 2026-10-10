@@ -56,8 +56,31 @@ export default function CreateOrderPage() {
   }, []);
 
   useEffect(() => {
-    loadFormData();
-  }, [loadFormData]);
+    let ignore = false;
+    Promise.all([listCustomers(), listActiveProducts(), getCurrentUser()])
+      .then(([loadedCustomers, loadedProducts, user]) => {
+        if (!ignore) {
+          setCustomers(loadedCustomers);
+          setProducts(loadedProducts);
+          setCurrentUser(user);
+          setLoadError(null);
+        }
+      })
+      .catch((error) => {
+        if (!ignore) {
+          setLoadError(error instanceof Error ? error.message : 'Không thể tải dữ liệu tạo đơn hàng.');
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setIsLoadingData(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   // Suggestion match based on phone
   const normalizedPhone = phoneSearch.replace(/\D/g, '');
