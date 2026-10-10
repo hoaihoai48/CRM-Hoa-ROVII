@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   UserCheck, 
@@ -42,7 +42,7 @@ export default function CreateOrderPage() {
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const loadFormData = () => {
+  const loadFormData = useCallback(() => {
     setIsLoadingData(true);
     setLoadError(null);
     Promise.all([listCustomers(), listActiveProducts(), getCurrentUser()])
@@ -53,11 +53,11 @@ export default function CreateOrderPage() {
       })
       .catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải dữ liệu tạo đơn hàng.'))
       .finally(() => setIsLoadingData(false));
-  };
+  }, []);
 
   useEffect(() => {
     loadFormData();
-  }, []);
+  }, [loadFormData]);
 
   // Suggestion match based on phone
   const normalizedPhone = phoneSearch.replace(/\D/g, '');
