@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { 
   Users, 
@@ -30,7 +30,7 @@ export default function CustomersPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  const loadCustomers = () => {
+  const loadCustomers = useCallback(() => {
     setIsLoading(true);
     setLoadError(null);
     listCustomers()
@@ -41,7 +41,7 @@ export default function CustomersPage() {
 
   useEffect(() => {
     loadCustomers();
-  }, []);
+  }, [loadCustomers]);
 
   const filteredCustomers = useMemo(() => {
     if (!searchTerm.trim()) return customers;
