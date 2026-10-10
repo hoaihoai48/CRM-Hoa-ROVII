@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { 
   PlusCircle, 
@@ -19,16 +19,16 @@ export default function ProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const loadProducts = () => {
+  const loadProducts = useCallback(() => {
     setIsLoading(true);
     setLoadError(null);
     listProducts().then(setProducts).catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải danh sách sản phẩm.')).finally(() => setIsLoading(false));
-  }
+  }, []);
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   useEffect(() => {
     loadProducts();
-  }, []);
+  }, [loadProducts]);
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
