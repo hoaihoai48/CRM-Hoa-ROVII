@@ -16,40 +16,32 @@ import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/common/Cards';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
-import { getCurrentUser, getStoreSettings, updateStoreSettings } from '@/lib/services';
+import { getStoreSettings, updateStoreSettings } from '@/lib/services';
 import { useAuth } from '@/components/auth/AuthProvider';
 
-export default function SettingsPage() {
+function SettingsPageContent() {
   const router = useRouter();
-  const { logout } = useAuth();
+  const { logout, membership: currentUser } = useAuth();
 
   const [storeName, setStoreName] = useState('');
   const [storePhone, setStorePhone] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
   const [zaloUrl, setZaloUrl] = useState('');
 
-  const [userName, setUserName] = useState('');
-  const [userEmail, setUserEmail] = useState('');
 
   const [isSaved, setIsSaved] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [currentUser, setCurrentUser] = useState<Awaited<ReturnType<typeof getCurrentUser>>>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const canEditSettings = currentUser?.role === 'admin' && currentUser.status === 'active';
 
   useEffect(() => {
-    Promise.all([getStoreSettings(), getCurrentUser()])
-      .then(([settings, user]) => {
+    getStoreSettings()
+      .then((settings) => {
         setStoreName(settings.storeName);
         setStorePhone(settings.phone);
         setStoreAddress(settings.address);
         setZaloUrl(settings.zaloUrl);
-        setCurrentUser(user);
-        if (user) {
-          setUserName(user.name);
-          setUserEmail(user.email);
-        }
       })
       .catch((error) => setErrorMessage(error instanceof Error ? error.message : 'Không thể tải cài đặt.'))
       .finally(() => setIsLoading(false));
@@ -75,7 +67,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <AppShell>
+    
       <PageHeader
         title="Cài đặt hệ thống"
         subtitle="Thông tin cửa hàng, tài khoản nhân viên và liên kết mạng xã hội"
@@ -158,14 +150,14 @@ export default function SettingsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Tên nhân viên"
-              value={userName}
+              value={currentUser?.name || ''}
               disabled
               hint="Tên tài khoản lấy từ Firebase Authentication; không thể thay đổi tại màn hình này"
             />
             <Input
               label="Email đăng nhập"
               type="email"
-              value={userEmail}
+              value={currentUser?.email || ''}
               disabled
               hint="Email không thể thay đổi tại màn hình này"
               leftIcon={<Mail className="w-4 h-4" />}
@@ -205,6 +197,15 @@ export default function SettingsPage() {
           </div>
         )}
       </form>
+    
+  );
+}
+
+
+export default function SettingsPage() {
+  return (
+    <AppShell>
+      <SettingsPageContent />
     </AppShell>
   );
 }

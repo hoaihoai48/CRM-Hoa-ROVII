@@ -13,11 +13,12 @@ import {
   MapPin
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { PageHeader } from '@/components/common/Cards';
 import { Input, Textarea } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
-import { createCustomer, createOrder, findCustomerByPhone, getCurrentUser, listActiveProducts, listCustomers } from '@/lib/services';
+import { createCustomer, createOrder, findCustomerByPhone, listActiveProducts, listCustomers } from '@/lib/services';
 import { Customer, Product } from '@/types';
 import { formatVND } from '@/lib/utils/format';
 
@@ -26,13 +27,13 @@ interface CartItem {
   quantity: number;
 }
 
-export default function CreateOrderPage() {
+function CreateOrderPageContent() {
   const router = useRouter();
+  const { membership: currentUser } = useAuth();
 
   // Step 1: Customer flow
   const [customers, setCustomers] = useState<Awaited<ReturnType<typeof listCustomers>>>([]);
   const [products, setProducts] = useState<Awaited<ReturnType<typeof listActiveProducts>>>([]);
-  const [currentUser, setCurrentUser] = useState<Awaited<ReturnType<typeof getCurrentUser>> | null>(null);
   const [phoneSearch, setPhoneSearch] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
@@ -45,42 +46,18 @@ export default function CreateOrderPage() {
   const loadFormData = useCallback(() => {
     setIsLoadingData(true);
     setLoadError(null);
-    Promise.all([listCustomers(), listActiveProducts(), getCurrentUser()])
-      .then(([loadedCustomers, loadedProducts, user]) => {
+    Promise.all([listCustomers(), listActiveProducts()])
+      .then(([loadedCustomers, loadedProducts]) => {
         setCustomers(loadedCustomers);
         setProducts(loadedProducts);
-        setCurrentUser(user);
       })
       .catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải dữ liệu tạo đơn hàng.'))
       .finally(() => setIsLoadingData(false));
   }, []);
 
   useEffect(() => {
-    let ignore = false;
-    Promise.all([listCustomers(), listActiveProducts(), getCurrentUser()])
-      .then(([loadedCustomers, loadedProducts, user]) => {
-        if (!ignore) {
-          setCustomers(loadedCustomers);
-          setProducts(loadedProducts);
-          setCurrentUser(user);
-          setLoadError(null);
-        }
-      })
-      .catch((error) => {
-        if (!ignore) {
-          setLoadError(error instanceof Error ? error.message : 'Không thể tải dữ liệu tạo đơn hàng.');
-        }
-      })
-      .finally(() => {
-        if (!ignore) {
-          setIsLoadingData(false);
-        }
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, []);
+    loadFormData();
+  }, [loadFormData]);
 
   // Suggestion match based on phone
   const normalizedPhone = phoneSearch.replace(/\D/g, '');
@@ -214,7 +191,7 @@ export default function CreateOrderPage() {
   };
 
   return (
-    <AppShell>
+    
       <PageHeader
         title="Tạo đơn hàng"
         subtitle="Nhập đơn nhanh từ cuộc gọi hoặc tin nhắn Zalo"
@@ -222,7 +199,7 @@ export default function CreateOrderPage() {
       />
 
       {loadError && <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"><p>Không thể tải dữ liệu tạo đơn hàng: {loadError}</p><button type="button" onClick={loadFormData} className="mt-2 underline font-semibold">Thử tải lại</button></div>}
-      {isLoadingData && <p role="status" className="mb-4 text-sm text-stone-500">Đang tải khách hàng, sản phẩm và tài khoản nhân viên...</p>}
+      {isLoadingData && <p role="status" className="mb-4 text-sm text-stone-500">Đang tải khách hàng và sản phẩm...</p>}
       <form onSubmit={handleSaveOrder} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pb-12">
         {/* Left Column: Customer and Products (8 cols) */}
         <div className="lg:col-span-8 space-y-6">
@@ -508,6 +485,15 @@ export default function CreateOrderPage() {
           </div>
         </div>
       </form>
+    
+  );
+}
+
+
+export default function CreateOrderPage() {
+  return (
+    <AppShell>
+      <CreateOrderPageContent />
     </AppShell>
   );
 }

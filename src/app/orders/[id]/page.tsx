@@ -10,11 +10,12 @@ import {
   Clock
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { PageHeader } from '@/components/common/Cards';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
 import { ZaloButton } from '@/components/common/ZaloButton';
-import { getCurrentUser, getOrderById, updateOrderStatus } from '@/lib/services';
+import { getOrderById, updateOrderStatus } from '@/lib/services';
 import { formatDate, formatVND } from '@/lib/utils/format';
 import { OrderStatus } from '@/types';
 import { getNextOrderStatuses, canTransitionOrderStatus } from '@/lib/utils/order-status';
@@ -22,9 +23,9 @@ import { getNextOrderStatuses, canTransitionOrderStatus } from '@/lib/utils/orde
 function OrderDetailContent() {
   const params = useParams();
   const orderId = params?.id as string;
+  const { membership: currentUser } = useAuth();
 
   const [initialOrder, setInitialOrder] = useState<Awaited<ReturnType<typeof getOrderById>> | null>(null);
-  const [currentUser, setCurrentUser] = useState<Awaited<ReturnType<typeof getCurrentUser>> | null>(null);
   const [currentStatus, setCurrentStatus] = useState<OrderStatus>('new');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -36,11 +37,10 @@ function OrderDetailContent() {
       return;
     }
 
-    Promise.all([getOrderById(orderId), getCurrentUser()])
-      .then(([order, user]) => {
+    getOrderById(orderId)
+      .then((order) => {
         if (ignore) return;
         setInitialOrder(order);
-        setCurrentUser(user);
         if (order) setCurrentStatus(order.status);
         if (!order) {
           setLoadError('Không tìm thấy đơn hàng.');
@@ -67,10 +67,10 @@ function OrderDetailContent() {
   const effectiveLoadError = !orderId ? 'Mã đơn hàng không hợp lệ.' : loadError;
 
   if (isLoading && orderId) {
-    return <AppShell><div className="p-8 text-center text-sm text-stone-500">Đang tải chi tiết đơn hàng...</div></AppShell>;
+    return <div className="p-8 text-center text-sm text-stone-500">Đang tải chi tiết đơn hàng...</div>;
   }
   if (effectiveLoadError || !initialOrder) {
-    return <AppShell><div className="p-8 text-center text-sm text-red-600">{effectiveLoadError || 'Không tìm thấy đơn hàng.'}</div></AppShell>;
+    return <div className="p-8 text-center text-sm text-red-600">{effectiveLoadError || 'Không tìm thấy đơn hàng.'}</div>;
   }
   const handleUpdateStatus = async (newStatus: OrderStatus) => {
     if (!canTransitionOrderStatus(currentStatus, newStatus)) return;
@@ -91,7 +91,7 @@ function OrderDetailContent() {
   };
 
   return (
-    <AppShell>
+    
       <PageHeader
         title={`Đơn hàng #${orderId}`}
         subtitle={`Tạo lúc ${formatDate(initialOrder.createdAt)} bởi ${initialOrder.createdBy}`}
@@ -290,14 +290,23 @@ function OrderDetailContent() {
           </div>
         </div>
       </div>
-    </AppShell>
+    
   );
 }
 
-export default function OrderDetailPage() {
+function OrderDetailPageContent() {
   return (
     <React.Suspense fallback={<div className="p-8 text-center text-sm text-stone-500">Đang tải chi tiết đơn hàng...</div>}>
       <OrderDetailContent />
     </React.Suspense>
+  );
+}
+
+
+export default function OrderDetailPage() {
+  return (
+    <AppShell>
+      <OrderDetailPageContent />
+    </AppShell>
   );
 }

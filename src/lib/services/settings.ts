@@ -43,75 +43,37 @@ export async function updateStoreSettings(changes: UpdateStoreSettingsInput): Pr
   return await getStoreSettings();
 }
 
-let cachedMembership: { uid: string; user: User | null; timestamp: number } | null = null;
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache
+let membershipRequest: { uid: string; promise: Promise<User | null> } | null = null;
 
-export function clearMembershipCache() {
-  cachedMembership = null;
-}
-
-export function getCachedMembership(uid?: string): User | null | undefined {
-  if (!cachedMembership) return undefined;
-  if (uid && cachedMembership.uid !== uid) return undefined;
-  if (Date.now() - cachedMembership.timestamp >= CACHE_TTL_MS) return undefined;
-  return cachedMembership.user;
-}
-
-/**
- * Returns the currently authenticated Firebase user mapped to domain User,
- * resolving provisioned role and membership status from Firestore users/{uid},
- * or null if unauthenticated. Never returns fake dummy identities.
- * Caches in memory to avoid repetitive full-page spinners on Next.js page transitions.
- */
-export async function getCurrentUser(forceRefresh = false): Promise<User | null> {
+/** Resolve CRM membership; concurrent requests for one UID share one Firestore read. */
+export function getCurrentUser(): Promise<User | null> {
   const current = auth.currentUser;
   if (!current) {
-    cachedMembership = null;
-    return null;
+    membershipRequest = null;
+    return Promise.resolve(null);
   }
+  if (membershipRequest?.uid === current.uid) return membershipRequest.promise;
 
-  const now = Date.now();
-  if (
-    !forceRefresh &&
-    cachedMembership &&
-    cachedMembership.uid === current.uid &&
-    now - cachedMembership.timestamp < CACHE_TTL_MS
-  ) {
-    return cachedMembership.user;
-  }
-
-  try {
-    const userDocRef = doc(db, 'users', current.uid);
-    const userDocSnap = await getDoc(userDocRef);
-    if (!userDocSnap.exists()) {
-      cachedMembership = { uid: current.uid, user: null, timestamp: now };
-      return null;
-    }
-
-    const data = userDocSnap.data();
-    if (
-      (data.role !== 'admin' && data.role !== 'staff') ||
-      (data.status !== 'active' && data.status !== 'inactive')
-    ) {
-      cachedMembership = { uid: current.uid, user: null, timestamp: now };
-      return null;
-    }
-
-    const domainUser: User = {
-      id: current.uid,
-      name: current.displayName || current.phoneNumber || current.email?.split('@')[0] || 'Nhân viên tiệm',
-      email: current.email || current.phoneNumber || '',
-      role: data.role,
-      status: data.status,
-      avatarUrl: current.photoURL || undefined,
-    };
-
-    cachedMembership = { uid: current.uid, user: domainUser, timestamp: now };
-    return domainUser;
-  } catch (error) {
-    // A missing membership document is handled above. Propagate read/network errors
-    // so the UI can distinguish verification failure from an unprovisioned account.
-    throw error;
-  }
+  const uid = current.uid;
+  let request: Promise<User | null>;
+  request = getDoc(doc(db, 'users', uid))
+    .then((snapshot) => {
+      if (!snapshot.exists()) return null;
+      const data = snapshot.data();
+      if ((data.role !== 'admin' && data.role !== 'staff') ||
+          (data.status !== 'active' && data.status !== 'inactive')) return null;
+      return {
+        id: uid,
+        name: current.displayName || current.phoneNumber || current.email?.split('@')[0] || 'Nhân viên tiệm',
+        email: current.email || current.phoneNumber || '',
+        role: data.role,
+        status: data.status,
+        avatarUrl: current.photoURL || undefined,
+      };
+    })
+    .finally(() => {
+      if (membershipRequest?.promise === request) membershipRequest = null;
+    });
+  membershipRequest = { uid, promise: request };
+  return request;
 }
-
