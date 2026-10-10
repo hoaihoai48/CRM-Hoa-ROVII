@@ -37,7 +37,7 @@ export default function CustomersPage() {
       .then(setCustomers)
       .catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải danh sách khách hàng.'))
       .finally(() => setIsLoading(false));
-  }
+  }, []);
 
   useEffect(() => {
     loadCustomers();
