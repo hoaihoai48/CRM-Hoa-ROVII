@@ -13,7 +13,7 @@ import { Input, Textarea } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { formatVND } from '@/lib/utils/format';
 import { createProduct } from '@/lib/services';
-import { ImageUploader } from '@/components/common/ImageUploader';
+import { MultiImageUploader } from '@/components/common/MultiImageUploader';
 
 function NewProductPageContent() {
   const router = useRouter();
@@ -22,7 +22,7 @@ function NewProductPageContent() {
   const [price, setPrice] = useState<number | ''>(250000);
   const [unit, setUnit] = useState('bó');
   const [category, setCategory] = useState('Hoa bó');
-  const [imageUrl, setImageUrl] = useState('');
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -37,7 +37,7 @@ function NewProductPageContent() {
       price: Number(price) || 0,
       unit,
       category,
-      imageUrl: imageUrl.trim() || undefined,
+      imageUrls,
       note,
       isActive,
     }).then(() => router.push('/products')).catch((error) => {
@@ -117,10 +117,9 @@ function NewProductPageContent() {
               </select>
             </div>
 
-            <ImageUploader
-              currentImageUrl={imageUrl}
-              onImageUploaded={(url) => setImageUrl(url)}
-              onImageRemoved={() => setImageUrl('')}
+            <MultiImageUploader
+              imageUrls={imageUrls}
+              onImagesChanged={setImageUrls}
               disabled={isLoading}
             />
 
@@ -183,9 +182,9 @@ function NewProductPageContent() {
             <div className="rounded-xl border border-stone-200 overflow-hidden shadow-xs">
               <div
                 className="h-32 bg-gradient-to-tr from-rose-200 via-pink-100 to-amber-100 flex items-center justify-center relative bg-cover bg-center"
-                style={imageUrl ? { backgroundImage: `url(${imageUrl})` } : undefined}
+                style={imageUrls[0] ? { backgroundImage: `url(${imageUrls[0]})` } : undefined}
               >
-                {!imageUrl && <Flower2 className="w-10 h-10 text-rose-400" />}
+                {!imageUrls[0] && <Flower2 className="w-10 h-10 text-rose-400" />}
                 <span
                   className={`absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${
                     isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-600'

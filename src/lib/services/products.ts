@@ -18,6 +18,17 @@ function assertValidPrice(price: unknown): asserts price is number {
   }
 }
 
+/** Max images per product: keeps Data-URL docs safely under the 1 MiB limit. */
+export const MAX_PRODUCT_IMAGES = 5;
+
+function normalizeImageUrls(value: unknown, fallbackCover?: string): string[] {
+  const list = Array.isArray(value)
+    ? value.map((v) => String(v).trim()).filter(Boolean)
+    : [];
+  if (list.length === 0 && fallbackCover) list.push(fallbackCover);
+  return list.slice(0, MAX_PRODUCT_IMAGES);
+}
+
 function mapDocToProduct(id: string, data: Record<string, unknown>): Product {
   // Do not mask corrupt data with silent 0: fall back only when non-finite.
   const rawPrice = Number(data.price);
@@ -29,6 +40,10 @@ function mapDocToProduct(id: string, data: Record<string, unknown>): Product {
     isActive: data.isActive !== false,
     category: data.category ? String(data.category).trim() : undefined,
     imageUrl: data.imageUrl ? String(data.imageUrl).trim() : undefined,
+    imageUrls: normalizeImageUrls(
+      data.imageUrls,
+      data.imageUrl ? String(data.imageUrl).trim() : undefined
+    ),
     note: data.note ? String(data.note).trim() : undefined,
     createdAt: normalizeIsoString(data.createdAt),
   };
@@ -62,6 +77,7 @@ export async function createProduct(input: CreateProductInput): Promise<Product>
 
   const productId = `PROD-${crypto.randomUUID()}`;
   const now = new Date().toISOString();
+  const cleanImageUrls = normalizeImageUrls(input.imageUrls, input.imageUrl?.trim() || undefined);
 
   const productData = {
     name: input.name.trim(),
@@ -69,7 +85,8 @@ export async function createProduct(input: CreateProductInput): Promise<Product>
     unit: input.unit.trim(),
     isActive: input.isActive ?? true,
     category: input.category?.trim() || null,
-    imageUrl: input.imageUrl?.trim() || null,
+    imageUrl: cleanImageUrls[0] || null,
+    imageUrls: cleanImageUrls,
     note: input.note?.trim() || null,
     createdAt: now,
   };
@@ -84,7 +101,8 @@ export async function createProduct(input: CreateProductInput): Promise<Product>
     unit: productData.unit,
     isActive: productData.isActive,
     category: input.category?.trim() || undefined,
-    imageUrl: input.imageUrl?.trim() || undefined,
+    imageUrl: cleanImageUrls[0] || undefined,
+    imageUrls: cleanImageUrls,
     note: input.note?.trim() || undefined,
     createdAt: now,
   };
@@ -105,7 +123,13 @@ export async function updateProduct(id: string, changes: Partial<Omit<Product, '
   if (changes.unit !== undefined) updateData.unit = changes.unit.trim();
   if (changes.isActive !== undefined) updateData.isActive = Boolean(changes.isActive);
   if (changes.category !== undefined) updateData.category = changes.category?.trim() || null;
-  if (changes.imageUrl !== undefined) updateData.imageUrl = changes.imageUrl?.trim() || null;
+  if (changes.imageUrls !== undefined) {
+    const clean = normalizeImageUrls(changes.imageUrls, changes.imageUrl?.trim() || undefined);
+    updateData.imageUrls = clean;
+    updateData.imageUrl = clean[0] || null;
+  } else if (changes.imageUrl !== undefined) {
+    updateData.imageUrl = changes.imageUrl?.trim() || null;
+  }
   if (changes.note !== undefined) updateData.note = changes.note?.trim() || null;
 
   await updateDoc(docRef, updateData);

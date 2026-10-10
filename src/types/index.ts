@@ -59,6 +59,8 @@ export interface Product {
   isActive: boolean;
   category?: string;
   imageUrl?: string;
+  /** Additional images (max 5 total). imageUrl stays as the cover for compatibility. */
+  imageUrls?: string[];
   note?: string;
   createdAt: string;
 }
@@ -148,6 +150,7 @@ export interface CreateProductInput {
   isActive?: boolean;
   category?: string;
   imageUrl?: string;
+  imageUrls?: string[];
   note?: string;
 }
 
