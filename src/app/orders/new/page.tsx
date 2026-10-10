@@ -39,13 +39,24 @@ export default function CreateOrderPage() {
   const [orderNote, setOrderNote] = useState('');
   const [deliveryDate, setDeliveryDate] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const loadFormData = () => {
+    setIsLoadingData(true);
+    setLoadError(null);
+    Promise.all([listCustomers(), listActiveProducts(), getCurrentUser()])
+      .then(([loadedCustomers, loadedProducts, user]) => {
+        setCustomers(loadedCustomers);
+        setProducts(loadedProducts);
+        setCurrentUser(user);
+      })
+      .catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải dữ liệu tạo đơn hàng.'))
+      .finally(() => setIsLoadingData(false));
+  };
 
   useEffect(() => {
-    Promise.all([listCustomers(), listActiveProducts(), getCurrentUser()]).then(([loadedCustomers, loadedProducts, user]) => {
-      setCustomers(loadedCustomers);
-      setProducts(loadedProducts);
-      setCurrentUser(user);
-    });
+    loadFormData();
   }, []);
 
   // Suggestion match based on phone
@@ -187,6 +198,8 @@ export default function CreateOrderPage() {
         backHref="/orders"
       />
 
+      {loadError && <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"><p>Không thể tải dữ liệu tạo đơn hàng: {loadError}</p><button type="button" onClick={loadFormData} className="mt-2 underline font-semibold">Thử tải lại</button></div>}
+      {isLoadingData && <p role="status" className="mb-4 text-sm text-stone-500">Đang tải khách hàng, sản phẩm và tài khoản nhân viên...</p>}
       <form onSubmit={handleSaveOrder} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pb-12">
         {/* Left Column: Customer and Products (8 cols) */}
         <div className="lg:col-span-8 space-y-6">
@@ -454,7 +467,7 @@ export default function CreateOrderPage() {
                 type="submit"
                 variant="primary"
                 size="lg"
-                disabled={cart.length === 0}
+                disabled={isLoadingData || !!loadError || !currentUser || cart.length === 0}
                 isLoading={isSubmitting}
                 className="w-full bg-emerald-600 hover:bg-emerald-700 font-bold text-sm shadow-md"
                 rightIcon={<Check className="w-4 h-4" />}
