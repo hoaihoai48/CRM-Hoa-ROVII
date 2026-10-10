@@ -9,12 +9,13 @@ import {
   where
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
-import { 
-  CreateOrderInput, 
-  Order, 
-  UpdateOrderStatusInput, 
-  OrderItem, 
-  OrderStatusHistory, 
+import {
+  CreateOrderInput,
+  Order,
+  UpdateOrderInput,
+  UpdateOrderStatusInput,
+  OrderItem,
+  OrderStatusHistory,
   Product,
   CustomerOrderSummary
 } from '@/types';
@@ -473,6 +474,175 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
       ...orderData,
       status: input.status,
       statusHistory: updatedHistory,
+    });
+  });
+}
+
+/**
+ * Edit an order that is still 'new' or 'confirmed'.
+ *
+ * Safety rules:
+ * - Orders in 'delivering', 'completed' or 'cancelled' are immutable (history/financial integrity).
+ * - Item unit prices are always re-read from the products collection; client totals are ignored,
+ *   so changing a product price never rewrites this order's recorded prices except through an explicit edit.
+ * - The customer's materialized aggregates are recomputed in the same transaction.
+ */
+export async function updateOrder(id: string, input: UpdateOrderInput): Promise<Order> {
+  if (!id) throw new Error('Mã đơn hàng không hợp lệ.');
+  if (!input.items || input.items.length === 0) {
+    throw new Error('Đơn hàng phải có ít nhất một sản phẩm.');
+  }
+  if (!input.customerName.trim() || !input.customerAddress.trim()) {
+    throw new Error('Tên người nhận và địa chỉ giao hoa là bắt buộc.');
+  }
+  if (!Number.isFinite(input.deliveryFee) || !Number.isFinite(input.discount) || input.deliveryFee < 0 || input.discount < 0) {
+    throw new Error('Phí giao hàng và giảm giá phải là số hợp lệ, không âm.');
+  }
+
+  const orderRef = doc(db, 'orders', id);
+  const productRefs = input.items.map((item) => {
+    if (!item.productId || !Number.isFinite(item.quantity) || !Number.isInteger(item.quantity) || item.quantity <= 0) {
+      throw new Error('Sản phẩm phải có mã hợp lệ và số lượng là số nguyên lớn hơn 0.');
+    }
+    return {
+      productId: item.productId,
+      quantity: item.quantity,
+      ref: doc(db, 'products', item.productId),
+    };
+  });
+
+  return await runTransaction(db, async (tx) => {
+    // 1. ALL READS FIRST
+    const orderSnap = await tx.get(orderRef);
+    if (!orderSnap.exists()) {
+      throw new Error(`Không tìm thấy đơn hàng: ${id}`);
+    }
+    const orderData = orderSnap.data();
+    const currentStatus = orderData.status as Order['status'];
+    if (currentStatus !== 'new' && currentStatus !== 'confirmed') {
+      throw new Error('Chỉ được sửa đơn hàng ở trạng thái Mới hoặc Đã xác nhận.');
+    }
+    const customerId = String(orderData.customerId || '');
+    if (!customerId) {
+      throw new Error(`Đơn hàng không có mã khách hàng: ${id}`);
+    }
+    const customerRef = doc(db, 'customers', customerId);
+
+    const productSnaps = await Promise.all(productRefs.map((p) => tx.get(p.ref)));
+    const customerSnap = await tx.get(customerRef);
+    if (!customerSnap.exists()) {
+      throw new Error(`Không tìm thấy khách hàng của đơn hàng: ${customerId}`);
+    }
+
+    // 2. VALIDATION & CALCULATION (server prices win)
+    const validatedItems: OrderItem[] = [];
+    for (let i = 0; i < productSnaps.length; i++) {
+      const snap = productSnaps[i];
+      const pReq = productRefs[i];
+      if (!snap.exists()) {
+        throw new Error(`Không tìm thấy sản phẩm trong cơ sở dữ liệu: ${pReq.productId}`);
+      }
+      const productData = snap.data() as Product;
+      if (!productData.isActive) {
+        throw new Error(`Sản phẩm đã ngừng kinh doanh: ${productData.name}`);
+      }
+      const unitPrice = Number(productData.price);
+      if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+        throw new Error(`Giá sản phẩm không hợp lệ: ${productData.name || pReq.productId}`);
+      }
+      const subtotal = unitPrice * pReq.quantity;
+      if (!Number.isFinite(subtotal)) {
+        throw new Error(`Tạm tính sản phẩm vượt miền giá trị hợp lệ: ${productData.name || pReq.productId}`);
+      }
+      validatedItems.push({
+        id: `${id}-ITEM-${i}`,
+        productId: pReq.productId,
+        productSnapshot: {
+          name: productData.name,
+          unit: productData.unit || 'bó',
+        },
+        quantity: pReq.quantity,
+        unitPrice,
+        subtotal,
+      });
+    }
+
+    const subtotal = validatedItems.reduce((sum, item) => sum + item.subtotal, 0);
+    if (input.discount > subtotal) {
+      throw new Error('Giảm giá không được lớn hơn tạm tính tiền hàng.');
+    }
+    const total = subtotal + input.deliveryFee - input.discount;
+    if (!Number.isFinite(subtotal) || !Number.isFinite(total) || total < 0) {
+      throw new Error('Tổng tiền đơn hàng không hợp lệ.');
+    }
+
+    const now = new Date().toISOString();
+    const existingHistory = Array.isArray(orderData.statusHistory) ? orderData.statusHistory : [];
+    const editEntry: OrderStatusHistory = {
+      id: `${id}-HIST-${crypto.randomUUID()}`,
+      status: currentStatus,
+      timestamp: now,
+      actorName: input.actorName || 'Nhân viên',
+      note: 'Chỉnh sửa thông tin đơn hàng',
+    };
+
+    // 3. RECOMPUTE CUSTOMER AGGREGATES (total of this order may have changed)
+    const custRaw = customerSnap.data() || {};
+    const existingSummaries: CustomerOrderSummary[] = Array.isArray(custRaw.orderSummaries)
+      ? custRaw.orderSummaries.map((s: Record<string, unknown>) => ({
+          id: String(s.id || ''),
+          status: (s.status as Order['status']) || 'new',
+          total: Number(s.total || 0),
+          createdAt: normalizeIsoString(s.createdAt),
+        }))
+      : [];
+    let orderFoundInSummaries = false;
+    const projectedSummaries = existingSummaries.map((s) => {
+      if (s.id === id) {
+        orderFoundInSummaries = true;
+        return { ...s, total };
+      }
+      return s;
+    });
+    if (!orderFoundInSummaries) {
+      projectedSummaries.push({ id, status: currentStatus, total, createdAt: normalizeIsoString(orderData.createdAt) });
+    }
+    const activeSummaries = projectedSummaries.filter((o) => o.status !== 'cancelled');
+    const completedSummaries = projectedSummaries.filter((o) => o.status === 'completed');
+    const sortedDates = activeSummaries.map((o) => o.createdAt).sort();
+
+    // 4. WRITES (Atomic)
+    tx.update(customerRef, {
+      totalOrders: activeSummaries.length,
+      totalSpent: completedSummaries.reduce((sum, o) => sum + o.total, 0),
+      lastOrderDate: sortedDates.at(-1) || '',
+      orderSummaries: projectedSummaries,
+    });
+    tx.update(orderRef, {
+      customerSnapshot: {
+        name: input.customerName.trim(),
+        phone: String((orderData.customerSnapshot as Record<string, unknown>)?.phone || ''),
+        address: input.customerAddress.trim(),
+      },
+      items: validatedItems,
+      summary: { subtotal, deliveryFee: input.deliveryFee, discount: input.discount, total },
+      note: input.note?.trim() || null,
+      deliveryDate: input.deliveryDate || null,
+      statusHistory: [...existingHistory, editEntry],
+    });
+
+    return mapDocToOrder(id, {
+      ...orderData,
+      customerSnapshot: {
+        name: input.customerName.trim(),
+        phone: String((orderData.customerSnapshot as Record<string, unknown>)?.phone || ''),
+        address: input.customerAddress.trim(),
+      },
+      items: validatedItems,
+      summary: { subtotal, deliveryFee: input.deliveryFee, discount: input.discount, total },
+      note: input.note?.trim() || null,
+      deliveryDate: input.deliveryDate || null,
+      statusHistory: [...existingHistory, editEntry],
     });
   });
 }

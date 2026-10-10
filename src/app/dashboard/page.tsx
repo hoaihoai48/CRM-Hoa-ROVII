@@ -20,15 +20,18 @@ import { StatusBadge } from '@/components/common/StatusBadge';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
 import { ZaloButton } from '@/components/common/ZaloButton';
 import { listOrders } from '@/lib/services';
+import { getStoreSettings } from '@/lib/services/settings';
 import { Order } from '@/types';
 import { formatDate } from '@/lib/utils/format';
 
 function DashboardContent() {
   const [orders, setOrders] = React.useState<Order[]>([]);
   const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [storeZaloUrl, setStoreZaloUrl] = React.useState('');
 
   React.useEffect(() => {
     listOrders().then(setOrders).catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải dữ liệu tổng quan.'));
+    getStoreSettings().then((settings) => setStoreZaloUrl(settings.zaloUrl)).catch(() => {});
   }, []);
 
   const now = new Date();
@@ -108,7 +111,7 @@ function DashboardContent() {
       <div className="bg-white dark:bg-[#1a1c22] rounded-xl border border-stone-200/80 dark:border-stone-800 p-4 mb-8 shadow-2xs">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">Thao tác nhanh</h2>
-          <ZaloButton size="sm" variant="subtle" />
+          <ZaloButton size="sm" variant="subtle" zaloUrl={storeZaloUrl || undefined} />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           <Link

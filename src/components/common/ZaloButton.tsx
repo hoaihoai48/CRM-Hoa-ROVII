@@ -1,6 +1,15 @@
 import React from 'react';
 import { MessageCircle } from 'lucide-react';
 
+/** Normalize VN phone to domestic 0-prefix so zalo.me links stay consistent. */
+export function normalizeZaloPhone(phone: string): string {
+  const digits = phone.replace(/[^0-9]/g, '');
+  if (digits.startsWith('84') && digits.length > 10) {
+    return `0${digits.slice(2)}`;
+  }
+  return digits;
+}
+
 interface ZaloButtonProps {
   phone?: string;
   zaloUrl?: string;
@@ -20,7 +29,7 @@ export function ZaloButton({
 }: ZaloButtonProps) {
   // Phase 2 will construct real deep link: https://zalo.me/${phone} or custom link
   // TODO_PHASE_2_FIREBASE: Link to actual Zalo app deep link
-  const href = phone ? `https://zalo.me/${phone.replace(/[^0-9]/g, '')}` : zaloUrl;
+  const href = phone ? `https://zalo.me/${normalizeZaloPhone(phone)}` : zaloUrl;
   const isConfigured = Boolean(href && href !== '#');
 
   const sizeClasses = {

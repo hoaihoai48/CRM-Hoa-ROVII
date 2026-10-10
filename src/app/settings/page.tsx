@@ -125,7 +125,7 @@ function SettingsPageContent() {
                 value={zaloUrl}
                 onChange={(e) => setZaloUrl(e.target.value)}
                 disabled={!canEditSettings || isLoading}
-                hint="Ví dụ: https://zalo.me/0909888999 (Placeholder)"
+                hint="Ví dụ: https://zalo.me/0909888999"
                 leftIcon={<MessageCircle className="w-4 h-4" />}
               />
             </div>

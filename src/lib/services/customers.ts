@@ -1,20 +1,27 @@
-import { 
-  collection, 
-  doc, 
-  getDocs, 
-  getDoc, 
-  query, 
-  where, 
-  limit, 
+import {
+  collection,
+  doc,
+  getDocs,
+  getDoc,
+  query,
+  where,
+  limit,
   orderBy,
-  runTransaction
+  runTransaction,
+  updateDoc
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
-import { Customer, CreateCustomerInput } from '@/types';
+import { Customer, CreateCustomerInput, UpdateCustomerInput } from '@/types';
 import { normalizeIsoString } from '@/lib/utils/timestamp';
 
 function normalizePhone(phone: string): string {
   return phone.replace(/\D/g, '');
+}
+
+/** VN mobile: 10 digits starting 03/05/07/08/09, or +84 equivalent. */
+export function isValidVNPhone(phone: string): boolean {
+  const digits = normalizePhone(phone);
+  return /^0[35789]\d{8}$/.test(digits) || /^84[35789]\d{8}$/.test(digits);
 }
 
 function mapDocToCustomer(id: string, data: Record<string, unknown>): Customer {
@@ -93,7 +100,7 @@ export async function findCustomerByPhone(phone: string): Promise<Customer | nul
 
 export async function createCustomer(input: CreateCustomerInput): Promise<Customer> {
   const phoneNormalized = normalizePhone(input.phone);
-  if (!phoneNormalized) throw new Error('Số điện thoại không hợp lệ.');
+  if (!isValidVNPhone(input.phone)) throw new Error('Số điện thoại không hợp lệ (10 số, đầu 03/05/07/08/09).');
   if (!input.name.trim()) throw new Error('Tên khách hàng là bắt buộc.');
   if (!input.address.trim()) throw new Error('Địa chỉ khách hàng là bắt buộc.');
 
@@ -147,4 +154,33 @@ export async function createCustomer(input: CreateCustomerInput): Promise<Custom
       createdAt: now,
     };
   });
+}
+
+/**
+ * Update editable customer profile fields (name, address, note).
+ * Phone is the identity key baked into the document ID and order snapshots,
+ * and totalOrders/totalSpent/lastOrderDate/orderSummaries are system-computed
+ * by order transactions — none of them can be changed through this function.
+ */
+export async function updateCustomer(id: string, input: UpdateCustomerInput): Promise<Customer> {
+  if (!id) throw new Error('Mã khách hàng không hợp lệ.');
+  const name = input.name.trim();
+  const address = input.address.trim();
+  if (!name) throw new Error('Tên khách hàng là bắt buộc.');
+  if (!address) throw new Error('Địa chỉ khách hàng là bắt buộc.');
+
+  const customerRef = doc(db, 'customers', id);
+  const existing = await getDoc(customerRef);
+  if (!existing.exists()) {
+    throw new Error(`Không tìm thấy khách hàng với ID: ${id}`);
+  }
+
+  await updateDoc(customerRef, {
+    name,
+    address,
+    note: input.note?.trim() ? input.note.trim() : null,
+  });
+
+  const updated = await getDoc(customerRef);
+  return mapDocToCustomer(updated.id, (updated.data() || {}) as Record<string, unknown>);
 }

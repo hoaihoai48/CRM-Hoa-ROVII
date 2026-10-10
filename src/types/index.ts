@@ -121,6 +121,13 @@ export interface CreateCustomerInput {
   note?: string;
 }
 
+/** Editable customer fields. Phone is the identity key (part of doc ID) and stats are system-computed — neither is editable here. */
+export interface UpdateCustomerInput {
+  name: string;
+  address: string;
+  note?: string;
+}
+
 export interface CreateOrderItemInput {
   productId: string;
   quantity: number;
@@ -141,6 +148,18 @@ export interface UpdateOrderStatusInput {
   status: OrderStatus;
   actorName: string;
   note?: string;
+}
+
+/** Editable order fields. Only orders with status 'new' or 'confirmed' may be edited. Item prices are always re-read from products; client totals are ignored. */
+export interface UpdateOrderInput {
+  items: CreateOrderItemInput[];
+  deliveryFee: number;
+  discount: number;
+  customerName: string;
+  customerAddress: string;
+  note?: string;
+  deliveryDate?: string;
+  actorName: string;
 }
 
 export interface CreateProductInput {

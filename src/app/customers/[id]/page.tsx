@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { 
@@ -15,7 +15,9 @@ import { PageHeader, StatCard } from '@/components/common/Cards';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
 import { ZaloButton } from '@/components/common/ZaloButton';
-import { getCustomerById, listOrdersByCustomer } from '@/lib/services';
+import { Input, Textarea } from '@/components/common/Input';
+import { Button } from '@/components/common/Button';
+import { getCustomerById, listOrdersByCustomer, updateCustomer } from '@/lib/services';
 import { formatDateShort } from '@/lib/utils/format';
 
 function CustomerDetailContent() {
@@ -25,16 +27,22 @@ function CustomerDetailContent() {
   const [customerOrders, setCustomerOrders] = useState<Awaited<ReturnType<typeof listOrdersByCustomer>>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editNote, setEditNote] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const ignoreRef = useRef(false);
 
-  useEffect(() => {
-    let ignore = false;
-    if (!customerId) {
-      return;
-    }
-
+  const loadData = () => {
+    if (!customerId) return;
+    setIsLoading(true);
+    setLoadError(null);
     Promise.all([getCustomerById(customerId), listOrdersByCustomer(customerId)])
       .then(([customer, orders]) => {
-        if (ignore) return;
+        if (ignoreRef.current) return;
         setInitialCustomer(customer);
         setCustomerOrders(orders);
         if (!customer) {
@@ -44,20 +52,73 @@ function CustomerDetailContent() {
         }
       })
       .catch((error) => {
-        if (!ignore) {
+        if (!ignoreRef.current) {
           setLoadError(error instanceof Error ? error.message : 'Không thể tải hồ sơ khách hàng.');
         }
       })
       .finally(() => {
-        if (!ignore) {
+        if (!ignoreRef.current) {
           setIsLoading(false);
         }
       });
+  };
 
+  useEffect(() => {
+    ignoreRef.current = false;
+    // External Firestore read — legitimate effect.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData();
     return () => {
-      ignore = true;
+      ignoreRef.current = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId]);
+
+  const startEditing = () => {
+    if (!initialCustomer) return;
+    setEditName(initialCustomer.name);
+    setEditAddress(initialCustomer.address);
+    setEditNote(initialCustomer.note || '');
+    setSaveError(null);
+    setSaveMessage(null);
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setSaveError(null);
+  };
+
+  const handleSaveCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!initialCustomer || isSaving) return;
+    setSaveError(null);
+    setSaveMessage(null);
+    if (!editName.trim()) {
+      setSaveError('Tên khách hàng là bắt buộc.');
+      return;
+    }
+    if (!editAddress.trim()) {
+      setSaveError('Địa chỉ khách hàng là bắt buộc.');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const updated = await updateCustomer(initialCustomer.id, {
+        name: editName,
+        address: editAddress,
+        note: editNote,
+      });
+      setInitialCustomer(updated);
+      setIsEditing(false);
+      setSaveMessage('Đã lưu thông tin khách hàng.');
+    } catch (error) {
+      // Keep form data so nothing is lost on failure.
+      setSaveError(error instanceof Error ? error.message : 'Không thể lưu thông tin khách hàng.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const effectiveLoadError = !customerId ? 'Mã khách hàng không hợp lệ.' : loadError;
 
@@ -65,7 +126,23 @@ function CustomerDetailContent() {
     return <div className="p-8 text-center text-sm text-stone-500">Đang tải hồ sơ khách hàng...</div>;
   }
   if (effectiveLoadError || !initialCustomer) {
-    return <div className="p-8 text-center text-sm text-red-600">{effectiveLoadError || 'Không tìm thấy khách hàng.'}</div>;
+    return (
+      <div className="p-8 text-center">
+        <p className="text-sm text-red-600">{effectiveLoadError || 'Không tìm thấy khách hàng.'}</p>
+        <div className="mt-4 flex items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={loadData}
+            className="px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg cursor-pointer"
+          >
+            Thử tải lại
+          </button>
+          <Link href="/customers" className="px-4 py-2 text-xs font-semibold text-stone-600 hover:text-stone-900 border border-stone-200 rounded-lg">
+            Quay lại danh sách
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   const customer = initialCustomer;
@@ -82,6 +159,13 @@ function CustomerDetailContent() {
           </div>
         }
       />
+
+      {saveMessage && (
+        <div role="status" className="mb-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between">
+          <span>{saveMessage}</span>
+          <button type="button" onClick={() => setSaveMessage(null)} className="font-bold cursor-pointer">×</button>
+        </div>
+      )}
 
       {/* Overview Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
@@ -112,11 +196,66 @@ function CustomerDetailContent() {
         {/* Left Column (4 cols): Profile Card */}
         <div className="lg:col-span-4 space-y-6">
           <div className="bg-white rounded-xl border border-stone-200/80 p-4 sm:p-5 shadow-2xs">
-            <h3 className="text-sm font-bold text-stone-900 pb-3 mb-3 border-b border-stone-100 flex items-center gap-2">
-              <User className="w-4 h-4 text-rose-500" />
-              Thông tin liên hệ
-            </h3>
+            <div className="pb-3 mb-3 border-b border-stone-100 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                <User className="w-4 h-4 text-rose-500" />
+                Thông tin liên hệ
+              </h3>
+              {!isEditing && (
+                <button
+                  type="button"
+                  onClick={startEditing}
+                  className="text-xs font-semibold text-rose-600 hover:text-rose-700 cursor-pointer"
+                >
+                  Sửa thông tin
+                </button>
+              )}
+            </div>
 
+            {isEditing ? (
+              <form onSubmit={handleSaveCustomer} className="space-y-3">
+                <div>
+                  <span className="text-stone-400 block font-medium text-xs">Số điện thoại (định danh, không đổi được)</span>
+                  <span className="text-stone-900 font-mono text-sm font-semibold mt-0.5 block">
+                    {customer.phone}
+                  </span>
+                </div>
+                <Input
+                  label="Tên khách hàng"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  disabled={isSaving}
+                />
+                <Input
+                  label="Địa chỉ thường giao"
+                  required
+                  value={editAddress}
+                  onChange={(e) => setEditAddress(e.target.value)}
+                  disabled={isSaving}
+                />
+                <Textarea
+                  label="Ghi chú sở thích của khách"
+                  rows={2}
+                  value={editNote}
+                  onChange={(e) => setEditNote(e.target.value)}
+                  disabled={isSaving}
+                />
+                {saveError && (
+                  <div role="alert" className="p-2.5 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs">
+                    {saveError}
+                  </div>
+                )}
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <Button type="button" variant="outline" size="sm" onClick={cancelEditing} disabled={isSaving}>
+                    Hủy
+                  </Button>
+                  <Button type="submit" variant="primary" size="sm" isLoading={isSaving}>
+                    Lưu thay đổi
+                  </Button>
+                </div>
+              </form>
+            ) : (
             <div className="space-y-3 text-xs">
               <div>
                 <span className="text-stone-400 block font-medium">Số điện thoại</span>
@@ -141,10 +280,11 @@ function CustomerDetailContent() {
                 </div>
               )}
             </div>
+            )}
 
             <div className="mt-5 pt-4 border-t border-stone-100">
               <Link
-                href="/orders/new"
+                href={`/orders/new?customerId=${encodeURIComponent(customer.id)}`}
                 className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs transition-colors"
               >
                 <PlusCircle className="w-4 h-4" />

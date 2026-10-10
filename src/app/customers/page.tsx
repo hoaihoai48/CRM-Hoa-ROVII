@@ -142,6 +142,16 @@ function CustomersPageContent() {
           title="Chưa có khách hàng phù hợp"
           description="Không tìm thấy khách hàng với số điện thoại hoặc tên này."
           icon={Users}
+          action={
+            <button
+              type="button"
+              onClick={() => { setCreateError(null); setShowCreateForm(true); }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold cursor-pointer"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Thêm khách hàng</span>
+            </button>
+          }
         />
       ) : (
         <div className="bg-white rounded-xl border border-stone-200/80 shadow-2xs overflow-hidden">
@@ -190,6 +200,12 @@ function CustomersPageContent() {
                     <td className="py-3.5 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <ZaloButton phone={customer.phone} size="sm" variant="subtle" />
+                        <Link
+                          href={`/customers/${customer.id}`}
+                          className="px-2.5 py-1 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-md transition-colors"
+                        >
+                          Sửa
+                        </Link>
                         <Link
                           href={`/customers/${customer.id}`}
                           className="px-2.5 py-1 text-xs font-semibold text-stone-600 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 rounded-md transition-colors"

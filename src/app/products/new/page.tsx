@@ -30,17 +30,35 @@ function NewProductPageContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    if (isLoading) return;
     setErrorMessage(null);
+    if (!name.trim()) {
+      setErrorMessage('Tên mẫu hoa / sản phẩm là bắt buộc.');
+      return;
+    }
+    if (price === '' || !Number.isFinite(Number(price))) {
+      setErrorMessage('Giá bán phải là số hợp lệ.');
+      return;
+    }
+    if (Number(price) < 0) {
+      setErrorMessage('Giá bán không được âm.');
+      return;
+    }
+    if (!unit.trim()) {
+      setErrorMessage('Đơn vị tính là bắt buộc.');
+      return;
+    }
+    setIsLoading(true);
     createProduct({
-      name,
-      price: Number(price) || 0,
-      unit,
+      name: name.trim(),
+      price: Number(price),
+      unit: unit.trim(),
       category,
       imageUrls,
       note,
       isActive,
     }).then(() => router.push('/products')).catch((error) => {
+      // Form data is preserved so nothing is lost on failure.
       setErrorMessage(error instanceof Error ? error.message : 'Không thể tạo sản phẩm.');
     }).finally(() => setIsLoading(false));
   };

@@ -6,8 +6,8 @@
 import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { db, auth } from '../src/lib/firebase/config';
-import { createCustomer, getCustomerById } from '../src/lib/services/customers';
-import { createOrder, getOrderById, syncCustomerAggregates, updateOrderStatus } from '../src/lib/services/orders';
+import { createCustomer, getCustomerById, updateCustomer } from '../src/lib/services/customers';
+import { createOrder, getOrderById, syncCustomerAggregates, updateOrder, updateOrderStatus } from '../src/lib/services/orders';
 import { Product } from '../src/types';
 
 function assert(condition: boolean, message: string) {
@@ -569,6 +569,105 @@ async function runTestSuite() {
     console.log(`     ✓ Unauthenticated read blocked: ${(err as Error).message}`);
   }
   assert(unauthReadBlocked, 'Unauthenticated user must be denied access to collections');
+
+  // ==========================================
+  // CASE K: Customer profile update (name/address/note only)
+  // ==========================================
+  console.log('\n--- CASE K: Customer Update Preserves Identity & Aggregates ---');
+  const custK = await createCustomer({
+    name: 'Phạm Thị K',
+    phone: '0900000004',
+    address: '4 Cách Mạng Tháng 8, Q3, TP.HCM',
+    note: 'Thích tone pastel',
+  });
+  const orderK = await createOrder({
+    customerId: custK.id,
+    customerSnapshot: { name: custK.name, phone: custK.phone, address: custK.address },
+    items: [{ productId: p1.id, quantity: 1 }],
+    deliveryFee: 0,
+    discount: 0,
+    createdBy: 'Tester',
+  });
+  const updatedK = await updateCustomer(custK.id, {
+    name: 'Phạm Thị K Updated',
+    address: '5 Cách Mạng Tháng 8, Q3, TP.HCM',
+    note: 'Thích tone đỏ',
+  });
+  assert(updatedK.name === 'Phạm Thị K Updated', 'Case K: customer name updated');
+  assert(updatedK.address === '5 Cách Mạng Tháng 8, Q3, TP.HCM', 'Case K: customer address updated');
+  assert(updatedK.note === 'Thích tone đỏ', 'Case K: customer note updated');
+  assert(updatedK.phone === custK.phone, 'Case K: phone (identity) unchanged');
+  assert(updatedK.totalOrders === 1, `Case K: totalOrders preserved (got ${updatedK.totalOrders})`);
+  assert((updatedK.orderSummaries?.length ?? 0) === 1, 'Case K: orderSummaries preserved');
+  assert(updatedK.orderSummaries![0].id === orderK.id, 'Case K: order history entry preserved');
+
+  let updateMissingBlocked = false;
+  try {
+    await updateCustomer('CUST_0000000000', { name: 'Ghost', address: 'Nowhere' });
+  } catch {
+    updateMissingBlocked = true;
+  }
+  assert(updateMissingBlocked, 'Case K: updating a non-existent customer must throw');
+
+  // ==========================================
+  // CASE L: Order edit (new/confirmed only, server prices win)
+  // ==========================================
+  console.log('\n--- CASE L: Order Edit With Aggregate Recomputation ---');
+  const custL = await createCustomer({
+    name: 'Hoàng Văn L',
+    phone: '0900000005',
+    address: '6 Điện Biên Phủ, Q.Bình Thạnh, TP.HCM',
+  });
+  const orderL = await createOrder({
+    customerId: custL.id,
+    customerSnapshot: { name: custL.name, phone: custL.phone, address: custL.address },
+    items: [{ productId: p1.id, quantity: 1 }], // 350,000
+    deliveryFee: 30000,
+    discount: 0, // Total = 380,000
+    createdBy: 'Tester',
+  });
+  assert(orderL.summary.total === 380000, `Case L: initial total 380,000 (got ${orderL.summary.total})`);
+
+  // Edit while 'new': change items + fees + delivery snapshot name/address.
+  const editedL = await updateOrder(orderL.id, {
+    items: [{ productId: p1.id, quantity: 2 }], // 700,000
+    deliveryFee: 30000,
+    discount: 50000, // Total = 680,000
+    customerName: 'Hoàng Văn L (người nhận: Lan)',
+    customerAddress: '7 Điện Biên Phủ, Q.Bình Thạnh, TP.HCM',
+    note: 'Giao giờ hành chính',
+    actorName: 'Tester',
+  });
+  assert(editedL.summary.total === 680000, `Case L: edited total 680,000 (got ${editedL.summary.total})`);
+  assert(editedL.summary.subtotal === 700000, `Case L: edited subtotal 700,000 (got ${editedL.summary.subtotal})`);
+  assert(editedL.customerSnapshot.phone === custL.phone, 'Case L: snapshot phone unchanged');
+  assert(editedL.status === 'new', 'Case L: edit does not change status');
+  const custLCheck = await getCustomerById(custL.id);
+  assert((custLCheck!.orderSummaries?.length ?? 0) === 1, 'Case L: still exactly 1 order summary');
+  assert(custLCheck!.orderSummaries![0].total === 680000, `Case L: summary total follows edit (got ${custLCheck!.orderSummaries![0].total})`);
+  assert(custLCheck!.totalOrders === 1, 'Case L: totalOrders unchanged by edit');
+
+  // Completed orders are immutable.
+  await updateOrderStatus(orderL.id, { status: 'confirmed', actorName: 'Tester' });
+  await updateOrderStatus(orderL.id, { status: 'delivering', actorName: 'Tester' });
+  await updateOrderStatus(orderL.id, { status: 'completed', actorName: 'Tester' });
+  let editCompletedBlocked = false;
+  try {
+    await updateOrder(orderL.id, {
+      items: [{ productId: p1.id, quantity: 9 }],
+      deliveryFee: 0,
+      discount: 0,
+      customerName: 'Hacker',
+      customerAddress: 'Hacker address',
+      actorName: 'Tester',
+    });
+  } catch (err: unknown) {
+    editCompletedBlocked = true;
+    console.log(`  ✓ Correctly rejected edit of completed order: ${(err as Error).message}`);
+  }
+  assert(editCompletedBlocked, 'Case L: completed orders must be immutable');
+  const custLFinal = await getCustomerById(custL.id);
+  assert(custLFinal!.totalSpent === 680000, `Case L: totalSpent follows edited total (got ${custLFinal!.totalSpent})`);
 
   // Restore staff session for clean shutdown
   await signInWithEmailAndPassword(auth, testStaffEmail, testStaffPass);

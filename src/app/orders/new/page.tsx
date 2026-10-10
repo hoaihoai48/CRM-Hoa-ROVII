@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   UserCheck, 
   UserPlus, 
@@ -19,7 +19,8 @@ import { PageHeader } from '@/components/common/Cards';
 import { Input, Textarea } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
-import { createCustomer, createOrder, findCustomerByPhone, listActiveProducts, listCustomers } from '@/lib/services';
+import { createCustomer, createOrder, findCustomerByPhone, getCustomerById, listActiveProducts, listCustomers } from '@/lib/services';
+import { isValidVNPhone } from '@/lib/services/customers';
 import { Customer, Product } from '@/types';
 import { formatVND } from '@/lib/utils/format';
 
@@ -30,6 +31,8 @@ interface CartItem {
 
 function CreateOrderPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const prefillCustomerId = searchParams.get('customerId');
   const { membership: currentUser } = useAuth();
 
   // Step 1: Customer flow
@@ -75,6 +78,25 @@ function CreateOrderPageContent() {
     setCustomerName(customer.name);
     setCustomerAddress(customer.address);
   };
+
+  // Prefill customer when navigated from a customer profile (?customerId=...).
+  useEffect(() => {
+    if (!prefillCustomerId || selectedCustomer) return;
+    let ignore = false;
+    getCustomerById(prefillCustomerId)
+      .then((customer) => {
+        if (ignore || !customer) return;
+        setSelectedCustomer(customer);
+        setPhoneSearch(customer.phone);
+        setCustomerName(customer.name);
+        setCustomerAddress(customer.address);
+      })
+      .catch(() => {});
+    return () => {
+      ignore = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillCustomerId]);
 
   const handleClearCustomer = () => {
     setSelectedCustomer(null);
@@ -132,8 +154,8 @@ function CreateOrderPageContent() {
     e.preventDefault();
     setFormError(null);
 
-    if (normalizedPhone.length < 8) {
-      setFormError('Vui lòng nhập số điện thoại hợp lệ.');
+    if (!isValidVNPhone(phoneSearch)) {
+      setFormError('Vui lòng nhập số điện thoại hợp lệ (10 số, đầu 03/05/07/08/09).');
       return;
     }
     if (!customerName.trim() || !customerAddress.trim()) {
@@ -502,7 +524,9 @@ function CreateOrderPageContent() {
 export default function CreateOrderPage() {
   return (
     <AppShell>
-      <CreateOrderPageContent />
+      <React.Suspense fallback={<div className="p-8 text-center text-sm text-stone-500">Đang tải form tạo đơn...</div>}>
+        <CreateOrderPageContent />
+      </React.Suspense>
     </AppShell>
   );
 }
