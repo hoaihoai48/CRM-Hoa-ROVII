@@ -244,7 +244,7 @@ export default function LoginPage() {
                     variant="outline"
                     size="lg"
                     className="flex-1"
-                    onClick={() => { setConfirmationResult(null); setVerificationCode(''); }}
+                    onClick={() => { setConfirmationResult(null); setVerificationCode(''); if (recaptchaVerifierRef.current) { recaptchaVerifierRef.current.clear(); recaptchaVerifierRef.current = null; } }}
                   >
                     Đổi số khác
                   </Button>

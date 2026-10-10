@@ -86,9 +86,12 @@ export async function uploadProductImage(
   const compressedDataUrl = await compressImageToDataUrl(file);
   if (onProgress) onProgress(60);
 
+  const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+  const rawExtension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+  const extension = allowedExtensions.includes(rawExtension) ? rawExtension : 'jpg';
+
   try {
     // Nếu có thể tải lên Firebase Storage (khi đã kích hoạt Bucket)
-    const extension = file.name.split('.').pop() || 'jpg';
     const cleanFileName = `${Date.now()}_${crypto.randomUUID()}.${extension}`;
     const storageRef = ref(storage, `products/${cleanFileName}`);
 

@@ -186,9 +186,20 @@ export async function listOrders(): Promise<Order[]> {
 export async function listOrdersByCustomer(customerId: string): Promise<Order[]> {
   if (!customerId) return [];
   const collRef = collection(db, 'orders');
-  const q = query(collRef, where('customerId', '==', customerId), orderBy('createdAt', 'desc'));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map((docSnap) => mapDocToOrder(docSnap.id, docSnap.data()));
+  let snapshot;
+  try {
+    const q = query(collRef, where('customerId', '==', customerId), orderBy('createdAt', 'desc'));
+    snapshot = await getDocs(q);
+  } catch (error: unknown) {
+    const errStr = String(error);
+    if (errStr.includes('requires an index') || errStr.includes('failed-precondition')) {
+      snapshot = await getDocs(query(collRef, where('customerId', '==', customerId)));
+    } else {
+      throw error;
+    }
+  }
+  const orders = snapshot.docs.map((docSnap) => mapDocToOrder(docSnap.id, docSnap.data()));
+  return orders.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export async function getOrderById(id: string): Promise<Order | null> {
@@ -366,21 +377,9 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
   if (!id) throw new Error('Mã đơn hàng không hợp lệ.');
   const orderRef = doc(db, 'orders', id);
 
-  // Read current order to identify customer
-  const currentOrderSnap = await getDoc(orderRef);
-  if (!currentOrderSnap.exists()) {
-    throw new Error(`Không tìm thấy đơn hàng: ${id}`);
-  }
-  const currentOrderRaw = currentOrderSnap.data();
-  const customerId = String(currentOrderRaw.customerId || '');
-  if (!customerId) {
-    throw new Error(`Đơn hàng không có mã khách hàng: ${id}`);
-  }
-
-  const customerRef = doc(db, 'customers', customerId);
-
   return await runTransaction(db, async (tx) => {
     // 1. ALL READS FIRST (Strict Firestore transaction rule)
+    // Read order inside the transaction so customerId is always consistent.
     const orderSnap = await tx.get(orderRef);
     if (!orderSnap.exists()) {
       throw new Error(`Không tìm thấy đơn hàng: ${id}`);
@@ -388,6 +387,11 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
 
     const orderData = orderSnap.data();
     const currentStatus = orderData.status as Order['status'];
+    const customerId = String(orderData.customerId || '');
+    if (!customerId) {
+      throw new Error(`Đơn hàng không có mã khách hàng: ${id}`);
+    }
+    const customerRef = doc(db, 'customers', customerId);
 
     if (!canTransitionOrderStatus(currentStatus, input.status)) {
       throw new Error(`Không thể chuyển trạng thái từ "${currentStatus}" sang "${input.status}".`);

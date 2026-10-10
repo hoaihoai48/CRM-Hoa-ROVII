@@ -12,11 +12,19 @@ import { db } from '@/lib/firebase/config';
 import { Product, CreateProductInput } from '@/types';
 import { normalizeIsoString } from '@/lib/utils/timestamp';
 
+function assertValidPrice(price: unknown): asserts price is number {
+  if (!Number.isFinite(price) || (price as number) < 0) {
+    throw new Error('Giá sản phẩm phải là số hợp lệ, không âm.');
+  }
+}
+
 function mapDocToProduct(id: string, data: Record<string, unknown>): Product {
+  // Do not mask corrupt data with silent 0: fall back only when non-finite.
+  const rawPrice = Number(data.price);
   return {
     id,
     name: String(data.name || '').trim(),
-    price: Number(data.price || 0),
+    price: Number.isFinite(rawPrice) ? rawPrice : 0,
     unit: String(data.unit || 'bó').trim(),
     isActive: data.isActive !== false,
     category: data.category ? String(data.category).trim() : undefined,
@@ -49,7 +57,7 @@ export async function listActiveProducts(): Promise<Product[]> {
 
 export async function createProduct(input: CreateProductInput): Promise<Product> {
   if (!input.name.trim()) throw new Error('Tên sản phẩm không được để trống.');
-  if (input.price < 0) throw new Error('Giá sản phẩm không được âm.');
+  assertValidPrice(input.price);
   if (!input.unit.trim()) throw new Error('Đơn vị tính không được để trống.');
 
   const productId = `PROD-${crypto.randomUUID()}`;
@@ -91,7 +99,7 @@ export async function updateProduct(id: string, changes: Partial<Omit<Product, '
   const updateData: Record<string, unknown> = {};
   if (changes.name !== undefined) updateData.name = changes.name.trim();
   if (changes.price !== undefined) {
-    if (changes.price < 0) throw new Error('Giá sản phẩm không được âm.');
+    assertValidPrice(changes.price);
     updateData.price = changes.price;
   }
   if (changes.unit !== undefined) updateData.unit = changes.unit.trim();

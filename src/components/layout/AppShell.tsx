@@ -6,7 +6,7 @@ import { Sidebar } from './Sidebar';
 import { MobileHeader } from './MobileHeader';
 import { MobileBottomNav } from './MobileBottomNav';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { getCurrentUser } from '@/lib/services/settings';
+import { getCurrentUser, getCachedMembership } from '@/lib/services/settings';
 import { User as MembershipUser } from '@/types';
 
 interface AppShellProps {
@@ -16,8 +16,11 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
-  const [membership, setMembership] = React.useState<MembershipUser | null>(null);
-  const [membershipLoading, setMembershipLoading] = React.useState(true);
+
+  // If we already have a cached membership for this user, start immediately without spinner
+  const initialCached = user ? getCachedMembership(user.uid) : undefined;
+  const [membership, setMembership] = React.useState<MembershipUser | null>(initialCached !== undefined ? initialCached : null);
+  const [membershipLoading, setMembershipLoading] = React.useState(initialCached === undefined);
   const [membershipError, setMembershipError] = React.useState<string | null>(null);
   const [membershipAttempt, setMembershipAttempt] = React.useState(0);
 
@@ -34,8 +37,13 @@ export function AppShell({ children }: AppShellProps) {
       return;
     }
 
+    // If cache is already primed for this user, and we're not explicitly retrying, keep cached state
+    if (initialCached !== undefined && membershipAttempt === 0) {
+      return;
+    }
+
     let cancelled = false;
-    getCurrentUser()
+    getCurrentUser(membershipAttempt > 0)
       .then((currentMembership) => {
         if (!cancelled) {
           setMembership(currentMembership);
@@ -53,7 +61,7 @@ export function AppShell({ children }: AppShellProps) {
       });
 
     return () => { cancelled = true; };
-  }, [user, loading, router, membershipAttempt]);
+  }, [user, loading, router, membershipAttempt, initialCached]);
 
   if (loading) {
     return (

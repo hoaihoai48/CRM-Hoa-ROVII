@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User as FirebaseUser } from 'firebase/auth';
 import { subscribeToAuth, logoutUser } from '@/lib/firebase/authService';
+import { clearMembershipCache } from '@/lib/services/settings';
 
 interface AuthContextType {
   user: FirebaseUser | null;
@@ -24,12 +25,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = subscribeToAuth((currentUser) => {
       setUser(currentUser);
       setLoading(false);
+      if (!currentUser) {
+        clearMembershipCache();
+      }
     });
 
     return () => unsubscribe();
   }, []);
 
   const logout = async () => {
+    clearMembershipCache();
     await logoutUser();
   };
 

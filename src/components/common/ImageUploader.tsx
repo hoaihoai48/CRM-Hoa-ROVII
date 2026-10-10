@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { UploadCloud, X, Loader2 } from 'lucide-react';
 import { uploadProductImage } from '@/lib/services';
 
@@ -22,6 +22,14 @@ export function ImageUploader({
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentImageUrl || null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Sync preview when parent passes a new URL (e.g. switching edited product).
+  useEffect(() => {
+    if (!isUploading) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPreviewUrl(currentImageUrl || null);
+    }
+  }, [currentImageUrl, isUploading]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 

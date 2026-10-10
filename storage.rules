@@ -5,17 +5,25 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    function isActiveStaff() {
+      return isAuthenticated()
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.status == 'active'
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'staff'];
+    }
+
     function isImageFile() {
-      return request.resource.contentType.matches('image/.*')
+      return request.resource.contentType.matches('image/(jpeg|png|webp|gif)')
+        && request.resource.name.matches('.*\\.(jpg|jpeg|png|webp|gif)$')
         && request.resource.size < 10 * 1024 * 1024;
     }
 
     // Public read for product images so customers & web views can render them
-    // Writes restricted to authenticated staff/admins
+    // Writes restricted to active staff/admins (consistent with Firestore policy)
     match /products/{allPaths=**} {
       allow read: if true;
-      allow write: if isAuthenticated() && isImageFile();
-      allow delete: if isAuthenticated();
+      allow write: if isActiveStaff() && isImageFile();
+      allow delete: if isActiveStaff();
     }
   }
 }
