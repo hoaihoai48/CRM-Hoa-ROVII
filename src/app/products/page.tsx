@@ -16,10 +16,18 @@ import { formatVND } from '@/lib/utils/format';
 export default function ProductsPage() {
   const [products, setProducts] = useState<Awaited<ReturnType<typeof listProducts>>>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const loadProducts = () => {
+    setIsLoading(true);
+    setLoadError(null);
+    listProducts().then(setProducts).catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải danh sách sản phẩm.')).finally(() => setIsLoading(false));
+  }
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   useEffect(() => {
-    listProducts().then(setProducts);
+    loadProducts();
   }, []);
 
   const filteredProducts = useMemo(() => {
@@ -46,6 +54,10 @@ export default function ProductsPage() {
           </Link>
         }
       />
+
+      {loadError ? (
+        <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800"><p>Không thể tải danh sách sản phẩm: {loadError}</p><button type="button" onClick={loadProducts} className="mt-3 underline font-semibold">Thử tải lại</button></div>
+      ) : isLoading ? <p role="status" className="py-8 text-center text-sm text-stone-500">Đang tải danh sách sản phẩm...</p> : null}
 
       {/* Filter and Search Bar */}
       <div className="bg-white rounded-xl border border-stone-200/80 p-3 sm:p-4 mb-6 shadow-2xs space-y-3">
@@ -95,7 +107,7 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {filteredProducts.length === 0 ? (
+      {!isLoading && !loadError && filteredProducts.length === 0 ? (
         <EmptyState
           title="Không tìm thấy mẫu hoa nào"
           description="Thử tìm với tên hoa khác hoặc thêm sản phẩm hoa mới."
@@ -110,7 +122,7 @@ export default function ProductsPage() {
             </Link>
           }
         />
-      ) : (
+      ) : !isLoading && !loadError ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredProducts.map((product) => (
             <div
