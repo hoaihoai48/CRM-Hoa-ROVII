@@ -1,29 +1,13 @@
-# Security Guidelines
+---
+trigger: model_decision
+description: Apply when changing authentication, authorization, customer/order data, Firebase access, or other security-sensitive CRM behavior.
+---
+# CRM Security Rules
 
-## Mandatory Security Checks
-
-Before ANY commit:
-- [ ] No hardcoded secrets (API keys, passwords, tokens)
-- [ ] All user inputs validated
-- [ ] SQL injection prevention (parameterized queries)
-- [ ] XSS prevention (sanitized HTML)
-- [ ] CSRF protection enabled
-- [ ] Authentication/authorization verified
-- [ ] Rate limiting on all endpoints
-- [ ] Error messages don't leak sensitive data
-
-## Secret Management
-
-- NEVER hardcode secrets in source code
-- ALWAYS use environment variables or a secret manager
-- Validate that required secrets are present at startup
-- Rotate any secrets that may have been exposed
-
-## Security Response Protocol
-
-If security issue found:
-1. STOP immediately
-2. Use **security-reviewer** agent
-3. Fix CRITICAL issues before continuing
-4. Rotate any exposed secrets
-5. Review entire codebase for similar issues
+- Never commit credentials, tokens, private keys, production exports, or real customer data.
+- Validate untrusted values at the relevant service boundary; do not trust client-supplied roles, totals, ownership, or status transitions.
+- For Firebase changes, review Firestore rules and service logic together. UI hiding is not authorization.
+- Keep authorization fail-closed, but distinguish denied/missing membership from transient read or network errors.
+- Check injection, unsafe HTML, unsafe redirects, sensitive error leakage, and abuse/rate-limit risks where the actual endpoint or flow warrants them. Do not add irrelevant SQL/CSRF/rate-limit boilerplate to unrelated changes.
+- For security-sensitive changes, use the security-reviewer agent and the Firebase rules audit skill when rules are in scope. Verify both allowed and denied cases with the emulator.
+- Fix confirmed critical/high-risk issues before claiming the work is complete. Report unresolved findings explicitly.

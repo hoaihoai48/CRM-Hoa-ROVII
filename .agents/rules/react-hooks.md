@@ -1,11 +1,7 @@
 ---
-paths:
-  - "**/*.tsx"
-  - "**/*.jsx"
-  - "**/hooks/**/*.ts"
-  - "**/hooks/**/*.js"
-  - "**/use-*.ts"
-  - "**/use-*.tsx"
+trigger: glob
+globs: "**/*.tsx, **/*.jsx, **/hooks/**/*.ts, **/hooks/**/*.js, **/use-*.ts, **/use-*.tsx"
+description: Apply React hooks correctness, dependency, cleanup, and race-condition guidance to React components and custom hooks.
 ---
 # React Hooks
 

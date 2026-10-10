@@ -1,13 +1,11 @@
 ---
-paths:
-  - "**/*.ts"
-  - "**/*.tsx"
-  - "**/*.js"
-  - "**/*.jsx"
+trigger: glob
+globs: "**/*.ts, **/*.tsx, **/*.js, **/*.jsx"
+description: Apply TypeScript/JavaScript type safety, async correctness, and maintainability conventions to source files.
 ---
 # TypeScript/JavaScript Coding Style
 
-> This file extends [common/coding-style.md](common-coding-style.md) with TypeScript/JavaScript specific content.
+> This file extends [common coding style](common-coding-style.md) with TypeScript/JavaScript specific content.
 
 ## Types and Interfaces
 

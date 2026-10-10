@@ -1,15 +1,11 @@
 ---
-paths:
-  - "**/*.test.tsx"
-  - "**/*.test.jsx"
-  - "**/*.spec.tsx"
-  - "**/*.spec.jsx"
-  - "**/__tests__/**/*.ts"
-  - "**/__tests__/**/*.tsx"
+trigger: glob
+globs: "**/*.test.tsx, **/*.test.jsx, **/*.spec.tsx, **/*.spec.jsx, **/__tests__/**/*.ts, **/__tests__/**/*.tsx"
+description: Apply behavior-focused React testing guidance when editing React component tests.
 ---
 # React Testing
 
-> This file extends [typescript/testing.md](typescript-testing.md) and [common/testing.md](common-testing.md) with React specific content.
+> This file extends [TypeScript testing](typescript-testing.md) and [common testing](common-testing.md) with React specific content.
 
 ## Library Choice
 

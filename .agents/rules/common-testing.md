@@ -1,57 +1,13 @@
-# Testing Requirements
+---
+trigger: model_decision
+description: Apply when implementing or fixing CRM features, data services, Firebase behavior, or UI interactions that need regression coverage.
+---
+# CRM Testing Rules
 
-## Minimum Test Coverage: 80%
-
-Test Types (ALL required):
-1. **Unit Tests** - Individual functions, utilities, components
-2. **Integration Tests** - API endpoints, database operations
-3. **E2E Tests** - Critical user flows (framework chosen per language)
-
-## Test-Driven Development
-
-MANDATORY workflow:
-1. Write test first (RED)
-2. Run test - it should FAIL
-3. Write minimal implementation (GREEN)
-4. Run test - it should PASS
-5. Refactor (IMPROVE)
-6. Verify coverage (80%+)
-
-## Troubleshooting Test Failures
-
-1. Use **tdd-guide** agent
-2. Check test isolation
-3. Verify mocks are correct
-4. Fix implementation, not tests (unless tests are wrong)
-
-## Agent Support
-
-- **tdd-guide** - Use PROACTIVELY for new features, enforces write-tests-first
-
-## Test Structure (AAA Pattern)
-
-Prefer Arrange-Act-Assert structure for tests:
-
-```typescript
-test('calculates similarity correctly', () => {
-  // Arrange
-  const vector1 = [1, 0, 0]
-  const vector2 = [0, 1, 0]
-
-  // Act
-  const similarity = calculateCosineSimilarity(vector1, vector2)
-
-  // Assert
-  expect(similarity).toBe(0)
-})
-```
-
-### Test Naming
-
-Use descriptive names that explain the behavior under test:
-
-```typescript
-test('returns empty array when no markets match query', () => {})
-test('throws error when API key is missing', () => {})
-test('falls back to substring search when Redis is unavailable', () => {})
-```
+- Choose tests based on changed behavior and risk; do not claim every change requires unit, integration, and E2E suites or a fixed coverage percentage.
+- For Firestore authorization or data-integrity changes, add emulator tests for permitted and denied operations whenever practical.
+- For UI/service changes, add a focused regression test for the bug or edge case when the repository's test setup supports it.
+- Use Arrange–Act–Assert and assert user-visible behavior or service contracts rather than implementation details.
+- Use the repository's actual scripts. The CRM release verification commands are `npm run test:emulator`, `npm run lint`, `npx tsc --noEmit`, and `npm run build`.
+- Never assume `npm test`, coverage tooling, Jest, Vitest, Playwright, or RTL is installed. Check `package.json` and existing test files first.
+- Report each gate as PASS, FAIL, or NOT RUN based on the command's actual exit code. Historical logs do not verify a newer commit.

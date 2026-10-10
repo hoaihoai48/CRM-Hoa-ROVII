@@ -1,44 +1,14 @@
-# Development Workflow
+---
+trigger: model_decision
+description: Apply before substantial CRM feature work, bug fixes, refactors, reviews, and commits.
+---
+# CRM Development Workflow
 
-> This file extends [common/git-workflow.md](common-git-workflow.md) with the full feature development process that happens before git operations.
-
-The Feature Implementation Workflow describes the development pipeline: research, planning, TDD, code review, and then committing to git.
-
-## Feature Implementation Workflow
-
-0. **Research & Reuse** _(mandatory before any new implementation)_
-   - **GitHub code search first:** Run `gh search repos` and `gh search code` to find existing implementations, templates, and patterns before writing anything new.
-   - **Library docs second:** Use Context7 or primary vendor docs to confirm API behavior, package usage, and version-specific details before implementing.
-   - **Exa only when the first two are insufficient:** Use Exa for broader web research or discovery after GitHub search and primary docs.
-   - **Check package registries:** Search npm, PyPI, crates.io, and other registries before writing utility code. Prefer battle-tested libraries over hand-rolled solutions.
-   - **Search for adaptable implementations:** Look for open-source projects that solve 80%+ of the problem and can be forked, ported, or wrapped.
-   - Prefer adopting or porting a proven approach over writing net-new code when it meets the requirement.
-
-1. **Plan First**
-   - Use **planner** agent to create implementation plan
-   - Generate planning docs before coding: PRD, architecture, system_design, tech_doc, task_list
-   - Identify dependencies and risks
-   - Break down into phases
-
-2. **TDD Approach**
-   - Use **tdd-guide** agent
-   - Write tests first (RED)
-   - Implement to pass tests (GREEN)
-   - Refactor (IMPROVE)
-   - Verify 80%+ coverage
-
-3. **Code Review**
-   - Use **code-reviewer** agent immediately after writing code
-   - Address CRITICAL and HIGH issues
-   - Fix MEDIUM issues when possible
-
-4. **Commit & Push**
-   - Detailed commit messages
-   - Follow conventional commits format
-   - See [git-workflow.md](common-git-workflow.md) for commit message format and PR process
-
-5. **Pre-Review Checks**
-   - Verify all automated checks (CI/CD) are passing
-   - Resolve any merge conflicts
-   - Ensure branch is up to date with target branch
-   - Only request review after these checks pass
+1. Inspect the current branch/HEAD, working-tree state, relevant routes, services, types, Firestore rules/indexes, and existing tests before editing.
+2. Identify the concrete defect, acceptance criteria, affected user journeys, and data/security risks. Avoid unrelated refactors.
+3. Check version-specific Next.js guidance under `node_modules/next/dist/docs/` when available; confirm package versions and scripts in `package.json`.
+4. Make the smallest complete change. Add regression/security coverage appropriate to the risk.
+5. Review the final diff for unintended edits, swallowed errors, stale state, race conditions, accessibility, and authorization gaps.
+6. Run relevant checks. For final CRM verification, run emulator tests, lint, TypeScript typecheck, and production build.
+7. Update reports only with evidence from the exact commit. Never reuse old logs as proof for new code or claim browser testing without exercising the flow.
+8. Summarize changed files, tests and their observed results, remaining risks, and commit SHA.

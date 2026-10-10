@@ -1,15 +1,11 @@
 ---
-paths:
-  - "**/*.tsx"
-  - "**/*.jsx"
-  - "**/components/**/*.ts"
-  - "**/components/**/*.js"
-  - "**/hooks/**/*.ts"
-  - "**/hooks/**/*.js"
+trigger: glob
+globs: "**/*.tsx, **/*.jsx, **/components/**/*.ts, **/components/**/*.js, **/hooks/**/*.ts, **/hooks/**/*.js"
+description: Apply React and Next.js App Router component conventions to TSX/JSX and React component or hook files.
 ---
 # React Coding Style
 
-> This file extends [typescript/coding-style.md](typescript-coding-style.md) and [common/coding-style.md](common-coding-style.md) with React specific content.
+> This file extends [TypeScript coding style](typescript-coding-style.md) and [common coding style](common-coding-style.md) with React specific content.
 
 ## File Extensions
 
