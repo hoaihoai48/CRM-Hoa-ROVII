@@ -68,7 +68,7 @@ function ProductEditForm({ product, productId }: ProductFormProps) {
               }
             }}
             className="p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-            title="Xóa sản phẩm"
+            title="Ngừng bán sản phẩm" aria-label="Ngừng bán sản phẩm"
           >
             <Trash2 className="w-4 h-4" />
           </button>
