@@ -211,8 +211,8 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
   if (!input.items || input.items.length === 0) {
     throw new Error('Đơn hàng phải có ít nhất một sản phẩm.');
   }
-  if (input.deliveryFee < 0 || input.discount < 0) {
-    throw new Error('Phí giao hàng và giảm giá không được âm.');
+  if (!Number.isFinite(input.deliveryFee) || !Number.isFinite(input.discount) || input.deliveryFee < 0 || input.discount < 0) {
+    throw new Error('Phí giao hàng và giảm giá phải là số hợp lệ, không âm.');
   }
 
   const customerRef = doc(db, 'customers', input.customerId);
@@ -221,8 +221,8 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
 
   // Setup product references
   const productRefs = input.items.map((item) => {
-    if (item.quantity <= 0) {
-      throw new Error('Số lượng sản phẩm phải lớn hơn 0.');
+    if (!item.productId || !Number.isFinite(item.quantity) || !Number.isInteger(item.quantity) || item.quantity <= 0) {
+      throw new Error('Sản phẩm phải có mã hợp lệ và số lượng là số nguyên lớn hơn 0.');
     }
     return {
       productId: item.productId,
@@ -255,8 +255,14 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
         throw new Error(`Sản phẩm đã ngừng kinh doanh: ${productData.name}`);
       }
 
-      const unitPrice = Number(productData.price || 0);
+      const unitPrice = Number(productData.price);
+      if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+        throw new Error(`Giá sản phẩm không hợp lệ: ${productData.name || pReq.productId}`);
+      }
       const subtotal = unitPrice * pReq.quantity;
+      if (!Number.isFinite(subtotal)) {
+        throw new Error(`Tạm tính sản phẩm vượt miền giá trị hợp lệ: ${productData.name || pReq.productId}`);
+      }
 
       validatedItems.push({
         id: `${orderId}-ITEM-${i}`,
@@ -277,6 +283,9 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
     }
 
     const total = subtotal + input.deliveryFee - input.discount;
+    if (!Number.isFinite(subtotal) || !Number.isFinite(total) || total < 0) {
+      throw new Error('Tổng tiền đơn hàng không hợp lệ.');
+    }
     const now = new Date().toISOString();
 
     const initialHistory: OrderStatusHistory = {
