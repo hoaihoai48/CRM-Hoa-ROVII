@@ -18,6 +18,8 @@ export function AppShell({ children }: AppShellProps) {
   const router = useRouter();
   const [membership, setMembership] = React.useState<MembershipUser | null>(null);
   const [membershipLoading, setMembershipLoading] = React.useState(true);
+  const [membershipError, setMembershipError] = React.useState<string | null>(null);
+  const [membershipAttempt, setMembershipAttempt] = React.useState(0);
 
   useEffect(() => {
     if (loading) return;
@@ -27,19 +29,24 @@ export function AppShell({ children }: AppShellProps) {
     }
 
     let cancelled = false;
+    setMembershipLoading(true);
+    setMembershipError(null);
     getCurrentUser()
       .then((currentMembership) => {
         if (!cancelled) setMembership(currentMembership);
       })
-      .catch(() => {
-        if (!cancelled) setMembership(null);
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setMembership(null);
+          setMembershipError(error instanceof Error ? error.message : 'Không thể xác minh quyền truy cập do lỗi kết nối.');
+        }
       })
       .finally(() => {
         if (!cancelled) setMembershipLoading(false);
       });
 
     return () => { cancelled = true; };
-  }, [user, loading, router]);
+  }, [user, loading, router, membershipAttempt]);
 
   if (loading) {
     return (
@@ -62,6 +69,22 @@ export function AppShell({ children }: AppShellProps) {
         <div className="text-center">
           <div className="w-8 h-8 border-3 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-xs text-stone-500 font-medium">Đang xác minh tài khoản nhân viên...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (membershipError) {
+    return (
+      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center p-6">
+        <div role="alert" className="max-w-md rounded-2xl border border-amber-200 bg-white p-6 text-center shadow-sm">
+          <h1 className="text-lg font-bold text-stone-900">Chưa xác minh được quyền truy cập</h1>
+          <p className="mt-2 text-sm text-stone-600">Không thể kiểm tra hồ sơ nhân viên do lỗi kết nối hoặc Firebase. Điều này chưa có nghĩa tài khoản bị từ chối quyền.</p>
+          <p className="mt-2 break-words text-xs text-stone-500">{membershipError}</p>
+          <div className="mt-5 flex justify-center gap-3">
+            <button type="button" onClick={() => setMembershipAttempt((attempt) => attempt + 1)} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">Thử lại</button>
+            <button type="button" onClick={() => logout().then(() => router.replace('/login'))} className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Đăng xuất</button>
+          </div>
         </div>
       </div>
     );
