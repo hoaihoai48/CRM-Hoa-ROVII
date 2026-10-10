@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
   Store, 
@@ -82,6 +83,15 @@ function SettingsPageContent() {
       {!isLoading && !errorMessage && !canEditSettings && (
         <div className="mb-6 p-3.5 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-xl">
           Tài khoản nhân viên chỉ được xem cài đặt. Chỉ quản trị viên đang hoạt động mới có quyền chỉnh sửa và lưu thông tin cửa hàng.
+        </div>
+      )}
+
+      {!isLoading && !errorMessage && canEditSettings && (
+        <div className="mb-6 p-3.5 bg-white border border-stone-200 text-xs rounded-xl flex items-center justify-between gap-3">
+          <span className="text-stone-600">Quản lý tài khoản đăng nhập và phân quyền nhân viên.</span>
+          <Link href="/staff" className="px-3 py-1.5 font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shrink-0">
+            Quản lý nhân viên →
+          </Link>
         </div>
       )}
 

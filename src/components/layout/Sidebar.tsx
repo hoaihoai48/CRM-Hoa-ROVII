@@ -26,7 +26,12 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { user: firebaseUser, logout } = useAuth();
+  const { user: firebaseUser, membership, logout } = useAuth();
+  const isAdmin = membership?.role === 'admin' && membership?.status === 'active';
+
+  const navItems = isAdmin
+    ? [...NAV_ITEMS, { href: '/staff', label: 'Nhân viên', icon: UserIcon }]
+    : NAV_ITEMS;
 
   const user = firebaseUser
     ? {
@@ -64,7 +69,7 @@ export function Sidebar() {
 
       {/* Navigation Links */}
       <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
           const Icon = item.icon;
 

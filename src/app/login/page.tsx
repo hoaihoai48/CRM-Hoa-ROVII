@@ -58,7 +58,7 @@ export default function LoginPage() {
           <div className="w-14 h-14 rounded-2xl bg-brand flex items-center justify-center text-white shadow-md mb-3">
             <Flower2 className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Tiệm Hoa CRM</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Tiệm Hoa ROVII</h1>
           <p className="text-sm text-text-muted mt-1">Đăng nhập tài khoản quản lý tiệm</p>
         </div>
 

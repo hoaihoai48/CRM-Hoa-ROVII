@@ -3,7 +3,7 @@
  * Tests Cases A through J for Data Invariants & Optimistic Concurrency Control (OCC)
  */
 
-import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { db, auth } from '../src/lib/firebase/config';
 import { createCustomer, getCustomerById, updateCustomer } from '../src/lib/services/customers';
@@ -557,6 +557,66 @@ async function runTestSuite() {
   await signInWithEmailAndPassword(auth, adminEmail, adminPass);
   await setDoc(doc(db, 'settings', 'store'), { storeName: 'Tiệm Hoa ROVII' }, { merge: true });
   console.log('     ✓ Admin settings write succeeded as expected');
+
+  // ==========================================
+  // CASE M: Admin in-app staff management (list/create/update users)
+  // ==========================================
+  console.log('\n--- CASE M: Admin Staff Management Via Rules ---');
+  const staffListSnap = await getDocs(collection(db, 'users'));
+  assert(staffListSnap.size >= 3, `Case M: admin can list memberships (got ${staffListSnap.size})`);
+
+  // Admin creates a membership doc for a new staff user (mirrors createStaffAccount service).
+  const mStaffEmail = 'managed.staff@cuatiemhoa.vn';
+  const mStaffCred = await createUserWithEmailAndPassword(auth, mStaffEmail, 'Password123!');
+  // Still signed in as the new user here; switch back to admin for the membership write.
+  await signInWithEmailAndPassword(auth, adminEmail, adminPass);
+  const nowM = new Date().toISOString();
+  await setDoc(doc(db, 'users', mStaffCred.user.uid), {
+    uid: mStaffCred.user.uid,
+    name: 'Managed Staff',
+    email: mStaffEmail,
+    role: 'staff',
+    status: 'active',
+    createdAt: nowM,
+    updatedAt: nowM,
+  });
+  console.log('     ✓ Admin created staff membership doc');
+
+  // Admin deactivates then reactivates.
+  await signInWithEmailAndPassword(auth, adminEmail, adminPass);
+  await updateDoc(doc(db, 'users', mStaffCred.user.uid), { status: 'inactive', updatedAt: nowM });
+  let deactivatedReadBlocked = false;
+  try {
+    await signInWithEmailAndPassword(auth, mStaffEmail, 'Password123!');
+    await getCustomerById(custA.id);
+  } catch {
+    deactivatedReadBlocked = true;
+  }
+  assert(deactivatedReadBlocked, 'Case M: deactivated staff must be denied business reads');
+  await signInWithEmailAndPassword(auth, adminEmail, adminPass);
+  await updateDoc(doc(db, 'users', mStaffCred.user.uid), { status: 'active', updatedAt: nowM });
+  await signInWithEmailAndPassword(auth, mStaffEmail, 'Password123!');
+  const reactivatedRead = await getCustomerById(custA.id);
+  assert(reactivatedRead !== null, 'Case M: reactivated staff can read again');
+
+  // Non-admin still cannot list users or write memberships.
+  await signInWithEmailAndPassword(auth, mStaffEmail, 'Password123!');
+  let staffListBlocked = false;
+  try {
+    await getDocs(collection(db, 'users'));
+  } catch {
+    staffListBlocked = true;
+  }
+  assert(staffListBlocked, 'Case M: staff must not list memberships');
+  let staffSelfEscalateBlocked = false;
+  try {
+    await updateDoc(doc(db, 'users', mStaffCred.user.uid), { role: 'admin', updatedAt: nowM });
+  } catch {
+    staffSelfEscalateBlocked = true;
+  }
+  assert(staffSelfEscalateBlocked, 'Case M: staff must not self-promote to admin');
+  // Restore admin session for the remaining checks.
+  await signInWithEmailAndPassword(auth, adminEmail, adminPass);
 
   // 6. Unauthenticated user denied
   console.log('  6. Testing UNAUTHENTICATED user...');

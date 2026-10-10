@@ -21,11 +21,18 @@ service cloud.firestore {
         && get(membershipPath()).data.role == 'admin';
     }
 
-    // Membership records are provisioned only by a trusted administrative path.
+    // Membership records: everyone reads only their own doc; only active admins
+    // may list all memberships or create/update them (in-app staff management).
+    // Admin writes are schema-guarded so role/status stay within known values.
+    // No one can write memberships from business-data paths, and deletes are forbidden.
     match /users/{userId} {
-      allow get: if isAuthenticated() && request.auth.uid == userId;
-      allow list: if false;
-      allow create, update, delete: if false;
+      allow get: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create, update: if isAdmin()
+        && request.resource.data.role in ['admin', 'staff']
+        && request.resource.data.status in ['active', 'inactive']
+        && request.resource.data.keys().hasOnly(['uid', 'email', 'name', 'role', 'status', 'createdAt', 'updatedAt']);
+      allow delete: if false;
     }
 
     // Active staff and admins may manage day-to-day CRM records.
