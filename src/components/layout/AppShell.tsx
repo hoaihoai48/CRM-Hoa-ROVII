@@ -21,6 +21,12 @@ export function AppShell({ children }: AppShellProps) {
   const [membershipError, setMembershipError] = React.useState<string | null>(null);
   const [membershipAttempt, setMembershipAttempt] = React.useState(0);
 
+  const handleRetry = React.useCallback(() => {
+    setMembershipLoading(true);
+    setMembershipError(null);
+    setMembershipAttempt((attempt) => attempt + 1);
+  }, []);
+
   useEffect(() => {
     if (loading) return;
     if (!user) {
@@ -29,11 +35,12 @@ export function AppShell({ children }: AppShellProps) {
     }
 
     let cancelled = false;
-    setMembershipLoading(true);
-    setMembershipError(null);
     getCurrentUser()
       .then((currentMembership) => {
-        if (!cancelled) setMembership(currentMembership);
+        if (!cancelled) {
+          setMembership(currentMembership);
+          setMembershipError(null);
+        }
       })
       .catch((error: unknown) => {
         if (!cancelled) {
@@ -82,7 +89,7 @@ export function AppShell({ children }: AppShellProps) {
           <p className="mt-2 text-sm text-stone-600">Không thể kiểm tra hồ sơ nhân viên do lỗi kết nối hoặc Firebase. Điều này chưa có nghĩa tài khoản bị từ chối quyền.</p>
           <p className="mt-2 break-words text-xs text-stone-500">{membershipError}</p>
           <div className="mt-5 flex justify-center gap-3">
-            <button type="button" onClick={() => setMembershipAttempt((attempt) => attempt + 1)} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">Thử lại</button>
+            <button type="button" onClick={handleRetry} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">Thử lại</button>
             <button type="button" onClick={() => logout().then(() => router.replace('/login'))} className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Đăng xuất</button>
           </div>
         </div>

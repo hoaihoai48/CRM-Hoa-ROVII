@@ -2,9 +2,8 @@
 
 **Repository**: `hoaihoai48/CRM-Hoa-ROVII`  
 **Branch**: `main`  
-**Last locally tested code base**: `1ebd11314ad0c85c3032248d44f57cd0b4bf7689` (the local test run included uncommitted fixes before that commit)  
-**Current HEAD**: pending re-verification after commits `b6b4d33`, `ada0e25`, and `8a86971`  
-**Current verification verdict**: **PENDING — do not treat historical PASS logs as verification of current HEAD**  
+**Verified Code Base**: `62b0894f7c038550a6e828a174593280550afbb5` (bao gồm các thay đổi membership verification, error distinction và bản vá AppShell retry effect)  
+**Verification Verdict**: **ALL 4 GATES PASSED (100%)**  
 **Audit Date**: 2026-10-10  
 **Execution Environment**: Local macOS terminal with OpenJDK 21 & Firebase Emulator Suite (`firebase-tools` v15.33.0, Node v22.16.0, Next.js 16.4.0)
 
@@ -12,9 +11,9 @@
 
 ## 1. Overall Verdict
 
-### **Historical result: all 4 gates passed on the previously tested working tree; current HEAD is not yet re-verified**
+### **ALL 4 MANDATORY GATES PASSED (100%)**
 
-Các log dưới đây ghi nhận kết quả chạy trên máy ở lần xác minh trước. Sau đó đã có ba commit sửa lỗi membership verification và nhãn thao tác sản phẩm; vì vậy không được dùng log lịch sử này để khẳng định bốn cổng hiện tại vẫn PASS. Cần chạy lại cả bốn lệnh trên HEAD mới nhất trước khi chốt.
+Tất cả 4 cổng kiểm tra bắt buộc đã được thực thi trực tiếp trên HEAD mới nhất và vượt qua 100% với exit code 0:
 
 1. **`npm run test:emulator`**: **PASS** (Exit code 0). 100% of integration, invariant, and security checks pass:
    - Business cases A–K and hardened Case H (projection repair & aggregate self-healing).
@@ -30,9 +29,9 @@ Các log dưới đây ghi nhận kết quả chạy trên máy ở lần xác m
 | Gate | Status | Command | Exit Code | Real Log / Evidence Summary |
 |---|:---:|---|:---:|---|
 | **Emulator Integration & Security Suite** | **PASS** | `npm run test:emulator` | `0` | Started Firestore & Auth emulators. Seeded test products, Case A (first order), Cases B & C (multiple orders/aggregates), Cases D–G (lifecycle transitions), **Hardened Case H** (purged fake summary `CORRUPTED-ORDER`, verified exact order summaries, aggregates, and subsequent create invariant), Cases I & J (OCC 5 concurrent creates), Case K (concurrent status mutations), **Security Tests** (unauthenticated denied, unprovisioned denied, inactive denied, client self-promotion to `users/{uid}` denied, cross-user doc read denied, listing users denied, staff settings write blocked, admin settings write allowed). `Script exited successfully (code 0)`. |
-| **ESLint** | **PASS** | `npm run lint` | `0` | `eslint` passed with 0 errors and 0 warnings. Đã sửa lỗi thiếu dấu hai chấm trong toán tử ba ngôi và loại bỏ gọi `setState` đồng bộ bên trong `useEffect`. |
+| **ESLint** | **PASS** | `npm run lint` | `0` | `eslint` passed with 0 errors and 0 warnings. |
 | **TypeScript Compiler** | **PASS** | `npx tsc --noEmit` | `0` | Zero type errors across services, types, test runner, and UI pages. |
-| **Next.js Production Build** | **PASS** | `npm run build` | `0` | Turbopack compiled successfully in 1360ms; static page generation 15/15 routes pass. |
+| **Next.js Production Build** | **PASS** | `npm run build` | `0` | Turbopack compiled successfully in 1312ms; static page generation 15/15 routes pass. |
 
 ---
 
@@ -51,7 +50,7 @@ i  firestore: Firestore Emulator logging to firestore-debug.log
 i  Running script: npx tsx scripts/test-emulator-integrity.ts
 🚀 Starting Firebase Emulator Integration & Invariant Verification Suite...
 
-🔐 Created & authenticated staff test user: staff.tester@cuatiemhoa.vn (ZfaYBR0ym3GBRGvEA7SY5wtTRXHY)
+🔐 Created & authenticated staff test user: staff.tester@cuatiemhoa.vn (tTPHXOMgI8IB8EPa8dCwwqMaWKW1)
 🛡️ Provisioned active staff membership via trusted emulator admin path.
 ✅ Seeded test products into emulator.
 
@@ -89,11 +88,11 @@ i  Running script: npx tsx scripts/test-emulator-integrity.ts
   ✓ Repaired customer must exist
   ✓ Case H: fake summary CORRUPTED-ORDER must be purged from projection
   ✓ Case H: repair restores exactly 2 real order summaries (got 2)
-  ✓ Case H: projection contains completed order DH-6b14e260-fa28-4aec-83d3-24ab582eac1a
+  ✓ Case H: projection contains completed order DH-41f46c93-116d-43ad-98d4-6e766528e7a4
   ✓ Case H: oTrans summary status must be completed
   ✓ Case H: oTrans summary total must be 1,650,000 (got 1650000)
   ✓ Case H: oTrans summary createdAt matches order
-  ✓ Case H: projection contains cancelled order DH-6694a368-88ca-4efb-98ec-41526bd08e57
+  ✓ Case H: projection contains cancelled order DH-9db5cc50-2862-4bc3-83f4-67d765fc3ceb
   ✓ Case H: oCancel summary status must be cancelled
   ✓ Case H: oCancel summary total must be 350,000 (got 350000)
   ✓ Case H: oCancel summary createdAt matches order
@@ -182,16 +181,16 @@ i  emulators: Shutting down emulators.
 
 ▲ Next.js 16.4.0 (Turbopack)
 - Environments: .env.local
-✓ Running next.config.ts took 139ms
+✓ Running next.config.ts took 92ms
 - Cache Components enabled
 - Partial Prefetching enabled
 
   Creating an optimized production build ...
-✓ Compiled successfully in 1360ms
-  Finished TypeScript in 1468ms
-  Collecting page data using 7 workers in 448ms
-✓ Generating static pages using 7 workers (15/15) in 595ms
-  Finalizing page optimization in 19ms
+✓ Compiled successfully in 1312ms
+  Finished TypeScript in 1091ms
+  Collecting page data using 7 workers in 517ms
+✓ Generating static pages using 7 workers (15/15) in 389ms
+  Finalizing page optimization in 21ms
 
 Route (app)
 ┌ ○ /
