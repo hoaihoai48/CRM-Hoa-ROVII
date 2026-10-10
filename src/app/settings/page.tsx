@@ -33,6 +33,10 @@ export default function SettingsPage() {
 
   const [isSaved, setIsSaved] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<Awaited<ReturnType<typeof getCurrentUser>>>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const canEditSettings = currentUser?.role === 'admin' && currentUser.status === 'active';
 
   useEffect(() => {
     Promise.all([getStoreSettings(), getCurrentUser()])
@@ -41,23 +45,28 @@ export default function SettingsPage() {
         setStorePhone(settings.phone);
         setStoreAddress(settings.address);
         setZaloUrl(settings.zaloUrl);
+        setCurrentUser(user);
         if (user) {
           setUserName(user.name);
           setUserEmail(user.email);
         }
       })
-      .catch((error) => setErrorMessage(error instanceof Error ? error.message : 'Không thể tải cài đặt.'));
+      .catch((error) => setErrorMessage(error instanceof Error ? error.message : 'Không thể tải cài đặt.'))
+      .finally(() => setIsLoading(false));
   }, []);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canEditSettings || isSaving) return;
     setErrorMessage(null);
+    setIsSaving(true);
     updateStoreSettings({ storeName, phone: storePhone, address: storeAddress, zaloUrl })
       .then(() => {
         setIsSaved(true);
         setTimeout(() => setIsSaved(false), 2500);
       })
-      .catch((error) => setErrorMessage(error instanceof Error ? error.message : 'Không thể lưu cài đặt.'));
+      .catch((error) => setErrorMessage(error instanceof Error ? error.message : 'Không thể lưu cài đặt.'))
+      .finally(() => setIsSaving(false));
   };
 
   const handleLogout = async () => {
@@ -73,10 +82,18 @@ export default function SettingsPage() {
       />
 
       {errorMessage && (
-        <div className="mb-6 p-3.5 bg-red-50 border border-red-200 text-red-800 text-xs rounded-xl">
+        <div role="alert" className="mb-6 p-3.5 bg-red-50 border border-red-200 text-red-800 text-xs rounded-xl">
           {errorMessage}
         </div>
       )}
+
+      {!isLoading && !errorMessage && !canEditSettings && (
+        <div className="mb-6 p-3.5 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-xl">
+          Tài khoản nhân viên chỉ được xem cài đặt. Chỉ quản trị viên đang hoạt động mới có quyền chỉnh sửa và lưu thông tin cửa hàng.
+        </div>
+      )}
+
+      {isLoading && <p role="status" className="mb-4 text-xs text-stone-500">Đang tải cài đặt...</p>}
 
       {isSaved && (
         <div className="mb-6 p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center gap-2">
@@ -99,6 +116,7 @@ export default function SettingsPage() {
               value={storeName}
               onChange={(e) => setStoreName(e.target.value)}
               placeholder="Tiệm Hoa..."
+              disabled={!canEditSettings || isLoading}
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -107,12 +125,14 @@ export default function SettingsPage() {
                 type="tel"
                 value={storePhone}
                 onChange={(e) => setStorePhone(e.target.value)}
+                disabled={!canEditSettings || isLoading}
                 leftIcon={<Phone className="w-4 h-4" />}
               />
               <Input
                 label="Link Zalo OA / Zalo cá nhân của tiệm"
                 value={zaloUrl}
                 onChange={(e) => setZaloUrl(e.target.value)}
+                disabled={!canEditSettings || isLoading}
                 hint="Ví dụ: https://zalo.me/0909888999 (Placeholder)"
                 leftIcon={<MessageCircle className="w-4 h-4" />}
               />
@@ -122,6 +142,7 @@ export default function SettingsPage() {
               label="Địa chỉ cửa hàng"
               value={storeAddress}
               onChange={(e) => setStoreAddress(e.target.value)}
+              disabled={!canEditSettings || isLoading}
               leftIcon={<MapPin className="w-4 h-4" />}
             />
           </div>
@@ -176,11 +197,13 @@ export default function SettingsPage() {
         </div>
 
         {/* Action Button */}
-        <div className="flex justify-end">
-          <Button type="submit" variant="primary" size="lg" rightIcon={<Check className="w-4 h-4" />}>
-            Lưu cài đặt
-          </Button>
-        </div>
+        {canEditSettings && (
+          <div className="flex justify-end">
+            <Button type="submit" disabled={isLoading || isSaving} variant="primary" size="lg" rightIcon={<Check className="w-4 h-4" />}>
+              {isSaving ? "Đang lưu..." : "Lưu cài đặt"}
+            </Button>
+          </div>
+        )}
       </form>
     </AppShell>
   );
