@@ -31,10 +31,18 @@ const STATUS_FILTERS: { id: string; label: string; value?: OrderStatus }[] = [
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Awaited<ReturnType<typeof listOrders>>>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const loadOrders = () => {
+    setIsLoading(true);
+    setLoadError(null);
+    listOrders().then(setOrders).catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải danh sách đơn hàng.')).finally(() => setIsLoading(false));
+  }
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
 
   useEffect(() => {
-    listOrders().then(setOrders);
+    loadOrders();
   }, []);
 
   const filteredOrders = useMemo(() => {
@@ -68,6 +76,10 @@ export default function OrdersPage() {
           </Link>
         }
       />
+
+      {loadError ? (
+        <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800"><p>Không thể tải danh sách đơn hàng: {loadError}</p><button type="button" onClick={loadOrders} className="mt-3 underline font-semibold">Thử tải lại</button></div>
+      ) : isLoading ? <p role="status" className="py-8 text-center text-sm text-stone-500">Đang tải danh sách đơn hàng...</p> : null}
 
       {/* Filter and Search Bar */}
       <div className="bg-white rounded-xl border border-stone-200/80 p-3 sm:p-4 mb-6 shadow-2xs space-y-3">
@@ -106,7 +118,7 @@ export default function OrdersPage() {
       </div>
 
       {/* Content Area */}
-      {filteredOrders.length === 0 ? (
+      {!isLoading && !loadError && filteredOrders.length === 0 ? (
         <EmptyState
           title="Không tìm thấy đơn hàng nào"
           description="Thử tìm kiếm với từ khóa khác hoặc điều chỉnh lại bộ lọc trạng thái."
@@ -121,7 +133,7 @@ export default function OrdersPage() {
             </Link>
           }
         />
-      ) : (
+      ) : !isLoading && !loadError ? (
         <div className="bg-white rounded-xl border border-stone-200/80 shadow-2xs overflow-hidden">
           {/* Desktop Table View */}
           <div className="hidden md:block overflow-x-auto">
