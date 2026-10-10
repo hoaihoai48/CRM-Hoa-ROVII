@@ -180,14 +180,6 @@ function SettingsPageContent() {
           </div>
         </div>
 
-        {/* Section 3: Note */}
-        <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-900/50 dark:text-emerald-300 flex items-start gap-2.5">
-          <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-          <div className="text-xs leading-relaxed">
-            <strong>Đã kết nối Firestore:</strong> Thông tin cửa hàng và cấu hình hệ thống được đồng bộ thời gian thực tại document <code>settings/store</code> trên Cloud Firestore.
-          </div>
-        </div>
-
         {/* Action Button */}
         {canEditSettings && (
           <div className="flex justify-end">
