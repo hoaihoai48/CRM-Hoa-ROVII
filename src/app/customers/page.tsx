@@ -14,15 +14,33 @@ import { PageHeader, EmptyState } from '@/components/common/Cards';
 import { SearchInput } from '@/components/common/Input';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
 import { ZaloButton } from '@/components/common/ZaloButton';
-import { listCustomers } from '@/lib/services';
+import { createCustomer, listCustomers } from '@/lib/services';
 import { formatDateShort } from '@/lib/utils/format';
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Awaited<ReturnType<typeof listCustomers>>>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+  const [newAddress, setNewAddress] = useState('');
+  const [newNote, setNewNote] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  const loadCustomers = () => {
+    setIsLoading(true);
+    setLoadError(null);
+    listCustomers()
+      .then(setCustomers)
+      .catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải danh sách khách hàng.'))
+      .finally(() => setIsLoading(false));
+  }
 
   useEffect(() => {
-    listCustomers().then(setCustomers);
+    loadCustomers();
   }, []);
 
   const filteredCustomers = useMemo(() => {
@@ -44,7 +62,7 @@ export default function CustomersPage() {
         action={
           <button
             type="button"
-            onClick={() => alert('Thêm khách hàng (Mở popup hoặc chuyển tới form thêm khách - Mock UI)')}
+            onClick={() => { setCreateError(null); setShowCreateForm((shown) => !shown); }}
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold shadow-xs transition-colors cursor-pointer"
           >
             <UserPlus className="w-4 h-4" />
@@ -52,6 +70,35 @@ export default function CustomersPage() {
           </button>
         }
       />
+
+      {showCreateForm && (
+        <form onSubmit={async (event) => {
+          event.preventDefault();
+          if (isCreating) return;
+          setCreateError(null);
+          setIsCreating(true);
+          try {
+            await createCustomer({ name: newName, phone: newPhone, address: newAddress, note: newNote });
+            setNewName(''); setNewPhone(''); setNewAddress(''); setNewNote('');
+            setShowCreateForm(false);
+            loadCustomers();
+          } catch (error) {
+            setCreateError(error instanceof Error ? error.message : 'Không thể tạo khách hàng.');
+          } finally {
+            setIsCreating(false);
+          }
+        }} className="mb-6 rounded-xl border border-stone-200 bg-white p-4 sm:p-6 shadow-2xs space-y-4">
+          <h2 className="font-bold text-stone-900">Thêm khách hàng mới</h2>
+          {createError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-xs text-red-700">{createError}</p>}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label className="text-xs font-semibold text-stone-700">Tên khách hàng<input required value={newName} onChange={(e) => setNewName(e.target.value)} className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm" /></label>
+            <label className="text-xs font-semibold text-stone-700">Số điện thoại<input required type="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm" /></label>
+            <label className="text-xs font-semibold text-stone-700 sm:col-span-2">Địa chỉ<input required value={newAddress} onChange={(e) => setNewAddress(e.target.value)} className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm" /></label>
+            <label className="text-xs font-semibold text-stone-700 sm:col-span-2">Ghi chú (không bắt buộc)<textarea value={newNote} onChange={(e) => setNewNote(e.target.value)} rows={2} className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm" /></label>
+          </div>
+          <div className="flex justify-end gap-2"><button type="button" onClick={() => setShowCreateForm(false)} className="rounded-lg border border-stone-200 px-4 py-2 text-xs font-semibold">Hủy</button><button type="submit" disabled={isCreating} className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">{isCreating ? 'Đang lưu...' : 'Lưu khách hàng'}</button></div>
+        </form>
+      )}
 
       {/* Search Input Bar */}
       <div className="bg-white rounded-xl border border-stone-200/80 p-3 sm:p-4 mb-6 shadow-2xs">
@@ -62,7 +109,14 @@ export default function CustomersPage() {
         />
       </div>
 
-      {filteredCustomers.length === 0 ? (
+      {loadError ? (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">
+          <p>Không thể tải danh sách khách hàng: {loadError}</p>
+          <button type="button" onClick={loadCustomers} className="mt-3 underline font-semibold">Thử tải lại</button>
+        </div>
+      ) : isLoading ? (
+        <p role="status" className="py-8 text-center text-sm text-stone-500">Đang tải danh sách khách hàng...</p>
+      ) : filteredCustomers.length === 0 ? (
         <EmptyState
           title="Chưa có khách hàng phù hợp"
           description="Không tìm thấy khách hàng với số điện thoại hoặc tên này."
