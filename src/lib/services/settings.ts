@@ -77,8 +77,9 @@ export async function getCurrentUser(): Promise<User | null> {
       status: data.status,
       avatarUrl: current.photoURL || undefined,
     };
-  } catch {
-    // Fail closed: missing/unreadable membership must never imply an active staff account.
-    return null;
+  } catch (error) {
+    // A missing membership document is handled above. Propagate read/network errors
+    // so the UI can distinguish verification failure from an unprovisioned account.
+    throw error;
   }
 }
