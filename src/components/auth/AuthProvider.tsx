@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { User as FirebaseUser } from 'firebase/auth';
 import { subscribeToAuth, logoutUser } from '@/lib/firebase/authService';
-import { getCurrentUser } from '@/lib/services/settings';
+import { getCurrentUser, resetCurrentUserRequest } from '@/lib/services/settings';
 import { User as MembershipUser } from '@/types';
 
 interface MembershipState {
@@ -46,6 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const nextUid = currentUser?.uid ?? null;
     if (lastAuthUid.current !== nextUid) {
       lastAuthUid.current = nextUid;
+      resetCurrentUserRequest();
       // Invalidate a prior session's membership even when the same UID signs back in.
       setMembershipAttempt((attempt) => attempt + 1);
     }

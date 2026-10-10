@@ -45,6 +45,11 @@ export async function updateStoreSettings(changes: UpdateStoreSettingsInput): Pr
 
 let membershipRequest: { uid: string; promise: Promise<User | null> } | null = null;
 
+/** Drop the in-flight deduplication entry when Firebase changes sessions. */
+export function resetCurrentUserRequest() {
+  membershipRequest = null;
+}
+
 /** Resolve CRM membership; concurrent requests for one UID share one Firestore read. */
 export function getCurrentUser(): Promise<User | null> {
   const current = auth.currentUser;
