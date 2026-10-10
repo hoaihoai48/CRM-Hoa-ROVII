@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { 
   PlusCircle, 
@@ -34,16 +34,16 @@ export default function OrdersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const loadOrders = () => {
+  const loadOrders = useCallback(() => {
     setIsLoading(true);
     setLoadError(null);
     listOrders().then(setOrders).catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải danh sách đơn hàng.')).finally(() => setIsLoading(false));
-  }
+  }, []);
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
 
   useEffect(() => {
     loadOrders();
-  }, []);
+  }, [loadOrders]);
 
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
