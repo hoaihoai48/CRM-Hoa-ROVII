@@ -143,13 +143,6 @@ export default function LoginPage() {
           </svg>
           <span>Đăng nhập bằng tài khoản Google</span>
         </button>
-
-        {/* Security & Project info footer */}
-        <div className="mt-6 pt-4 border-t border-border-theme text-center">
-          <p className="text-xs text-text-muted">
-            Dự án: <span className="font-mono font-medium text-foreground">crm-hoa-rovi</span>
-          </p>
-        </div>
       </div>
     </div>
   );
