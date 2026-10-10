@@ -46,7 +46,7 @@ function NewProductPageContent() {
   };
 
   return (
-    
+    <>
       <PageHeader
         title="Thêm mẫu hoa mới"
         subtitle="Tạo mới sản phẩm hoa vào danh mục của tiệm"
@@ -217,6 +217,7 @@ function NewProductPageContent() {
         </div>
       </div>
     
+    </>
   );
 }
 

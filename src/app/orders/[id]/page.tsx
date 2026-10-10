@@ -91,7 +91,7 @@ function OrderDetailContent() {
   };
 
   return (
-    
+    <>
       <PageHeader
         title={`Đơn hàng #${orderId}`}
         subtitle={`Tạo lúc ${formatDate(initialOrder.createdAt)} bởi ${initialOrder.createdBy}`}
@@ -291,6 +291,7 @@ function OrderDetailContent() {
         </div>
       </div>
     
+    </>
   );
 }
 

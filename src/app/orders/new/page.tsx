@@ -55,7 +55,9 @@ function CreateOrderPageContent() {
       .finally(() => setIsLoadingData(false));
   }, []);
 
+  // Initial data fetch on mount (external Firestore read — legitimate effect).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadFormData();
   }, [loadFormData]);
 
@@ -191,6 +193,7 @@ function CreateOrderPageContent() {
   };
 
   return (
+    <>
       <PageHeader
         title="Tạo đơn hàng"
         subtitle="Nhập đơn nhanh từ cuộc gọi hoặc tin nhắn Zalo"
@@ -484,6 +487,7 @@ function CreateOrderPageContent() {
           </div>
         </div>
       </form>
+    </>
   );
 }
 

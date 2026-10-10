@@ -54,7 +54,7 @@ function ProductEditForm({ product, productId }: ProductFormProps) {
   };
 
   return (
-    
+    <>
       <PageHeader
         title={`Chỉnh sửa: ${product.name}`}
         subtitle={`Mã sản phẩm: ${product.id}`}
@@ -238,6 +238,7 @@ function ProductEditForm({ product, productId }: ProductFormProps) {
         </div>
       </div>
     
+    </>
   );
 }
 

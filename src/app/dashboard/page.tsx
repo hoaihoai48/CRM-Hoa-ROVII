@@ -43,7 +43,7 @@ function DashboardContent() {
   const recentOrders = orders.slice(0, 6);
 
   return (
-    
+    <>
       {/* Page Header */}
       <PageHeader
         title="Tổng quan"
@@ -269,6 +269,7 @@ function DashboardContent() {
           ))}
         </div>
       </div>
+    </>
   );
 }
 

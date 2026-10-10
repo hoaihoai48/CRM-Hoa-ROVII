@@ -67,7 +67,7 @@ function SettingsPageContent() {
   };
 
   return (
-    
+    <>
       <PageHeader
         title="Cài đặt hệ thống"
         subtitle="Thông tin cửa hàng, tài khoản nhân viên và liên kết mạng xã hội"
@@ -198,6 +198,7 @@ function SettingsPageContent() {
         )}
       </form>
     
+    </>
   );
 }
 

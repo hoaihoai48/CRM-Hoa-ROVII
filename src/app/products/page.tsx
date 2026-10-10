@@ -64,7 +64,7 @@ function ProductsPageContent() {
   }, [products, searchTerm, statusFilter]);
 
   return (
-    
+    <>
       <PageHeader
         title="Sản phẩm"
         subtitle="Quản lý danh mục hoa, bảng giá và mẫu hoa của tiệm"
@@ -216,6 +216,7 @@ function ProductsPageContent() {
         </div>
       ) : null}
     
+    </>
   );
 }
 

@@ -60,8 +60,7 @@ export function getCurrentUser(): Promise<User | null> {
   if (membershipRequest?.uid === current.uid) return membershipRequest.promise;
 
   const uid = current.uid;
-  let request: Promise<User | null>;
-  request = getDoc(doc(db, 'users', uid))
+  const request: Promise<User | null> = getDoc(doc(db, 'users', uid))
     .then((snapshot) => {
       if (!snapshot.exists()) return null;
       const data = snapshot.data();

@@ -86,6 +86,7 @@ function OrdersPageContent() {
   }, [orders, searchTerm, selectedStatus]);
 
   return (
+    <>
       <PageHeader
         title="Đơn hàng"
         subtitle="Quản lý toàn bộ danh sách đơn đặt hoa và trạng thái xử lý"
@@ -251,6 +252,7 @@ function OrdersPageContent() {
           </div>
         </div>
       ) : null}
+    </>
   );
 }
 

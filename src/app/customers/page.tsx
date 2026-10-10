@@ -76,6 +76,7 @@ function CustomersPageContent() {
   }, [customers, searchTerm]);
 
   return (
+    <>
       <PageHeader
         title="Khách hàng"
         subtitle="Quản lý danh sách khách và lịch sử đặt hoa"
@@ -249,6 +250,7 @@ function CustomersPageContent() {
           </div>
         </div>
       )}
+    </>
   );
 }
 
