@@ -7,6 +7,7 @@ const DEFAULT_STORE_SETTINGS: StoreSettings = {
   phone: '',
   address: '',
   zaloUrl: '',
+  logoUrl: '',
   email: '',
   notificationEnabled: true,
 };
@@ -23,6 +24,7 @@ export async function getStoreSettings(): Promise<StoreSettings> {
     phone: data.phone || DEFAULT_STORE_SETTINGS.phone,
     address: data.address || DEFAULT_STORE_SETTINGS.address,
     zaloUrl: data.zaloUrl || DEFAULT_STORE_SETTINGS.zaloUrl,
+    logoUrl: data.logoUrl || DEFAULT_STORE_SETTINGS.logoUrl,
     email: data.email || DEFAULT_STORE_SETTINGS.email,
     notificationEnabled: data.notificationEnabled ?? DEFAULT_STORE_SETTINGS.notificationEnabled,
   };
@@ -36,15 +38,16 @@ export async function updateStoreSettings(changes: UpdateStoreSettingsInput): Pr
   if (changes.phone !== undefined) cleanChanges.phone = changes.phone.trim();
   if (changes.address !== undefined) cleanChanges.address = changes.address.trim();
   if (changes.zaloUrl !== undefined) cleanChanges.zaloUrl = changes.zaloUrl.trim();
+  if (changes.logoUrl !== undefined) cleanChanges.logoUrl = changes.logoUrl.trim();
   if (changes.email !== undefined) cleanChanges.email = changes.email.trim();
   if (changes.notificationEnabled !== undefined) cleanChanges.notificationEnabled = changes.notificationEnabled;
 
   await setDoc(docRef, cleanChanges, { merge: true });
+  resetStoreLogoCache();
   return await getStoreSettings();
 }
 
 let membershipRequest: { uid: string; promise: Promise<User | null> } | null = null;
-
 /** Drop the in-flight deduplication entry when Firebase changes sessions. */
 export function resetCurrentUserRequest() {
   membershipRequest = null;
@@ -80,4 +83,24 @@ export function getCurrentUser(): Promise<User | null> {
     });
   membershipRequest = { uid, promise: request };
   return request;
+}
+
+let storeLogoRequest: Promise<string> | null = null;
+
+/** Drop the cached logo so the next read picks up a freshly saved one. */
+export function resetStoreLogoCache() {
+  storeLogoRequest = null;
+}
+
+/** Store logo URL, fetched once per session and shared by brand surfaces. */
+export function getStoreLogoUrl(): Promise<string> {
+  if (!storeLogoRequest) {
+    const request = getStoreSettings().then((settings) => settings.logoUrl.trim());
+    // Don't cache failures: a transient error shouldn't hide the logo all session.
+    request.catch(() => {
+      if (storeLogoRequest === request) storeLogoRequest = null;
+    });
+    storeLogoRequest = request;
+  }
+  return storeLogoRequest;
 }

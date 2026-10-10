@@ -12,6 +12,7 @@ export const mockStoreSettings: StoreSettings = {
   phone: '0909888999',
   address: '158 Nguyễn Đình Chiểu, Phường Võ Thị Sáu, Quận 3, TP.HCM',
   zaloUrl: '#', // Placeholder for phase 2 real Zalo config
+  logoUrl: '',
   email: 'lienhe@tiemhoa.vn',
   notificationEnabled: true,
 };

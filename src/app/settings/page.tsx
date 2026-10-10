@@ -11,13 +11,15 @@ import {
   Mail, 
   MessageCircle, 
   LogOut, 
-  Check
+  Check,
+  ImagePlus
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/common/Cards';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { getStoreSettings, updateStoreSettings } from '@/lib/services';
+import { ImageUploader } from '@/components/common/ImageUploader';
 import { useAuth } from '@/components/auth/AuthProvider';
 
 function SettingsPageContent() {
@@ -28,6 +30,7 @@ function SettingsPageContent() {
   const [storePhone, setStorePhone] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
   const [zaloUrl, setZaloUrl] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
 
 
   const [isSaved, setIsSaved] = useState(false);
@@ -43,6 +46,7 @@ function SettingsPageContent() {
         setStorePhone(settings.phone);
         setStoreAddress(settings.address);
         setZaloUrl(settings.zaloUrl);
+        setLogoUrl(settings.logoUrl);
       })
       .catch((error) => setErrorMessage(error instanceof Error ? error.message : 'Không thể tải cài đặt.'))
       .finally(() => setIsLoading(false));
@@ -53,7 +57,7 @@ function SettingsPageContent() {
     if (!canEditSettings || isSaving) return;
     setErrorMessage(null);
     setIsSaving(true);
-    updateStoreSettings({ storeName, phone: storePhone, address: storeAddress, zaloUrl })
+    updateStoreSettings({ storeName, phone: storePhone, address: storeAddress, zaloUrl, logoUrl: logoUrl.trim() })
       .then(() => {
         setIsSaved(true);
         setTimeout(() => setIsSaved(false), 2500);
@@ -150,7 +154,25 @@ function SettingsPageContent() {
           </div>
         </div>
 
-        {/* Section 2: Current Account */}
+        {/* Section 2: Shop Logo */}
+        <div className="bg-white rounded-xl border border-stone-200/80 p-4 sm:p-6 shadow-2xs">
+          <h2 className="text-base font-bold text-stone-900 pb-3 mb-4 border-b border-stone-100 flex items-center gap-2">
+            <ImagePlus className="w-4 h-4 text-rose-500" />
+            Logo tiệm
+          </h2>
+          <p className="text-[11px] text-stone-500 mb-3">
+            Logo hiển thị ở sidebar, header, trang đăng nhập và favicon tab trình duyệt. Để trống để dùng biểu tượng hoa mặc định.
+          </p>
+          <ImageUploader
+            label="Ảnh logo (vuông, nền trong suốt càng tốt)"
+            currentImageUrl={logoUrl}
+            onImageUploaded={(url) => setLogoUrl(url)}
+            onImageRemoved={() => setLogoUrl('')}
+            disabled={!canEditSettings || isLoading}
+          />
+        </div>
+
+        {/* Section 3: Current Account */}
         <div className="bg-white rounded-xl border border-stone-200/80 p-4 sm:p-6 shadow-2xs">
           <h2 className="text-base font-bold text-stone-900 pb-3 mb-4 border-b border-stone-100 flex items-center gap-2">
             <User className="w-4 h-4 text-rose-500" />

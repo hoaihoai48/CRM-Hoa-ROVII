@@ -6,6 +6,7 @@ import { Sidebar } from './Sidebar';
 import { MobileHeader } from './MobileHeader';
 import { MobileBottomNav } from './MobileBottomNav';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { useDynamicFavicon } from '@/components/common/BrandLogo';
 
 interface AppShellProps { children: React.ReactNode; }
 
@@ -15,6 +16,7 @@ export function AppShell({ children }: AppShellProps) {
     membershipLoading, membershipError, retryMembership,
   } = useAuth();
   const router = useRouter();
+  useDynamicFavicon();
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');

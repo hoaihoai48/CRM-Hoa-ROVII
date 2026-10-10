@@ -9,6 +9,7 @@ interface ImageUploaderProps {
   onImageUploaded: (url: string) => void;
   onImageRemoved?: () => void;
   disabled?: boolean;
+  label?: string;
 }
 
 export function ImageUploader({
@@ -16,6 +17,7 @@ export function ImageUploader({
   onImageUploaded,
   onImageRemoved,
   disabled = false,
+  label = 'Hình ảnh sản phẩm',
 }: ImageUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -117,7 +119,7 @@ export function ImageUploader({
   return (
     <div className="space-y-2">
       <label className="block text-xs font-semibold text-stone-700">
-        Hình ảnh sản phẩm
+        {label}
       </label>
 
       <input

@@ -178,6 +178,7 @@ export interface UpdateStoreSettingsInput {
   phone?: string;
   address?: string;
   zaloUrl?: string;
+  logoUrl?: string;
   email?: string;
   notificationEnabled?: boolean;
 }
@@ -187,6 +188,7 @@ export interface StoreSettings {
   phone: string;
   address: string;
   zaloUrl: string;
+  logoUrl: string;
   email: string;
   notificationEnabled?: boolean;
 }

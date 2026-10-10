@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { BrandLogo, useStoreLogo } from '@/components/common/BrandLogo';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard },
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
 export function Sidebar() {
   const pathname = usePathname();
   const { user: firebaseUser, membership, logout } = useAuth();
+  const storeLogoUrl = useStoreLogo();
   const isAdmin = membership?.role === 'admin' && membership?.status === 'active';
 
   const navItems = isAdmin
@@ -45,11 +47,13 @@ export function Sidebar() {
       {/* Brand Header */}
       <div className="flex items-center justify-between h-16 px-5 border-b border-stone-100 dark:border-slate-800">
         <Link href="/dashboard" className="flex items-center gap-2.5 group">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-500 to-pink-400 flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
-            <Flower2 className="w-5 h-5" />
-          </div>
+          <BrandLogo
+            src={storeLogoUrl || undefined}
+            boxClassName="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-500 to-pink-400 shadow-xs group-hover:scale-105 transition-transform"
+            iconClassName="w-5 h-5"
+          />
           <div>
-            <span className="font-bold text-stone-900 text-base leading-tight block dark:text-white">Tiệm Hoa</span>
+            <span className="font-bold text-stone-900 text-base leading-tight block dark:text-white">Tiệm Hoa ROVII</span>
             <span className="text-[11px] text-stone-400 font-medium leading-none block mt-0.5">Quản lý đơn hàng</span>
           </div>
         </Link>

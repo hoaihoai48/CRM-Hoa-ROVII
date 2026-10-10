@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Flower2, Lock, Mail, ArrowRight, AlertCircle } from 'lucide-react';
+import { Lock, Mail, ArrowRight, AlertCircle } from 'lucide-react';
+import { BrandLogo } from '@/components/common/BrandLogo';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import {
@@ -55,9 +56,10 @@ export default function LoginPage() {
       <div className="w-full max-w-md bg-surface rounded-2xl border border-border-theme shadow-xl p-6 sm:p-8">
         {/* Brand */}
         <div className="flex flex-col items-center text-center mb-6">
-          <div className="w-14 h-14 rounded-2xl bg-brand flex items-center justify-center text-white shadow-md mb-3">
-            <Flower2 className="w-8 h-8" />
-          </div>
+          <BrandLogo
+            boxClassName="w-14 h-14 rounded-2xl bg-brand shadow-md mb-3"
+            iconClassName="w-8 h-8"
+          />
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Tiệm Hoa ROVII</h1>
           <p className="text-sm text-text-muted mt-1">Đăng nhập tài khoản quản lý tiệm</p>
         </div>

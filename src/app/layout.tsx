@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Tiệm Hoa - Quản lý đơn hàng & Mini CRM",
+  title: "Tiệm Hoa ROVII - Quản lý đơn hàng",
   description: "Hệ thống quản lý đơn hàng nội bộ dành cho tiệm hoa",
 };
 
