@@ -49,9 +49,11 @@ jobs:
         shell: bash
         run: |
           npm audit --json > npm-audit-report.json || true
+          npm audit --prefix functions --json > functions-npm-audit-report.json || true
           node <<'NODE'
           const fs = require('node:fs');
           const report = JSON.parse(fs.readFileSync('npm-audit-report.json', 'utf8'));
+          const functionsReport = JSON.parse(fs.readFileSync('functions-npm-audit-report.json', 'utf8'));
           const counts = report.metadata?.vulnerabilities || {};
           const rows = Object.entries(report.vulnerabilities || {}).map(([name, item]) => {
             const via = (item.via || []).map((entry) => typeof entry === 'string' ? entry : entry.name || entry.title || 'advisory').join(', ');
@@ -69,15 +71,25 @@ jobs:
             '',
             'This report is informational and does not auto-upgrade dependencies. Review direct/transitive impact before changing versions.'
           ].join(String.fromCharCode(10));
-          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary + String.fromCharCode(10));
-          console.log(summary);
+          const functionCounts = functionsReport.metadata?.vulnerabilities || {};
+          const functionsSummary = [
+            '## Cloud Functions npm audit summary',
+            '',
+            `Counts: ${functionCounts.critical || 0} critical, ${functionCounts.high || 0} high, ${functionCounts.moderate || 0} moderate, ${functionCounts.low || 0} low, ${functionCounts.info || 0} info.`,
+            '',
+            'Review this report separately from the web-app dependency tree.'
+          ].join(String.fromCharCode(10));
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary + String.fromCharCode(10) + functionsSummary + String.fromCharCode(10));
+          console.log(summary + String.fromCharCode(10) + functionsSummary);
           NODE
 
       - name: Upload dependency audit report
         uses: actions/upload-artifact@v6
         with:
           name: npm-audit-report
-          path: npm-audit-report.json
+          path: |
+            npm-audit-report.json
+            functions-npm-audit-report.json
           if-no-files-found: error
           retention-days: 7
 
