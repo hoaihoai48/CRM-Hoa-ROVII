@@ -18,7 +18,7 @@ const args = [
   '--project',
   projectId,
   '--only',
-  'auth,firestore',
+  'auth,firestore,functions',
   'npx tsx scripts/test-emulator-integrity.ts',
 ];
 
@@ -27,6 +27,9 @@ const child = spawn(firebaseBin, args, {
   env: {
     ...process.env,
     NEXT_PUBLIC_FIREBASE_PROJECT_ID: projectId,
+    FIRESTORE_EMULATOR_HOST: process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080',
+    FIREBASE_AUTH_EMULATOR_HOST: process.env.FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1:9099',
+    FUNCTIONS_EMULATOR_HOST: process.env.FUNCTIONS_EMULATOR_HOST || '127.0.0.1:5001',
   },
   stdio: 'inherit',
   shell: isWindows,
