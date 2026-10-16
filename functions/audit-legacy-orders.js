@@ -12,6 +12,10 @@ if (!projectId) {
   process.exit(2);
 }
 const usingEmulator = Boolean(process.env.FIRESTORE_EMULATOR_HOST);
+if (usingEmulator && !projectId.startsWith('demo-')) {
+  console.error('FIRESTORE_EMULATOR_HOST is set but the project ID is not a demo project. Refusing to avoid auditing the wrong database.');
+  process.exit(2);
+}
 if (projectId.startsWith('demo-') && !usingEmulator) {
   console.error('Refusing to run the legacy-data audit against a demo project unless FIRESTORE_EMULATOR_HOST is explicitly set.');
   process.exit(2);
