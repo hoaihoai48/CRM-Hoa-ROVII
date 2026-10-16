@@ -17,13 +17,73 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isActiveMember()
-        && get(membershipPath()).data.role == 'admin';
+      return isActiveMember() && get(membershipPath()).data.role == 'admin';
     }
 
-    // Membership records: everyone reads only their own doc; only active admins
-    // may list all memberships or create/update them (in-app staff management).
-    // Admin writes are schema-guarded so role/status stay within known values.
+    function validOrder(data) {
+      return data.keys().hasOnly([
+          'customerId', 'customerSnapshot', 'items', 'summary', 'status',
+          'statusHistory', 'note', 'createdAt', 'createdBy', 'deliveryDate'
+        ])
+        && data.keys().hasAll([
+          'customerId', 'customerSnapshot', 'items', 'summary', 'status',
+          'statusHistory', 'createdAt', 'createdBy'
+        ])
+        && data.customerId is string
+        && data.customerId.size() > 0
+        && data.customerSnapshot is map
+        && data.customerSnapshot.keys().hasOnly(['name', 'phone', 'address'])
+        && data.customerSnapshot.name is string
+        && data.customerSnapshot.phone is string
+        && data.customerSnapshot.address is string
+        && data.items is list
+        && data.items.size() > 0
+        && data.items.size() <= 100
+        && data.summary is map
+        && data.summary.keys().hasOnly(['subtotal', 'deliveryFee', 'discount', 'total'])
+        && data.summary.subtotal is number
+        && data.summary.subtotal >= 0
+        && data.summary.deliveryFee is number
+        && data.summary.deliveryFee >= 0
+        && data.summary.discount is number
+        && data.summary.discount >= 0
+        && data.summary.total is number
+        && data.summary.total >= 0
+        && data.status in ['new', 'confirmed', 'delivering', 'completed', 'cancelled']
+        && data.statusHistory is list
+        && data.statusHistory.size() > 0
+        && data.createdAt is string
+        && data.createdBy is string
+        && (!('note' in data.keys()) || data.note == null || data.note is string)
+        && (!('deliveryDate' in data.keys()) || data.deliveryDate == null || data.deliveryDate is string);
+    }
+
+    function validCustomer(data) {
+      return data.keys().hasOnly([
+          'name', 'phone', 'phoneNormalized', 'address',
+          'totalOrders', 'totalSpent', 'lastOrderDate', 'orderSummaries',
+          'note', 'createdAt'
+        ])
+        && data.keys().hasAll([
+          'name', 'phone', 'phoneNormalized', 'address',
+          'totalOrders', 'totalSpent', 'lastOrderDate', 'createdAt'
+        ])
+        && data.name is string
+        && data.name.size() > 0
+        && data.phone is string
+        && data.phoneNormalized is string
+        && data.address is string
+        && data.totalOrders is int
+        && data.totalOrders >= 0
+        && data.totalSpent is number
+        && data.totalSpent >= 0
+        && data.lastOrderDate is string
+        && data.createdAt is string
+        && (!('orderSummaries' in data.keys()) || data.orderSummaries is list)
+        && (!('note' in data.keys()) || data.note == null || data.note is string);
+    }
+
+    // Membership records remain admin-managed. Users can read their own membership.
     match /users/{userId} {
       allow get: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow list: if isAdmin();
@@ -34,42 +94,37 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Order creation, edits, status transitions and aggregate updates now go through
-    // authenticated Cloud Functions using the Admin SDK. Browser writes are forbidden.
+    // Spark-compatible model: authenticated active staff/admin use client transactions.
+    // Rules enforce membership and schema, but cannot prove cross-document totals or
+    // recompute a customer's complete order history. This is an internal trusted-team model.
     match /orders/{orderId} {
       allow read: if isActiveMember();
-      allow create, update, delete: if false;
+      allow create: if isActiveMember() && validOrder(request.resource.data);
+      allow update: if isActiveMember()
+        && validOrder(request.resource.data)
+        && request.resource.data.customerId == resource.data.customerId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.createdBy == resource.data.createdBy;
+      allow delete: if false;
     }
 
-    // Customers may be created only with empty system-managed aggregates.
-    // After creation, clients may edit profile fields only; aggregates and identity
-    // fields are maintained by trusted order callables.
     match /customers/{customerId} {
       allow read: if isActiveMember();
       allow create: if isActiveMember()
-        && request.resource.data.keys().hasOnly([
-          'name', 'phone', 'phoneNormalized', 'address',
-          'totalOrders', 'totalSpent', 'lastOrderDate', 'orderSummaries',
-          'note', 'createdAt'
-        ])
-        && request.resource.data.keys().hasAll([
-          'name', 'phone', 'phoneNormalized', 'address',
-          'totalOrders', 'totalSpent', 'lastOrderDate', 'createdAt'
-        ])
+        && validCustomer(request.resource.data)
         && request.resource.data.totalOrders == 0
         && request.resource.data.totalSpent == 0
         && request.resource.data.lastOrderDate == ''
         && (!('orderSummaries' in request.resource.data.keys())
           || request.resource.data.orderSummaries.size() == 0);
-      allow update: if isActiveMember()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'address', 'note'])
-        && request.resource.data.name is string
-        && request.resource.data.address is string;
+      allow update: if isActiveMember() && validCustomer(request.resource.data)
+        && request.resource.data.phone == resource.data.phone
+        && request.resource.data.phoneNormalized == resource.data.phoneNormalized
+        && request.resource.data.createdAt == resource.data.createdAt;
       allow delete: if false;
     }
 
-    // Product catalog and prices are financially sensitive: staff may read them,
-    // but only active admins may create/update/delete products. UI routes must mirror this policy.
+    // Only admins manage the product catalog and its prices.
     match /products/{productId} {
       allow read: if isActiveMember();
       allow create, update: if isAdmin()
@@ -95,7 +150,6 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Store configuration is readable by active members, but editable only by admins.
     match /settings/{settingId} {
       allow read: if isActiveMember();
       allow create, update, delete: if isAdmin();
