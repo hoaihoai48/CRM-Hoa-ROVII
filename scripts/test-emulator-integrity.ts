@@ -630,10 +630,13 @@ async function runTestSuite() {
   }
   assert(unauthReadBlocked, 'Unauthenticated user must be denied access to collections');
 
+  // Restore an authorized session before running the remaining CRUD regression cases.
+  await signInWithEmailAndPassword(auth, testStaffEmail, testStaffPass);
+
   // ==========================================
-  // CASE K: Customer profile update (name/address/note only)
+  // CASE N: Customer profile update (name/address/note only)
   // ==========================================
-  console.log('\n--- CASE K: Customer Update Preserves Identity & Aggregates ---');
+  console.log('\n--- CASE N: Customer Update Preserves Identity & Aggregates ---');
   const custK = await createCustomer({
     name: 'Phạm Thị K',
     phone: '0900000004',
@@ -670,9 +673,9 @@ async function runTestSuite() {
   assert(updateMissingBlocked, 'Case K: updating a non-existent customer must throw');
 
   // ==========================================
-  // CASE L: Order edit (new/confirmed only, server prices win)
+  // CASE O: Order edit (new/confirmed only, server prices win)
   // ==========================================
-  console.log('\n--- CASE L: Order Edit With Aggregate Recomputation ---');
+  console.log('\n--- CASE O: Order Edit With Aggregate Recomputation ---');
   const custL = await createCustomer({
     name: 'Hoàng Văn L',
     phone: '0900000005',
