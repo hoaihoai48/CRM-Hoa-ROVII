@@ -86,6 +86,12 @@ The highest-priority unresolved issue is data-integrity enforcement at the Fires
 
 **Action in this PR:** update README with current architecture, routes, setup requirements, commands and known risks.
 
+### Security remediation progress — callable status mutation
+
+The PR now adds `functions/index.js` and routes the UI's `updateOrderStatus` service through the Firebase Functions v2 callable `updateOrderStatusSecure`. The callable checks the authenticated UID's active membership on the server, validates state transitions, derives the audit actor from trusted membership data, and writes status/history plus customer projection in a Firestore Admin SDK transaction. Emulator coverage was extended for actor spoofing and rejection of inactive/unauthenticated mutations; the CI run must confirm this coverage after the latest commit.
+
+This is a first vertical slice, **not closure of the P0 issue**. The current Firestore rules still permit direct client writes to order/customer documents, and create/edit/order aggregate repair have not yet moved behind the server boundary. Keep the production gate open until all business mutation paths are migrated, negative direct-write tests are added, and restrictive rules are deployed after the client migration.
+
 ## Test isolation and command setup
 
 The repository has no `.firebaserc` file. To prevent emulator tests from silently targeting a non-demo project, this PR adds `scripts/run-emulator-tests.mjs`, which runs Auth/Firestore emulators with the isolated project ID `demo-crm-hoa-rovii` and passes the same ID to the test process.
@@ -108,4 +114,4 @@ Recommended separation:
 3. **GitHub connector:** use existing repository/PR APIs for file inspection, branch/PR creation and run status; avoid duplicating these APIs in MCP.
 4. **Results:** return command, exit code, bounded logs, commit SHA, workflow URL and artifact references. Never report success from a queued/running workflow.
 
-**Integration blocker:** the Local Bridge status tool returned HTTP 404 during this session. Its repository README describes a local-first runtime that executes explicitly registered Python entrypoints without a shell; the existing implementation and endpoint configuration should be inspected before extending it. This PR adds CI and documents the contract; it does not claim an MCP server has been deployed or connected.
+**Integration blocker:** the Local Bridge status endpoint responds, but the configured workspace is `/Users/vu/Developer/giao-trinh-ikh`, not this CRM repository. No CRM commands were run through the mismatched workspace. Configure and verify a dedicated CRM working directory before using the Bridge for CRM-specific commands. This PR adds CI and documents the contract; it does not claim a CRM-specific MCP/Bridge configuration has been deployed.
