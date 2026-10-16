@@ -24,7 +24,6 @@ service cloud.firestore {
     // Membership records: everyone reads only their own doc; only active admins
     // may list all memberships or create/update them (in-app staff management).
     // Admin writes are schema-guarded so role/status stay within known values.
-    // No one can write memberships from business-data paths, and deletes are forbidden.
     match /users/{userId} {
       allow get: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow list: if isAdmin();
@@ -35,17 +34,65 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Active staff and admins may manage day-to-day CRM records.
+    // Order creation, edits, status transitions and aggregate updates now go through
+    // authenticated Cloud Functions using the Admin SDK. Browser writes are forbidden.
     match /orders/{orderId} {
-      allow read, write: if isActiveMember();
+      allow read: if isActiveMember();
+      allow create, update, delete: if false;
     }
 
+    // Customers may be created only with empty system-managed aggregates.
+    // After creation, clients may edit profile fields only; aggregates and identity
+    // fields are maintained by trusted order callables.
     match /customers/{customerId} {
-      allow read, write: if isActiveMember();
+      allow read: if isActiveMember();
+      allow create: if isActiveMember()
+        && request.resource.data.keys().hasOnly([
+          'name', 'phone', 'phoneNormalized', 'address',
+          'totalOrders', 'totalSpent', 'lastOrderDate', 'orderSummaries',
+          'note', 'createdAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'name', 'phone', 'phoneNormalized', 'address',
+          'totalOrders', 'totalSpent', 'lastOrderDate', 'createdAt'
+        ])
+        && request.resource.data.totalOrders == 0
+        && request.resource.data.totalSpent == 0
+        && request.resource.data.lastOrderDate == ''
+        && (!('orderSummaries' in request.resource.data.keys())
+          || request.resource.data.orderSummaries.size() == 0);
+      allow update: if isActiveMember()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'address', 'note'])
+        && request.resource.data.name is string
+        && request.resource.data.address is string;
+      allow delete: if false;
     }
 
+    // Product catalog and prices are financially sensitive: staff may read them,
+    // but only active admins may create/update/delete products. UI routes must mirror this policy.
     match /products/{productId} {
-      allow read, write: if isActiveMember();
+      allow read: if isActiveMember();
+      allow create, update: if isAdmin()
+        && request.resource.data.keys().hasOnly([
+          'name', 'price', 'unit', 'isActive', 'category',
+          'imageUrl', 'imageUrls', 'note', 'createdAt'
+        ])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 200
+        && request.resource.data.price is number
+        && request.resource.data.price >= 0
+        && request.resource.data.unit is string
+        && request.resource.data.unit.size() > 0
+        && request.resource.data.unit.size() <= 40
+        && request.resource.data.isActive is bool
+        && request.resource.data.createdAt is string
+        && (request.resource.data.get('category', null) == null || request.resource.data.category is string)
+        && (request.resource.data.get('imageUrl', null) == null || request.resource.data.imageUrl is string)
+        && request.resource.data.get('imageUrls', []) is list
+        && request.resource.data.get('imageUrls', []).size() <= 5
+        && (request.resource.data.get('note', null) == null || request.resource.data.note is string);
+      allow delete: if false;
     }
 
     // Store configuration is readable by active members, but editable only by admins.

@@ -1,0 +1,114 @@
+name: CRM Quality Checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: crm-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Lint, typecheck, emulator tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Set up Java for Firebase Emulator
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Cloud Functions dependencies from committed lockfile
+        run: npm ci --prefix functions --no-audit --no-fund
+
+      - name: Cloud Functions syntax check
+        run: npm run lint --prefix functions
+
+      - name: Dependency vulnerability report
+        shell: bash
+        run: |
+          npm audit --json > npm-audit-report.json || true
+          npm audit --prefix functions --json > functions-npm-audit-report.json || true
+          node <<'NODE'
+          const fs = require('node:fs');
+          const report = JSON.parse(fs.readFileSync('npm-audit-report.json', 'utf8'));
+          const functionsReport = JSON.parse(fs.readFileSync('functions-npm-audit-report.json', 'utf8'));
+          const counts = report.metadata?.vulnerabilities || {};
+          const rows = Object.entries(report.vulnerabilities || {}).map(([name, item]) => {
+            const via = (item.via || []).map((entry) => typeof entry === 'string' ? entry : entry.name || entry.title || 'advisory').join(', ');
+            const fix = item.fixAvailable === true ? 'yes' : item.fixAvailable ? 'review version change' : 'no automatic fix';
+            return `| ${name} | ${item.severity || 'unknown'} | ${item.isDirect ? 'direct' : 'transitive'} | ${fix} | ${via.replaceAll('|', '\\|')} |`;
+          });
+          const summary = [
+            '## npm audit summary',
+            '',
+            `Counts: ${counts.critical || 0} critical, ${counts.high || 0} high, ${counts.moderate || 0} moderate, ${counts.low || 0} low, ${counts.info || 0} info.`,
+            '',
+            '| Package | Severity | Dependency | Fix | Advisory/dependency path |',
+            '|---|---|---|---|---|',
+            ...rows,
+            '',
+            'This report is informational and does not auto-upgrade dependencies. Review direct/transitive impact before changing versions.'
+          ].join(String.fromCharCode(10));
+          const functionCounts = functionsReport.metadata?.vulnerabilities || {};
+          const functionsSummary = [
+            '## Cloud Functions npm audit summary',
+            '',
+            `Counts: ${functionCounts.critical || 0} critical, ${functionCounts.high || 0} high, ${functionCounts.moderate || 0} moderate, ${functionCounts.low || 0} low, ${functionCounts.info || 0} info.`,
+            '',
+            'Review this report separately from the web-app dependency tree.'
+          ].join(String.fromCharCode(10));
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary + String.fromCharCode(10) + functionsSummary + String.fromCharCode(10));
+          console.log(summary + String.fromCharCode(10) + functionsSummary);
+          NODE
+
+      - name: Upload dependency audit report
+        uses: actions/upload-artifact@v6
+        with:
+          name: npm-audit-report
+          path: |
+            npm-audit-report.json
+            functions-npm-audit-report.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Check local MCP server syntax
+        run: node --check mcp-server/server.mjs && node --check mcp-server/smoke-test.mjs
+
+      - name: Local MCP protocol and safety smoke test
+        run: node mcp-server/smoke-test.mjs
+
+      - name: Lint
+        run: npm run lint
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Firebase Emulator integration tests
+        run: npm run test:emulator
+        env:
+          CI: true
+
+      - name: Production build
+        run: npm run build

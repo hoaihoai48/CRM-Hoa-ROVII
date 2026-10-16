@@ -12,8 +12,11 @@ import { PageHeader, EmptyState } from '@/components/common/Cards';
 import { SearchInput } from '@/components/common/Input';
 import { listProducts } from '@/lib/services';
 import { formatVND } from '@/lib/utils/format';
+import { useAuth } from '@/components/auth/AuthProvider';
 
 function ProductsPageContent() {
+  const { membership } = useAuth();
+  const canManageProducts = membership?.role === 'admin' && membership.status === 'active';
   const [products, setProducts] = useState<Awaited<ReturnType<typeof listProducts>>>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -67,8 +70,8 @@ function ProductsPageContent() {
     <>
       <PageHeader
         title="Sản phẩm"
-        subtitle="Quản lý danh mục hoa, bảng giá và mẫu hoa của tiệm"
-        action={
+        subtitle={canManageProducts ? "Quản lý danh mục hoa, bảng giá và mẫu hoa của tiệm" : "Danh mục mẫu hoa và bảng giá của tiệm"}
+        action={canManageProducts ? (
           <Link
             href="/products/new"
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold shadow-xs transition-colors"
@@ -76,7 +79,7 @@ function ProductsPageContent() {
             <PlusCircle className="w-4 h-4" />
             <span>Thêm sản phẩm</span>
           </Link>
-        }
+        ) : undefined}
       />
 
       {loadError ? (
@@ -136,7 +139,7 @@ function ProductsPageContent() {
           title="Không tìm thấy mẫu hoa nào"
           description="Thử tìm với tên hoa khác hoặc thêm sản phẩm hoa mới."
           icon={Flower2}
-          action={
+          action={canManageProducts ? (
             <Link
               href="/products/new"
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-colors"
@@ -144,7 +147,7 @@ function ProductsPageContent() {
               <PlusCircle className="w-4 h-4" />
               <span>Thêm sản phẩm</span>
             </Link>
-          }
+          ) : undefined}
         />
       ) : !isLoading && !loadError ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -202,13 +205,13 @@ function ProductsPageContent() {
                     </span>
                   </div>
 
-                  <Link
+                  {canManageProducts && <Link
                     href={`/products/${product.id}`}
                     className="p-2 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-colors inline-flex items-center gap-1 text-xs font-semibold"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
                     <span>Sửa</span>
-                  </Link>
+                  </Link>}
                 </div>
               </div>
             </div>

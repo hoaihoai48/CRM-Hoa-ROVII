@@ -14,8 +14,11 @@ import { Button } from '@/components/common/Button';
 import { formatVND } from '@/lib/utils/format';
 import { createProduct } from '@/lib/services';
 import { MultiImageUploader } from '@/components/common/MultiImageUploader';
+import { useAuth } from '@/components/auth/AuthProvider';
 
 function NewProductPageContent() {
+  const { membership } = useAuth();
+  const canManageProducts = membership?.role === 'admin' && membership.status === 'active';
   const router = useRouter();
 
   const [name, setName] = useState('');
@@ -30,6 +33,10 @@ function NewProductPageContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canManageProducts) {
+      setErrorMessage('Chỉ quản trị viên đang hoạt động mới được tạo sản phẩm.');
+      return;
+    }
     if (isLoading) return;
     setErrorMessage(null);
     if (!name.trim()) {
@@ -62,6 +69,10 @@ function NewProductPageContent() {
       setErrorMessage(error instanceof Error ? error.message : 'Không thể tạo sản phẩm.');
     }).finally(() => setIsLoading(false));
   };
+
+  if (!canManageProducts) {
+    return <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">Chỉ quản trị viên đang hoạt động mới được tạo hoặc thay đổi sản phẩm.</div>;
+  }
 
   return (
     <>

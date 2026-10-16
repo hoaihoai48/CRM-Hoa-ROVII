@@ -6,7 +6,7 @@
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { db, auth } from '../src/lib/firebase/config';
-import { createCustomer, getCustomerById, updateCustomer } from '../src/lib/services/customers';
+import { createCustomer, findCustomerByPhone, getCustomerById, updateCustomer } from '../src/lib/services/customers';
 import { createOrder, getOrderById, syncCustomerAggregates, updateOrder, updateOrderStatus } from '../src/lib/services/orders';
 import { Product } from '../src/types';
 
@@ -49,6 +49,83 @@ async function provisionUserMembership(
   if (!res.ok) {
     const errorText = await res.text();
     throw new Error(`Failed to provision user ${uid} via emulator REST API: ${errorText}`);
+  }
+}
+
+function encodeFirestoreValue(value: unknown): Record<string, unknown> {
+  if (value === null || value === undefined) return { nullValue: null };
+  if (typeof value === 'string') return { stringValue: value };
+  if (typeof value === 'boolean') return { booleanValue: value };
+  if (typeof value === 'number') {
+    return Number.isInteger(value)
+      ? { integerValue: String(value) }
+      : { doubleValue: value };
+  }
+  if (Array.isArray(value)) return { arrayValue: { values: value.map(encodeFirestoreValue) } };
+  if (typeof value === 'object') {
+    const fields: Record<string, unknown> = {};
+    for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+      if (entry !== undefined) fields[key] = encodeFirestoreValue(entry);
+    }
+    return { mapValue: { fields } };
+  }
+  throw new Error(`Unsupported Firestore Emulator test value type: ${typeof value}`);
+}
+
+async function setDocumentAsAdmin(collectionName: string, documentId: string, data: Record<string, unknown>) {
+  const host = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'crm-hoa-rovii';
+  const url = `http://${host}/v1/projects/${projectId}/databases/(default)/documents/${collectionName}/${documentId}`;
+  const fields: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) fields[key] = encodeFirestoreValue(value);
+  }
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer owner' },
+    body: JSON.stringify({ fields }),
+  });
+  if (!res.ok) throw new Error(`Failed to seed ${collectionName}/${documentId} via Emulator admin API: ${await res.text()}`);
+}
+
+async function corruptCustomerAggregatesAsAdmin(customerId: string) {
+  const host = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'crm-hoa-rovii';
+  const updateMask = [
+    'updateMask.fieldPaths=totalOrders',
+    'updateMask.fieldPaths=totalSpent',
+    'updateMask.fieldPaths=orderSummaries',
+  ].join('&');
+  const url = `http://${host}/v1/projects/${projectId}/databases/(default)/documents/customers/${customerId}?${updateMask}`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer owner',
+    },
+    body: JSON.stringify({
+      fields: {
+        totalOrders: { integerValue: '99999' },
+        totalSpent: { integerValue: '88888888' },
+        orderSummaries: {
+          arrayValue: {
+            values: [{
+              mapValue: {
+                fields: {
+                  id: { stringValue: 'CORRUPTED-ORDER' },
+                  status: { stringValue: 'completed' },
+                  total: { integerValue: '99999999' },
+                  createdAt: { stringValue: '2020-01-01T00:00:00.000Z' },
+                },
+              },
+            }],
+          },
+        },
+      },
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to corrupt customer aggregates through emulator admin API: ${await res.text()}`);
   }
 }
 
@@ -111,10 +188,78 @@ async function runTestSuite() {
     createdAt: new Date().toISOString(),
   };
 
-  await setDoc(doc(db, 'products', p1.id), p1);
-  await setDoc(doc(db, 'products', p2.id), p2);
-  await setDoc(doc(db, 'products', pInactive.id), pInactive);
-  console.log('✅ Seeded test products into emulator.\n');
+  await setDocumentAsAdmin('products', p1.id, Object.fromEntries(Object.entries(p1).filter(([key]) => key !== 'id')));
+  await setDocumentAsAdmin('products', p2.id, Object.fromEntries(Object.entries(p2).filter(([key]) => key !== 'id')));
+  await setDocumentAsAdmin('products', pInactive.id, Object.fromEntries(Object.entries(pInactive).filter(([key]) => key !== 'id')));
+  console.log('✅ Seeded test products into emulator.\\n');
+
+  console.log('--- SECURITY: Product catalog writes are admin-only ---');
+  let staffProductCreateBlocked = false;
+  try {
+    await setDoc(doc(db, 'products', 'PROD_STAFF_FORGED'), {
+      name: 'Forged Product', price: 1, unit: 'bó', isActive: true, createdAt: new Date().toISOString(),
+    });
+  } catch {
+    staffProductCreateBlocked = true;
+  }
+  assert(staffProductCreateBlocked, 'Active staff must not create products directly');
+
+  let staffPriceChangeBlocked = false;
+  try {
+    await updateDoc(doc(db, 'products', p1.id), { price: 1 });
+  } catch {
+    staffPriceChangeBlocked = true;
+  }
+  assert(staffPriceChangeBlocked, 'Active staff must not change product prices directly');
+
+
+  // ==========================================
+  // TEST: Vietnamese phone canonicalization and legacy compatibility
+  // ==========================================
+  console.log('--- TEST GUARD: Canonical phone identity and legacy aliases ---');
+  const canonicalPhoneCustomer = await createCustomer({
+    name: 'Khách Chuẩn Hóa',
+    phone: '0901234567',
+    address: '1 Canonical Street',
+  });
+  const internationalPhoneAlias = await createCustomer({
+    name: 'Khách Dùng Đầu Số Quốc Tế',
+    phone: '+84 901 234 567',
+    address: '1 Canonical Street',
+  });
+  assert(
+    internationalPhoneAlias.id === canonicalPhoneCustomer.id,
+    'National and +84 formats must resolve to the same customer',
+  );
+  assert(
+    internationalPhoneAlias.phoneNormalized === '0901234567',
+    'Stored phoneNormalized must use Vietnamese national format',
+  );
+  const aliasLookup = await findCustomerByPhone('+84 901 234 567');
+  assert(aliasLookup?.id === canonicalPhoneCustomer.id, 'Phone lookup must resolve international aliases');
+
+  // Simulate a record created before canonicalization used an 84... deterministic ID.
+  const legacyPhoneDigits = '84901234568';
+  const legacyCustomerId = `CUST_${legacyPhoneDigits}`;
+  await setDoc(doc(db, 'customers', legacyCustomerId), {
+    name: 'Khách Legacy',
+    phone: '+84901234568',
+    phoneNormalized: legacyPhoneDigits,
+    address: '2 Legacy Street',
+    totalOrders: 0,
+    totalSpent: 0,
+    lastOrderDate: '',
+    orderSummaries: [],
+    createdAt: new Date().toISOString(),
+  });
+  const legacyNationalLookup = await createCustomer({
+    name: 'Khách Legacy National Format',
+    phone: '0901234568',
+    address: '2 Legacy Street',
+  });
+  assert(legacyNationalLookup.id === legacyCustomerId, 'Create must reuse legacy international-format customer IDs');
+  const legacyInternationalLookup = await findCustomerByPhone('0901234568');
+  assert(legacyInternationalLookup?.id === legacyCustomerId, 'Lookup must find legacy phoneNormalized values');
 
   // ==========================================
   // TEST: Inactive / Invalid Product Guards
@@ -167,6 +312,51 @@ async function runTestSuite() {
   assert(custACheck!.totalSpent === 0, `Case A: totalSpent must be 0 for 'new' status (got ${custACheck!.totalSpent})`);
   assert(custACheck!.lastOrderDate === orderA.createdAt, 'Case A: lastOrderDate must match order createdAt');
   assert((custACheck!.orderSummaries?.length ?? 0) === 1, 'Case A: orderSummaries length must be 1');
+
+  console.log('--- SECURITY: Direct business writes must be denied ---');
+  let directOrderCreateBlocked = false;
+  try {
+    await setDoc(doc(db, 'orders', 'CLIENT-FORGED-ORDER'), { status: 'completed', summary: { total: 1 } });
+  } catch {
+    directOrderCreateBlocked = true;
+  }
+  assert(directOrderCreateBlocked, 'Active client must not create orders directly');
+
+  let directOrderMutationBlocked = false;
+  try {
+    await updateDoc(doc(db, 'orders', orderA.id), {
+      status: 'completed',
+      summary: { subtotal: 1, deliveryFee: 0, discount: 0, total: 1 },
+      statusHistory: [{ status: 'completed', actorName: 'Forged' }],
+    });
+  } catch {
+    directOrderMutationBlocked = true;
+  }
+  assert(directOrderMutationBlocked, 'Active client must not forge order status, totals, or history');
+
+  let directCustomerAggregateMutationBlocked = false;
+  try {
+    await updateDoc(doc(db, 'customers', custA.id), {
+      totalOrders: 999,
+      totalSpent: 999999,
+      lastOrderDate: '2099-01-01',
+      orderSummaries: [{ id: 'FORGED', status: 'completed', total: 999999, createdAt: '2099-01-01' }],
+    });
+  } catch {
+    directCustomerAggregateMutationBlocked = true;
+  }
+  assert(directCustomerAggregateMutationBlocked, 'Active client must not forge customer aggregate fields');
+
+  let forgedCustomerCreateBlocked = false;
+  try {
+    await setDoc(doc(db, 'customers', 'CLIENT-FORGED-CUSTOMER'), {
+      name: 'Forged', phone: '0900000000', phoneNormalized: '0900000000', address: 'Nowhere',
+      totalOrders: 99, totalSpent: 999999, lastOrderDate: '2099-01-01', createdAt: new Date().toISOString(),
+    });
+  } catch {
+    forgedCustomerCreateBlocked = true;
+  }
+  assert(forgedCustomerCreateBlocked, 'Active client must not create a customer with forged aggregates');
 
   // ==========================================
   // CASE B, C: Multiple orders with Completed & Cancelled states
@@ -252,7 +442,12 @@ async function runTestSuite() {
   assert(invalidTransitionBlocked, 'State machine must reject illegal status transition');
 
   // Case D: new -> confirmed
-  await updateOrderStatus(oTrans.id, { status: 'confirmed', actorName: 'Tester' });
+  await updateOrderStatus(oTrans.id, { status: 'confirmed', actorName: 'FORGED CLIENT NAME' });
+  const statusAfterCallable = await getOrderById(oTrans.id);
+  assert(
+    statusAfterCallable?.statusHistory.at(-1)?.actorName === testStaffEmail,
+    'Callable must derive status-history actor from trusted membership, not client actorName',
+  );
   let snapCust = await getCustomerById(custTrans.id);
   assert(snapCust!.totalOrders === 1 && snapCust!.totalSpent === 0, 'Case D: confirmed retains totalOrders=1, totalSpent=0');
 
@@ -287,20 +482,9 @@ async function runTestSuite() {
   // CASE H: Self-Healing Invariant / Inconsistent Aggregate Repair
   // ==========================================
   console.log('\n--- CASE H: Self-Healing Against Inconsistent Document Aggregates & Projection ---');
-  // Intentionally corrupt customer aggregates AND orderSummaries projection in DB directly
-  const corruptedRef = doc(db, 'customers', custTrans.id);
-  const corruptedFakeSummary = {
-    id: 'CORRUPTED-ORDER',
-    status: 'completed',
-    total: 99999999,
-    createdAt: '2020-01-01T00:00:00.000Z',
-  };
-
-  await setDoc(corruptedRef, {
-    totalOrders: 99999,
-    totalSpent: 88888888,
-    orderSummaries: [corruptedFakeSummary],
-  }, { merge: true });
+  // Intentionally corrupt aggregates through the Emulator's trusted admin REST path;
+  // client rules must continue to deny this same mutation.
+  await corruptCustomerAggregatesAsAdmin(custTrans.id);
 
   const corruptedSnap = await getCustomerById(custTrans.id);
   assert(corruptedSnap !== null, 'Customer must exist');
@@ -516,6 +700,14 @@ async function runTestSuite() {
   }
   assert(inactiveReadBlocked, 'Inactive user must be denied read access');
 
+  let inactiveStatusMutationBlocked = false;
+  try {
+    await updateOrderStatus(orderA.id, { status: 'confirmed', actorName: 'Inactive User' });
+  } catch {
+    inactiveStatusMutationBlocked = true;
+  }
+  assert(inactiveStatusMutationBlocked, 'Callable must deny status mutations from inactive memberships');
+
   // 5. Role-based settings differentiation: staff read-only, admin can write
   console.log('  5. Testing role-based settings access (staff read-only, admin can write)...');
   // Staff is currently signed in; read should succeed, write should fail.
@@ -555,6 +747,9 @@ async function runTestSuite() {
     status: 'active',
   });
   await signInWithEmailAndPassword(auth, adminEmail, adminPass);
+  await updateDoc(doc(db, 'products', p1.id), { note: 'Admin product-write policy test' });
+  console.log('     ✓ Admin product update succeeded as expected');
+  await updateDoc(doc(db, 'products', p1.id), { note: p1.note });
   await setDoc(doc(db, 'settings', 'store'), { storeName: 'Tiệm Hoa ROVII' }, { merge: true });
   console.log('     ✓ Admin settings write succeeded as expected');
 
@@ -630,10 +825,21 @@ async function runTestSuite() {
   }
   assert(unauthReadBlocked, 'Unauthenticated user must be denied access to collections');
 
+  let unauthStatusMutationBlocked = false;
+  try {
+    await updateOrderStatus(orderA.id, { status: 'confirmed', actorName: 'Unauthenticated' });
+  } catch {
+    unauthStatusMutationBlocked = true;
+  }
+  assert(unauthStatusMutationBlocked, 'Callable must deny unauthenticated status mutations');
+
+  // Restore an authorized session before running the remaining CRUD regression cases.
+  await signInWithEmailAndPassword(auth, testStaffEmail, testStaffPass);
+
   // ==========================================
-  // CASE K: Customer profile update (name/address/note only)
+  // CASE N: Customer profile update (name/address/note only)
   // ==========================================
-  console.log('\n--- CASE K: Customer Update Preserves Identity & Aggregates ---');
+  console.log('\n--- CASE N: Customer Update Preserves Identity & Aggregates ---');
   const custK = await createCustomer({
     name: 'Phạm Thị K',
     phone: '0900000004',
@@ -670,9 +876,9 @@ async function runTestSuite() {
   assert(updateMissingBlocked, 'Case K: updating a non-existent customer must throw');
 
   // ==========================================
-  // CASE L: Order edit (new/confirmed only, server prices win)
+  // CASE O: Order edit (new/confirmed only, server prices win)
   // ==========================================
-  console.log('\n--- CASE L: Order Edit With Aggregate Recomputation ---');
+  console.log('\n--- CASE O: Order Edit With Aggregate Recomputation ---');
   const custL = await createCustomer({
     name: 'Hoàng Văn L',
     phone: '0900000005',
