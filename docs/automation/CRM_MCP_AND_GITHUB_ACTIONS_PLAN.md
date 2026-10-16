@@ -21,7 +21,7 @@ Each task must run with the configured CRM repository as its working directory, 
 
 - **Local Bridge:** inspect the configured working copy, run allowlisted checks, return Git status/diff and bounded logs.
 - **GitHub connector:** read repository files, manage branches/PRs and retrieve workflow status.
-- **GitHub Actions:** run lint, typecheck, Emulator tests and build in a clean Ubuntu runner. Use Node 22, Java 21, and `permissions: contents: read`.
+- **GitHub Actions:** run lint, typecheck, Emulator tests and build in a clean Ubuntu runner. Use Node 24, Java 21, and `permissions: contents: read`.
 - **MCP server:** expose narrow typed tools that call the Bridge or GitHub APIs; do not execute shell commands itself unless a separate, explicitly hardened local runner is designed and approved.
 
 ## Proposed MCP tools
