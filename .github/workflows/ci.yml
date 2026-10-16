@@ -39,19 +39,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate Cloud Functions lockfile for review
-        run: npm install --package-lock-only --prefix functions --ignore-scripts --no-audit --no-fund
-
-      - name: Install Cloud Functions dependencies from generated lockfile
-        run: npm ci --prefix functions --ignore-scripts --no-audit --no-fund
-
-      - name: Upload generated Cloud Functions lockfile for review
-        uses: actions/upload-artifact@v6
-        with:
-          name: functions-package-lock
-          path: functions/package-lock.json
-          if-no-files-found: error
-          retention-days: 1
+      - name: Install Cloud Functions dependencies from committed lockfile
+        run: npm ci --prefix functions --no-audit --no-fund
 
       - name: Cloud Functions syntax check
         run: npm run lint --prefix functions
