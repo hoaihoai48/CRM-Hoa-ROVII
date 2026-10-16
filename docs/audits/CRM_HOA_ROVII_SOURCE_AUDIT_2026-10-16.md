@@ -4,7 +4,7 @@
 - **Audit date:** 2026-10-16
 - **Reviewed base commit:** `c9d7871fbbfcc5a0c7176c1581340041928a3ee7`
 - **Scope:** package/configuration, Firebase rules/configuration, customer/order/product/staff/settings/storage services, AuthProvider, existing emulator integrity suite, workflow presence and current commit status.
-- **Execution note:** the connected iKH Local Bridge status probe returned HTTP 404, so no local Mac command could be run from this session. GitHub Actions run #11 passed lint, typecheck, Emulator integration tests and production build after the root-layout, test-session and phone-normalization fixes. The latest code changes were covered by that successful run.
+- **Execution note:** GitHub Actions run #11 passed lint, typecheck, Emulator integration tests and production build after the root-layout, test-session and phone-normalization fixes. A subsequent staff-provisioning compensation change and documentation corrections were added after that run; a fresh CI run is required for the latest head. The connected iKH Local Bridge status probe returned HTTP 404, so local Mac commands could not be run from this session.
 
 ## Executive summary
 
@@ -22,7 +22,7 @@ The highest-priority unresolved issue is data-integrity enforcement at the Fires
 
 **Recommendation:** do not attempt a superficial field allowlist without modeling cross-document invariants. First add negative security tests for direct customer aggregate writes and forged order totals/status transitions. Then move critical mutations to a trusted server endpoint/Cloud Function (or implement rigorously tested Firestore Rules using `getAfter()` and field-level invariants). Admin SDK paths must independently validate caller identity, role, and input because Admin SDK bypasses Firestore Rules.
 
-**Status:** confirmed design risk; remediation requires a dedicated, tested change and is not silently changed in this CI groundwork patch.
+**Status:** still an unresolved P0 production gate. The existing client-side order/customer transaction architecture cannot be secured by a superficial field allowlist: order creation, edits, status changes and customer aggregates are coupled across documents, and Firestore Rules cannot safely recompute the full customer projection from an unbounded orders collection. The safe remediation is a staged migration of critical writes to a trusted callable/HTTPS backend (or an equivalently trusted server path), followed by denying direct client writes to orders and computed customer fields. Do not tighten these write rules before migrating the client services, or normal order creation/edit/status flows will break.
 
 ### P1 — Phone normalization allows equivalent Vietnamese numbers to diverge
 
@@ -38,7 +38,7 @@ The highest-priority unresolved issue is data-integrity enforcement at the Fires
 
 **Impact:** the user may authenticate but cannot access the CRM; the admin sees a failed operation while the account remains provisioned.
 
-**Recommendation:** move provisioning to a trusted server workflow where possible, or explicitly handle membership-write failure with a documented compensating action and a recovery/audit path. Add a test that forces the membership write to fail.
+**Action in this PR:** if writing the membership fails after Firebase Authentication creates the account, attempt a compensating deleteUser() on that newly created account. If cleanup also fails, surface the UID and both errors so an administrator can recover it deliberately. This is best-effort client-side compensation, not a substitute for server-side provisioning; it still needs a failure-path test.
 
 ### P1 — CI was not present at the standard workflow paths
 
