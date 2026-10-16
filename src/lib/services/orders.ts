@@ -8,7 +8,8 @@ import {
   runTransaction,
   where
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '@/lib/firebase/config';
 import {
   CreateOrderInput,
   Order,
@@ -376,106 +377,20 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
 
 export async function updateOrderStatus(id: string, input: UpdateOrderStatusInput): Promise<Order> {
   if (!id) throw new Error('Mã đơn hàng không hợp lệ.');
-  const orderRef = doc(db, 'orders', id);
+  if (!input.status) throw new Error('Trạng thái đơn hàng không hợp lệ.');
 
-  return await runTransaction(db, async (tx) => {
-    // 1. ALL READS FIRST (Strict Firestore transaction rule)
-    // Read order inside the transaction so customerId is always consistent.
-    const orderSnap = await tx.get(orderRef);
-    if (!orderSnap.exists()) {
-      throw new Error(`Không tìm thấy đơn hàng: ${id}`);
-    }
-
-    const orderData = orderSnap.data();
-    const currentStatus = orderData.status as Order['status'];
-    const customerId = String(orderData.customerId || '');
-    if (!customerId) {
-      throw new Error(`Đơn hàng không có mã khách hàng: ${id}`);
-    }
-    const customerRef = doc(db, 'customers', customerId);
-
-    if (!canTransitionOrderStatus(currentStatus, input.status)) {
-      throw new Error(`Không thể chuyển trạng thái từ "${currentStatus}" sang "${input.status}".`);
-    }
-
-    const customerSnap = await tx.get(customerRef);
-    if (!customerSnap.exists()) {
-      throw new Error(`Không tìm thấy khách hàng của đơn hàng: ${customerId}`);
-    }
-
-    // 2. COMPUTE UPDATES
-    const now = new Date().toISOString();
-    const historyEntry: OrderStatusHistory = {
-      id: `${id}-HIST-${crypto.randomUUID()}`,
-      status: input.status,
-      timestamp: now,
-      actorName: input.actorName || 'Nhân viên',
-      note: input.note?.trim() || null,
-    };
-
-    const existingHistory = Array.isArray(orderData.statusHistory) ? orderData.statusHistory : [];
-    const updatedHistory = [...existingHistory, historyEntry];
-
-    // Transactionally read and update customer order summaries inside the transaction
-    const custRaw = customerSnap.data() || {};
-    const existingSummaries: CustomerOrderSummary[] = Array.isArray(custRaw.orderSummaries)
-      ? custRaw.orderSummaries.map((s: Record<string, unknown>) => ({
-          id: String(s.id || ''),
-          status: (s.status as Order['status']) || 'new',
-          total: Number(s.total || 0),
-          createdAt: normalizeIsoString(s.createdAt),
-        }))
-      : [];
-
-    const orderTotal = Number((orderData.summary as Record<string, unknown>)?.total || 0);
-    const orderCreatedAt = normalizeIsoString(orderData.createdAt);
-
-    // Project order with new status across customer's transactional order summaries
-    let orderFoundInSummaries = false;
-    const projectedSummaries = existingSummaries.map((s) => {
-      if (s.id === id) {
-        orderFoundInSummaries = true;
-        return { ...s, status: input.status };
-      }
-      return s;
-    });
-
-    if (!orderFoundInSummaries) {
-      projectedSummaries.push({
-        id,
-        status: input.status,
-        total: orderTotal,
-        createdAt: orderCreatedAt,
-      });
-    }
-
-    const activeSummaries = projectedSummaries.filter((o) => o.status !== 'cancelled');
-    const completedSummaries = projectedSummaries.filter((o) => o.status === 'completed');
-
-    const totalOrders = activeSummaries.length;
-    const totalSpent = completedSummaries.reduce((sum, o) => sum + o.total, 0);
-    const sortedDates = activeSummaries.map((o) => o.createdAt).sort();
-    const lastOrderDate = sortedDates.at(-1) || '';
-
-    // 3. WRITES (Atomic)
-    tx.update(customerRef, {
-      totalOrders,
-      totalSpent,
-      lastOrderDate,
-      orderSummaries: projectedSummaries,
-    });
-
-    tx.update(orderRef, {
-      status: input.status,
-      statusHistory: updatedHistory,
-    });
-
-    return mapDocToOrder(id, {
-      ...orderData,
-      status: input.status,
-      statusHistory: updatedHistory,
-    });
+  // Status changes cross the trusted server boundary. The callable verifies the active
+  // membership and derives actorName from that membership instead of trusting the browser.
+  const mutateStatus = httpsCallable<
+    { id: string; status: UpdateOrderStatusInput['status']; note?: string },
+    Record<string, unknown>
+  >(functions, 'updateOrderStatusSecure');
+  const response = await mutateStatus({
+    id,
+    status: input.status,
+    ...(input.note?.trim() ? { note: input.note.trim() } : {}),
   });
+  return mapDocToOrder(id, response.data);
 }
 
 /**
