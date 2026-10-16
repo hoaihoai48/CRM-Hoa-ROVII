@@ -86,11 +86,11 @@ The highest-priority unresolved issue is data-integrity enforcement at the Fires
 
 **Action in this PR:** update README with current architecture, routes, setup requirements, commands and known risks.
 
-### Security remediation progress — callable status mutation
+### Security remediation progress — trusted order mutation callables
 
-The PR now adds `functions/index.js` and routes the UI's `updateOrderStatus` service through the Firebase Functions v2 callable `updateOrderStatusSecure`. The callable checks the authenticated UID's active membership on the server, validates state transitions, derives the audit actor from trusted membership data, and writes status/history plus customer projection in a Firestore Admin SDK transaction. Emulator coverage was extended for actor spoofing and rejection of inactive/unauthenticated mutations; the CI run must confirm this coverage after the latest commit.
+The PR now adds four Firebase Functions v2 callables: `createOrderSecure`, `updateOrderSecure`, `updateOrderStatusSecure`, and `syncCustomerAggregatesSecure`. The browser services for order creation, editing, status changes, and aggregate repair call these server endpoints. Each operation checks the authenticated UID's active membership in the same Firestore transaction as the mutation; create/edit re-read product records and calculate totals on the server; status changes enforce the transition graph and derive the history actor from membership data; aggregate repair queries the orders collection on the server. The current head's GitHub Actions run must still complete before these changes are considered verified.
 
-This is a first vertical slice, **not closure of the P0 issue**. The current Firestore rules still permit direct client writes to order/customer documents, and create/edit/order aggregate repair have not yet moved behind the server boundary. Keep the production gate open until all business mutation paths are migrated, negative direct-write tests are added, and restrictive rules are deployed after the client migration.
+This is not closure of the P0 issue. Firestore rules still allow direct client writes to entire order/customer/product documents, so a malicious client can bypass the callables until rules are tightened. Negative tests proving direct writes to totals/status/history/customer aggregate fields are denied are still outstanding. Keep the production gate open until the direct-write boundary is enforced after all valid UI flows are migrated and verified.
 
 ## Test isolation and command setup
 
