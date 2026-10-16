@@ -51,6 +51,7 @@ async function main() {
   const orders = ordersSnapshot.docs.map((doc) => ({ id: doc.id, data: doc.data() }));
   const customers = new Map(customersSnapshot.docs.map((doc) => [doc.id, doc.data()]));
   const ordersByCustomer = new Map();
+  const orderCustomerById = new Map(orders.map((order) => [order.id, asString(order.data.customerId)]));
   const anomalies = {
     missingCustomerId: [],
     missingCustomerDocument: [],
@@ -125,7 +126,7 @@ async function main() {
     const actualIds = actualSummaries.map((summary) => asString(summary.id));
     if (new Set(actualIds).size !== actualIds.length) anomalies.duplicateOrderSummaryIds.push(customerId);
     for (const summary of actualSummaries) {
-      if (!orders.some((order) => order.id === summary.id && order.data.customerId === customerId)) {
+      if (orderCustomerById.get(summary.id) !== customerId) {
         anomalies.orphanCustomerSummary.push(customerId);
         break;
       }
