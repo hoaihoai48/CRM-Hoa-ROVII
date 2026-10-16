@@ -93,6 +93,12 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Check local MCP server syntax
+        run: node --check mcp-server/server.mjs && node --check mcp-server/smoke-test.mjs
+
+      - name: Local MCP protocol and safety smoke test
+        run: node mcp-server/smoke-test.mjs
+
       - name: Lint
         run: npm run lint
 
