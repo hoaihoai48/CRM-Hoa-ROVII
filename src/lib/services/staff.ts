@@ -1,5 +1,5 @@
 import { collection, doc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, getAuth, signOut, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, deleteUser, getAuth, signOut, updateProfile } from 'firebase/auth';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { db } from '@/lib/firebase/config';
 import { UserMembership, UserRole, MembershipStatus } from '@/types';
@@ -77,6 +77,19 @@ export async function createStaffAccount(input: CreateStaffInput): Promise<Staff
   };
   try {
     await setDoc(doc(db, 'users', credential.user.uid), membershipData);
+  } catch (membershipError) {
+    // Compensating action: do not leave an Auth account without its CRM membership.
+    try {
+      await deleteUser(credential.user);
+    } catch (cleanupError) {
+      // Surface the UID so an administrator can recover the orphaned account deliberately.
+      throw new Error(
+        `Không thể tạo hồ sơ nhân viên và cũng không thể thu hồi tài khoản đăng nhập ${credential.user.uid}. Cần xử lý thủ công. Lỗi ghi hồ sơ: ${String(membershipError)}. Lỗi thu hồi: ${String(cleanupError)}`
+      );
+    }
+    throw new Error(
+      `Không thể tạo hồ sơ nhân viên; tài khoản đăng nhập vừa tạo đã được thu hồi. ${String(membershipError)}`
+    );
   } finally {
     // Never leave the secondary session lying around.
     await signOut(secondaryAuth);
