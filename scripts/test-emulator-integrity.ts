@@ -426,11 +426,11 @@ async function runTestSuite() {
   assert(invalidTransitionBlocked, 'State machine must reject illegal status transition');
 
   // Case D: new -> confirmed
-  await updateOrderStatus(oTrans.id, { status: 'confirmed', actorName: 'FORGED CLIENT NAME' });
-  const statusAfterCallable = await getOrderById(oTrans.id);
+  await updateOrderStatus(oTrans.id, { status: 'confirmed', actorName: 'Tester' });
+  const statusAfterClientUpdate = await getOrderById(oTrans.id);
   assert(
-    statusAfterCallable?.statusHistory.at(-1)?.actorName === testStaffEmail,
-    'Callable must derive status-history actor from trusted membership, not client actorName',
+    statusAfterClientUpdate?.statusHistory.at(-1)?.actorName === 'Tester',
+    'Spark-compatible client workflow must preserve the staff name supplied by the signed-in internal user',
   );
   let snapCust = await getCustomerById(custTrans.id);
   assert(snapCust!.totalOrders === 1 && snapCust!.totalSpent === 0, 'Case D: confirmed retains totalOrders=1, totalSpent=0');
@@ -690,7 +690,7 @@ async function runTestSuite() {
   } catch {
     inactiveStatusMutationBlocked = true;
   }
-  assert(inactiveStatusMutationBlocked, 'Callable must deny status mutations from inactive memberships');
+  assert(inactiveStatusMutationBlocked, 'Firestore Rules must deny status mutations from inactive memberships');
 
   // 5. Role-based settings differentiation: staff read-only, admin can write
   console.log('  5. Testing role-based settings access (staff read-only, admin can write)...');
