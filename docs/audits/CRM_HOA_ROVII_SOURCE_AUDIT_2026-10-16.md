@@ -4,7 +4,7 @@
 - **Audit date:** 2026-10-16
 - **Reviewed base commit:** `c9d7871fbbfcc5a0c7176c1581340041928a3ee7`
 - **Scope:** package/configuration, Firebase rules/configuration, customer/order/product/staff/settings/storage services, AuthProvider, existing emulator integrity suite, workflow presence and current commit status.
-- **Execution note:** the connected iKH Local Bridge status probe returned HTTP 404, so no local Mac command could be run from this session. GitHub Actions run #6 passed lint, typecheck, Emulator integration tests and production build after the root-layout and test-session fixes. A later patch added canonical phone handling and new regression cases; the latest head still needs a fresh run to validate those additions.
+- **Execution note:** the connected iKH Local Bridge status probe returned HTTP 404, so no local Mac command could be run from this session. GitHub Actions run #11 passed lint, typecheck, Emulator integration tests and production build after the root-layout, test-session and phone-normalization fixes. The latest code changes were covered by that successful run.
 
 ## Executive summary
 
@@ -30,7 +30,7 @@ The highest-priority unresolved issue is data-integrity enforcement at the Fires
 
 **Impact:** duplicate customer records and split purchase history are possible.
 
-**Action in this PR:** canonicalize valid Vietnamese mobile numbers to national `0...` format, search canonical plus raw/international variants, and preserve existing deterministic legacy IDs. Emulator regression cases now cover `0...` versus `+84...` aliases and lookup/reuse of a legacy `CUST_84...` record. A fresh run on the latest head is required to verify these new cases.
+**Action in this PR:** canonicalize valid Vietnamese mobile numbers to national `0...` format, search canonical plus raw/international variants, and preserve existing deterministic legacy IDs. Emulator regression cases cover `0...` versus `+84...` aliases and lookup/reuse of a legacy `CUST_84...` record; CI run #11 passed these cases.
 
 ### P1 — Staff creation can leave an orphan Authentication account
 
@@ -56,7 +56,7 @@ The highest-priority unresolved issue is data-integrity enforcement at the Fires
 
 **Evidence:** the first full Emulator run passed the order lifecycle, concurrency and membership checks, then failed at the first customer creation in the later CRUD regression block with `permission-denied`. The preceding unauthenticated-access test intentionally called `signOut(auth)`, but the script did not sign back in before the customer/order update regression cases.
 
-**Action in this PR:** sign back in as the active test staff user after verifying the unauthenticated denial, and rename the later test labels to avoid reusing CASE K/L labels already used earlier. A fresh CI run is required to verify the remaining Emulator cases and production build.
+**Action in this PR:** sign back in as the active test staff user after verifying the unauthenticated denial, and rename the later test labels to avoid reusing CASE K/L labels already used earlier. CI run #11 passed the complete Emulator suite and production build.
 
 ### P2 — Dependency install reports advisories and engine mismatch on Node 22
 
