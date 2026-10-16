@@ -62,8 +62,8 @@ jobs:
             ...rows,
             '',
             'This report is informational and does not auto-upgrade dependencies. Review direct/transitive impact before changing versions.'
-          ].join('\\n');
-          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary + '\\n');
+          ].join(String.fromCharCode(10));
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary + String.fromCharCode(10));
           console.log(summary);
           NODE
 
