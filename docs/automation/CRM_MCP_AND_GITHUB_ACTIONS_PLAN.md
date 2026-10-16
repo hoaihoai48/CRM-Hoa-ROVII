@@ -45,3 +45,8 @@ The connected iKH Local Bridge still reports its workspace as `/Users/vu/Develop
 ## Remaining client-side registration
 
 Repository code and CI validation do not automatically register a server in ChatGPT/Codex. On the machine that has a local clone, add the generic `mcpServers` entry documented in `mcp-server/README.md`, substituting the actual absolute CRM clone path, then restart the MCP client and call `crm_repo_status`. Verify that the returned root is the CRM repo before running checks. The exact configuration file depends on the MCP client; no client config was edited by this repository-side change.
+
+
+## Firebase free-tier constraint
+
+The current CRM uses the Firebase Spark plan. Cloud Functions cannot be deployed on Spark, so the active application workflow must not call callable Functions. The Spark-compatible branch `fix/spark-compatible-order-workflows` uses client Firestore transactions and Auth/Firestore Emulators only. This is a deliberate trusted-internal-team trade-off: Firestore Rules enforce membership and schema but cannot prove cross-document financial calculations. Do not link billing or deploy Functions unless the owner explicitly changes the cost requirement.
