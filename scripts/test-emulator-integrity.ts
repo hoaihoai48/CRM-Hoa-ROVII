@@ -313,39 +313,23 @@ async function runTestSuite() {
   assert(custACheck!.lastOrderDate === orderA.createdAt, 'Case A: lastOrderDate must match order createdAt');
   assert((custACheck!.orderSummaries?.length ?? 0) === 1, 'Case A: orderSummaries length must be 1');
 
-  console.log('--- SECURITY: Direct business writes must be denied ---');
-  let directOrderCreateBlocked = false;
+  console.log('--- SECURITY: Active members use client transactions; schema still applies ---');
+  let malformedOrderBlocked = false;
   try {
-    await setDoc(doc(db, 'orders', 'CLIENT-FORGED-ORDER'), { status: 'completed', summary: { total: 1 } });
-  } catch {
-    directOrderCreateBlocked = true;
-  }
-  assert(directOrderCreateBlocked, 'Active client must not create orders directly');
-
-  let directOrderMutationBlocked = false;
-  try {
-    await updateDoc(doc(db, 'orders', orderA.id), {
+    await setDoc(doc(db, 'orders', 'CLIENT-MALFORMED-ORDER'), {
       status: 'completed',
-      summary: { subtotal: 1, deliveryFee: 0, discount: 0, total: 1 },
-      statusHistory: [{ status: 'completed', actorName: 'Forged' }],
+      summary: { total: 1 },
     });
   } catch {
-    directOrderMutationBlocked = true;
+    malformedOrderBlocked = true;
   }
-  assert(directOrderMutationBlocked, 'Active client must not forge order status, totals, or history');
+  assert(malformedOrderBlocked, 'Active client must not create an order that violates the required document schema');
 
-  let directCustomerAggregateMutationBlocked = false;
-  try {
-    await updateDoc(doc(db, 'customers', custA.id), {
-      totalOrders: 999,
-      totalSpent: 999999,
-      lastOrderDate: '2099-01-01',
-      orderSummaries: [{ id: 'FORGED', status: 'completed', total: 999999, createdAt: '2099-01-01' }],
-    });
-  } catch {
-    directCustomerAggregateMutationBlocked = true;
-  }
-  assert(directCustomerAggregateMutationBlocked, 'Active client must not forge customer aggregate fields');
+  // Spark-compatible architecture intentionally allows active members to write orders
+  // through the client SDK. Rules validate access/schema but cannot verify all totals
+  // against product documents or recompute the customer's entire order history.
+  // This is acceptable for the trusted internal team operating model, not for public
+  // self-service or an adversarial client threat model.
 
   let forgedCustomerCreateBlocked = false;
   try {
@@ -831,7 +815,7 @@ async function runTestSuite() {
   } catch {
     unauthStatusMutationBlocked = true;
   }
-  assert(unauthStatusMutationBlocked, 'Callable must deny unauthenticated status mutations');
+  assert(unauthStatusMutationBlocked, 'Firestore Rules must deny unauthenticated status mutations');
 
   // Restore an authorized session before running the remaining CRUD regression cases.
   await signInWithEmailAndPassword(auth, testStaffEmail, testStaffPass);
