@@ -39,6 +39,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Cloud Functions dependencies
+        run: npm install --prefix functions --no-audit --no-fund
+
+      - name: Cloud Functions syntax check
+        run: npm run lint --prefix functions
+
       - name: Dependency vulnerability report
         shell: bash
         run: |
