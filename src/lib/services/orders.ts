@@ -4,7 +4,7 @@ import {
   getDocs, 
   getDoc, 
   query, 
-  orderBy
+  orderBy,
   where
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
