@@ -1,4 +1,5 @@
 'use strict';
+/* eslint @typescript-eslint/no-require-imports: off */
 
 // Read-only production-data audit. This script never writes, repairs, or deletes documents.
 // Authenticate with Application Default Credentials and explicitly select the intended project.
