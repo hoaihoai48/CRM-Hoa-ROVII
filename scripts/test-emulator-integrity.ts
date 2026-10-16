@@ -300,7 +300,12 @@ async function runTestSuite() {
   assert(invalidTransitionBlocked, 'State machine must reject illegal status transition');
 
   // Case D: new -> confirmed
-  await updateOrderStatus(oTrans.id, { status: 'confirmed', actorName: 'Tester' });
+  await updateOrderStatus(oTrans.id, { status: 'confirmed', actorName: 'FORGED CLIENT NAME' });
+  const statusAfterCallable = await getOrderById(oTrans.id);
+  assert(
+    statusAfterCallable?.statusHistory.at(-1)?.actorName === testStaffEmail,
+    'Callable must derive status-history actor from trusted membership, not client actorName',
+  );
   let snapCust = await getCustomerById(custTrans.id);
   assert(snapCust!.totalOrders === 1 && snapCust!.totalSpent === 0, 'Case D: confirmed retains totalOrders=1, totalSpent=0');
 
@@ -564,6 +569,14 @@ async function runTestSuite() {
   }
   assert(inactiveReadBlocked, 'Inactive user must be denied read access');
 
+  let inactiveStatusMutationBlocked = false;
+  try {
+    await updateOrderStatus(orderA.id, { status: 'confirmed', actorName: 'Inactive User' });
+  } catch {
+    inactiveStatusMutationBlocked = true;
+  }
+  assert(inactiveStatusMutationBlocked, 'Callable must deny status mutations from inactive memberships');
+
   // 5. Role-based settings differentiation: staff read-only, admin can write
   console.log('  5. Testing role-based settings access (staff read-only, admin can write)...');
   // Staff is currently signed in; read should succeed, write should fail.
@@ -677,6 +690,14 @@ async function runTestSuite() {
     console.log(`     ✓ Unauthenticated read blocked: ${(err as Error).message}`);
   }
   assert(unauthReadBlocked, 'Unauthenticated user must be denied access to collections');
+
+  let unauthStatusMutationBlocked = false;
+  try {
+    await updateOrderStatus(orderA.id, { status: 'confirmed', actorName: 'Unauthenticated' });
+  } catch {
+    unauthStatusMutationBlocked = true;
+  }
+  assert(unauthStatusMutationBlocked, 'Callable must deny unauthenticated status mutations');
 
   // Restore an authorized session before running the remaining CRUD regression cases.
   await signInWithEmailAndPassword(auth, testStaffEmail, testStaffPass);
