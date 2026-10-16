@@ -52,6 +52,47 @@ async function provisionUserMembership(
   }
 }
 
+async function corruptCustomerAggregatesAsAdmin(customerId: string) {
+  const host = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'crm-hoa-rovii';
+  const updateMask = [
+    'updateMask.fieldPaths=totalOrders',
+    'updateMask.fieldPaths=totalSpent',
+    'updateMask.fieldPaths=orderSummaries',
+  ].join('&');
+  const url = `http://${host}/v1/projects/${projectId}/databases/(default)/documents/customers/${customerId}?${updateMask}`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer owner',
+    },
+    body: JSON.stringify({
+      fields: {
+        totalOrders: { integerValue: '99999' },
+        totalSpent: { integerValue: '88888888' },
+        orderSummaries: {
+          arrayValue: {
+            values: [{
+              mapValue: {
+                fields: {
+                  id: { stringValue: 'CORRUPTED-ORDER' },
+                  status: { stringValue: 'completed' },
+                  total: { integerValue: '99999999' },
+                  createdAt: { stringValue: '2020-01-01T00:00:00.000Z' },
+                },
+              },
+            }],
+          },
+        },
+      },
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to corrupt customer aggregates through emulator admin API: ${await res.text()}`);
+  }
+}
+
 async function runTestSuite() {
   console.log('🚀 Starting Firebase Emulator Integration & Invariant Verification Suite...\n');
 
@@ -216,6 +257,51 @@ async function runTestSuite() {
   assert(custACheck!.lastOrderDate === orderA.createdAt, 'Case A: lastOrderDate must match order createdAt');
   assert((custACheck!.orderSummaries?.length ?? 0) === 1, 'Case A: orderSummaries length must be 1');
 
+  console.log('--- SECURITY: Direct business writes must be denied ---');
+  let directOrderCreateBlocked = false;
+  try {
+    await setDoc(doc(db, 'orders', 'CLIENT-FORGED-ORDER'), { status: 'completed', summary: { total: 1 } });
+  } catch {
+    directOrderCreateBlocked = true;
+  }
+  assert(directOrderCreateBlocked, 'Active client must not create orders directly');
+
+  let directOrderMutationBlocked = false;
+  try {
+    await updateDoc(doc(db, 'orders', orderA.id), {
+      status: 'completed',
+      summary: { subtotal: 1, deliveryFee: 0, discount: 0, total: 1 },
+      statusHistory: [{ status: 'completed', actorName: 'Forged' }],
+    });
+  } catch {
+    directOrderMutationBlocked = true;
+  }
+  assert(directOrderMutationBlocked, 'Active client must not forge order status, totals, or history');
+
+  let directCustomerAggregateMutationBlocked = false;
+  try {
+    await updateDoc(doc(db, 'customers', custA.id), {
+      totalOrders: 999,
+      totalSpent: 999999,
+      lastOrderDate: '2099-01-01',
+      orderSummaries: [{ id: 'FORGED', status: 'completed', total: 999999, createdAt: '2099-01-01' }],
+    });
+  } catch {
+    directCustomerAggregateMutationBlocked = true;
+  }
+  assert(directCustomerAggregateMutationBlocked, 'Active client must not forge customer aggregate fields');
+
+  let forgedCustomerCreateBlocked = false;
+  try {
+    await setDoc(doc(db, 'customers', 'CLIENT-FORGED-CUSTOMER'), {
+      name: 'Forged', phone: '0900000000', phoneNormalized: '0900000000', address: 'Nowhere',
+      totalOrders: 99, totalSpent: 999999, lastOrderDate: '2099-01-01', createdAt: new Date().toISOString(),
+    });
+  } catch {
+    forgedCustomerCreateBlocked = true;
+  }
+  assert(forgedCustomerCreateBlocked, 'Active client must not create a customer with forged aggregates');
+
   // ==========================================
   // CASE B, C: Multiple orders with Completed & Cancelled states
   // ==========================================
@@ -349,11 +435,7 @@ async function runTestSuite() {
     createdAt: '2020-01-01T00:00:00.000Z',
   };
 
-  await setDoc(corruptedRef, {
-    totalOrders: 99999,
-    totalSpent: 88888888,
-    orderSummaries: [corruptedFakeSummary],
-  }, { merge: true });
+  await corruptCustomerAggregatesAsAdmin(custTrans.id);
 
   const corruptedSnap = await getCustomerById(custTrans.id);
   assert(corruptedSnap !== null, 'Customer must exist');
