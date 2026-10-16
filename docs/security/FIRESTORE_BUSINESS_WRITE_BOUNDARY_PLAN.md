@@ -21,7 +21,7 @@ The current browser services use Firebase Web SDK transactions to update both or
 - Status changes enforce the state machine and derive history actor identity from the trusted membership record instead of trusting browser-provided `actorName`.
 - Aggregate repair queries the authoritative orders collection on the server rather than accepting a client-provided projection.
 - The browser services now route create, edit, status, and aggregate repair through these callables. Auth, Firestore and Functions emulators are configured together; tests cover aggregate invariants, server-side pricing behavior, actor spoofing, and inactive/unauthenticated status mutation rejection.
-- CI installs and syntax-checks the Functions package and audits its dependency tree separately.
+- CI installs the Functions package with committed `functions/package-lock.json` using `npm ci`, syntax-checks both the callable backend and read-only audit script, and audits its dependency tree separately.
 
 **Important limitation:** this PR now denies direct client writes to orders and protects customer aggregate/identity fields in Firestore Rules. Emulator negative tests were added for forged order creation/status/totals/history and forged customer aggregates. This is a significant source-level boundary improvement, but the current head's CI must pass before it is considered verified. Product policy is now explicit: active staff can read the catalog but only active admins can create/update products; client-side create/edit controls mirror that rule, and Emulator tests assert staff writes are denied and admin updates succeed. Customer create/profile rules still need regression validation against every UI path. Do not deploy to production or claim the full system secure until CI passes and product/customer policy is explicitly reviewed.
 
@@ -49,3 +49,8 @@ The current browser services use Firebase Web SDK transactions to update both or
 Decision: product catalog writes are admin-only because the product document contains the sale price and active/inactive status, both of which directly affect order value and what staff can sell. Active staff may read product documents and create/edit orders through trusted callables; they may not create or modify product documents directly. There is no product-delete operation in the current service, so deletes are denied. Admin SDK callables still require explicit auth/membership validation because server SDK writes bypass Firestore Rules.
 
 The policy is enforced in `firestore.rules` and mirrored in the product list/create/edit UI. Emulator coverage checks that staff cannot create a product or alter a price and that an active admin can update a product. If business operations later require staff to edit non-financial metadata, add a narrowly scoped server endpoint or field allowlist with dedicated tests; do not reopen unrestricted client writes.
+
+
+## Reproducible Functions dependencies
+
+A committed `functions/package-lock.json` (npm lockfile v3) now records the Cloud Functions dependency graph. CI uses `npm ci --prefix functions`, which fails rather than silently recalculating the lockfile when the manifest and lock disagree. The lockfile was generated in the CI environment and checked against `functions/package.json` before being committed.
