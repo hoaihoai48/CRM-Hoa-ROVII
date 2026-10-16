@@ -13,15 +13,17 @@ The current browser services use Firebase Web SDK transactions to update both or
 - Order edits change items and totals; status transitions change both order history and customer projections.
 - Denying order/customer writes immediately would break the current UI because these services write through the Firebase Web SDK.
 
-## Implemented first slice in PR #1 (not a full security fix)
+## Implemented mutation paths in PR #1 (not a full security fix)
 
-- Added a Firebase Cloud Functions v2 callable named `updateOrderStatusSecure` in `functions/index.js`.
-- The callable requires Firebase Authentication, reads `users/{uid}` on the server, and requires an active `admin` or `staff` membership for every mutation.
-- The server enforces the order-status state machine, derives the history actor from the membership record rather than trusting the browser's `actorName`, and atomically writes the order status/history plus customer aggregate projection.
-- The browser's `updateOrderStatus` service now calls this callable. The Auth, Firestore, and Functions emulators are configured together, and the integration suite checks trusted actor identity plus inactive/unauthenticated rejection.
+- Added Firebase Cloud Functions v2 callables in `functions/index.js`: `createOrderSecure`, `updateOrderSecure`, `updateOrderStatusSecure`, and `syncCustomerAggregatesSecure`.
+- Each callable requires Firebase Authentication and checks the current active `admin`/`staff` membership inside the same Firestore transaction as the mutation.
+- Create/edit operations re-read product documents on the server, validate quantity/price/discount constraints, calculate totals server-side, and atomically update the order and customer aggregate projection.
+- Status changes enforce the state machine and derive history actor identity from the trusted membership record instead of trusting browser-provided `actorName`.
+- Aggregate repair queries the authoritative orders collection on the server rather than accepting a client-provided projection.
+- The browser services now route create, edit, status, and aggregate repair through these callables. Auth, Firestore and Functions emulators are configured together; tests cover aggregate invariants, server-side pricing behavior, actor spoofing, and inactive/unauthenticated status mutation rejection.
 - CI installs and syntax-checks the Functions package and audits its dependency tree separately.
 
-**Important limitation:** this is only the status-mutation vertical slice. Order creation, order editing, aggregate repair, product/customer writes and direct Firestore rules have not all crossed the trusted boundary yet. Since current rules still allow active clients to write entire order/customer documents, this change alone does not close the production write-integrity vulnerability. Do not deploy/enforce the final rules or call the system secure until the remaining mutations are migrated and tested.
+**Important limitation:** the Firestore rules still permit active clients to write order/customer/product documents directly. A malicious client can bypass the callables until the rules are tightened. The current tests do not yet prove direct writes to computed fields are denied, and customer/product create/profile paths still need a final field-boundary review. This work therefore does not close the production write-integrity gate by itself. Do not deploy restrictive rules until the legitimate UI flows and migration have been verified end-to-end.
 
 ## Required migration
 
