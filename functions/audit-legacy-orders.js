@@ -11,13 +11,14 @@ if (!projectId) {
   console.error('Set FIREBASE_PROJECT_ID explicitly to the intended Firebase project. No database was queried.');
   process.exit(2);
 }
-if (projectId.startsWith('demo-')) {
-  console.error('Refusing to run the legacy-data audit against a demo project. Use the Emulator test suite for demo data.');
+const usingEmulator = Boolean(process.env.FIRESTORE_EMULATOR_HOST);
+if (projectId.startsWith('demo-') && !usingEmulator) {
+  console.error('Refusing to run the legacy-data audit against a demo project unless FIRESTORE_EMULATOR_HOST is explicitly set.');
   process.exit(2);
 }
 
 if (!getApps().length) {
-  initializeApp({ credential: applicationDefault(), projectId });
+  initializeApp(usingEmulator ? { projectId } : { credential: applicationDefault(), projectId });
 }
 const db = getFirestore();
 
