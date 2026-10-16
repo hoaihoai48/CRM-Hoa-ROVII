@@ -4,7 +4,7 @@
 - **Audit date:** 2026-10-16
 - **Reviewed base commit:** `c9d7871fbbfcc5a0c7176c1581340041928a3ee7`
 - **Scope:** package/configuration, Firebase rules/configuration, customer/order/product/staff/settings/storage services, AuthProvider, existing emulator integrity suite, workflow presence and current commit status.
-- **Execution note:** the connected iKH Local Bridge status probe returned HTTP 404, so no local Mac command could be run from this session. GitHub Actions provided fresh evidence: lint and typecheck pass after the root-layout type fix, but the Emulator suite then exposed a test-session sequencing bug. The suite has been fixed in this branch to sign back in before the post-security CRUD cases; a fresh run is required to verify Emulator and build.
+- **Execution note:** the connected iKH Local Bridge status probe returned HTTP 404, so no local Mac command could be run from this session. GitHub Actions run #6 passed lint, typecheck, Emulator integration tests and production build after the root-layout and test-session fixes. A later patch added canonical phone handling and new regression cases; the latest head still needs a fresh run to validate those additions.
 
 ## Executive summary
 
@@ -30,7 +30,7 @@ The highest-priority unresolved issue is data-integrity enforcement at the Fires
 
 **Impact:** duplicate customer records and split purchase history are possible.
 
-**Recommendation:** define one canonical storage format (for example, Vietnamese national format), search canonical and legacy variants during migration, and add tests for `0...`, `84...`, `+84...`, separators, existing legacy records, and concurrent creation. Do not change IDs without a backward-compatible lookup/migration plan.
+**Action in this PR:** canonicalize valid Vietnamese mobile numbers to national `0...` format, search canonical plus raw/international variants, and preserve existing deterministic legacy IDs. Emulator regression cases now cover `0...` versus `+84...` aliases and lookup/reuse of a legacy `CUST_84...` record. A fresh run on the latest head is required to verify these new cases.
 
 ### P1 — Staff creation can leave an orphan Authentication account
 
