@@ -212,6 +212,14 @@ async function runTestSuite() {
   }
   assert(staffPriceChangeBlocked, 'Active staff must not change product prices directly');
 
+  let staffProductDeleteBlocked = false;
+  try {
+    await (await import('firebase/firestore')).deleteDoc(doc(db, 'products', p1.id));
+  } catch {
+    staffProductDeleteBlocked = true;
+  }
+  assert(staffProductDeleteBlocked, 'Active staff must not delete products directly');
+
 
   // ==========================================
   // TEST: Vietnamese phone canonicalization and legacy compatibility
@@ -733,6 +741,23 @@ async function runTestSuite() {
   await signInWithEmailAndPassword(auth, adminEmail, adminPass);
   await updateDoc(doc(db, 'products', p1.id), { note: 'Admin product-write policy test' });
   console.log('     ✓ Admin product update succeeded as expected');
+
+  let adminCreatedAtMutationBlocked = false;
+  try {
+    await updateDoc(doc(db, 'products', p1.id), { createdAt: '2000-01-01T00:00:00.000Z' });
+  } catch {
+    adminCreatedAtMutationBlocked = true;
+  }
+  assert(adminCreatedAtMutationBlocked, 'Admin must not rewrite a product creation timestamp');
+
+  let adminProductDeleteBlocked = false;
+  try {
+    await (await import('firebase/firestore')).deleteDoc(doc(db, 'products', p1.id));
+  } catch {
+    adminProductDeleteBlocked = true;
+  }
+  assert(adminProductDeleteBlocked, 'Product deletion must remain disabled even for admins');
+
   await updateDoc(doc(db, 'products', p1.id), { note: p1.note });
   await setDoc(doc(db, 'settings', 'store'), { storeName: 'Tiệm Hoa ROVII' }, { merge: true });
   console.log('     ✓ Admin settings write succeeded as expected');

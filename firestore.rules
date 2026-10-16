@@ -124,29 +124,41 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Only admins manage the product catalog and its prices.
-    match /products/{productId} {
-      allow read: if isActiveMember();
-      allow create, update: if isAdmin()
-        && request.resource.data.keys().hasOnly([
+    function validProduct(data) {
+      return data.keys().hasOnly([
           'name', 'price', 'unit', 'isActive', 'category',
           'imageUrl', 'imageUrls', 'note', 'createdAt'
         ])
-        && request.resource.data.name is string
-        && request.resource.data.name.size() > 0
-        && request.resource.data.name.size() <= 200
-        && request.resource.data.price is number
-        && request.resource.data.price >= 0
-        && request.resource.data.unit is string
-        && request.resource.data.unit.size() > 0
-        && request.resource.data.unit.size() <= 40
-        && request.resource.data.isActive is bool
-        && request.resource.data.createdAt is string
-        && (request.resource.data.get('category', null) == null || request.resource.data.category is string)
-        && (request.resource.data.get('imageUrl', null) == null || request.resource.data.imageUrl is string)
-        && request.resource.data.get('imageUrls', []) is list
-        && request.resource.data.get('imageUrls', []).size() <= 5
-        && (request.resource.data.get('note', null) == null || request.resource.data.note is string);
+        && data.keys().hasAll(['name', 'price', 'unit', 'isActive', 'createdAt'])
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 200
+        && data.price is number
+        && data.price >= 0
+        && data.unit is string
+        && data.unit.size() > 0
+        && data.unit.size() <= 40
+        && data.isActive is bool
+        && data.createdAt is string
+        && (data.get('category', null) == null || data.category is string)
+        && (data.get('imageUrl', null) == null || data.imageUrl is string)
+        && data.get('imageUrls', []) is list
+        && data.get('imageUrls', []).size() <= 5
+        && (data.get('note', null) == null || data.note is string);
+    }
+
+    // Product catalog policy: all active members can read; only admins can create
+    // or edit. createdAt is immutable and delete is disabled to preserve order history.
+    match /products/{productId} {
+      allow read: if isActiveMember();
+      allow create: if isAdmin() && validProduct(request.resource.data);
+      allow update: if isAdmin()
+        && validProduct(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'name', 'price', 'unit', 'isActive', 'category',
+          'imageUrl', 'imageUrls', 'note'
+        ]);
       allow delete: if false;
     }
 
