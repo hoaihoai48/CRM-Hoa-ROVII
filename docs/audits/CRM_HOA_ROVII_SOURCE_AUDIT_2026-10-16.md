@@ -4,7 +4,7 @@
 - **Audit date:** 2026-10-16
 - **Reviewed base commit:** `c9d7871fbbfcc5a0c7176c1581340041928a3ee7`
 - **Scope:** package/configuration, Firebase rules/configuration, customer/order/product/staff/settings/storage services, AuthProvider, existing emulator integrity suite, workflow presence and current commit status.
-- **Execution note:** the connected iKH Local Bridge status probe returned HTTP 404, so no local Mac command could be run from this session. A fresh GitHub Actions run was started from this PR. Its first pass reported lint PASS, then typecheck FAILED at `src/app/layout.tsx(22,50)` because `LayoutProps` was undefined in a clean checkout. That finding is fixed in this branch; CI must rerun to verify the fix and reach Emulator/build steps.
+- **Execution note:** the connected iKH Local Bridge status probe returned HTTP 404, so no local Mac command could be run from this session. GitHub Actions provided fresh evidence: lint and typecheck pass after the root-layout type fix, but the Emulator suite then exposed a test-session sequencing bug. The suite has been fixed in this branch to sign back in before the post-security CRUD cases; a fresh run is required to verify Emulator and build.
 
 ## Executive summary
 
@@ -50,7 +50,13 @@ The highest-priority unresolved issue is data-integrity enforcement at the Fires
 
 **Evidence:** the first GitHub Actions run failed at `src/app/layout.tsx(22,50): error TS2304: Cannot find name 'LayoutProps'.` The root layout used a generated Next route helper type that was not available before a build generated route types.
 
-**Action in this PR:** replace that dependency with an explicit `Readonly<{ children: ReactNode }>` type, which is sufficient because the layout does not consume route params. CI rerun is required to verify.
+**Action in this PR:** replace that dependency with an explicit `Readonly<{ children: ReactNode }>` type, which is sufficient because the layout does not consume route params. The next CI run passed this typecheck step.
+
+### P1 — Emulator suite lost its authenticated session before CRUD regression tests
+
+**Evidence:** the first full Emulator run passed the order lifecycle, concurrency and membership checks, then failed at the first customer creation in the later CRUD regression block with `permission-denied`. The preceding unauthenticated-access test intentionally called `signOut(auth)`, but the script did not sign back in before the customer/order update regression cases.
+
+**Action in this PR:** sign back in as the active test staff user after verifying the unauthenticated denial, and rename the later test labels to avoid reusing CASE K/L labels already used earlier. A fresh CI run is required to verify the remaining Emulator cases and production build.
 
 ### P2 — Dependency install reports advisories and engine mismatch on Node 22
 
