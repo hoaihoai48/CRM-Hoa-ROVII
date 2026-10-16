@@ -115,3 +115,10 @@ Recommended separation:
 4. **Results:** return command, exit code, bounded logs, commit SHA, workflow URL and artifact references. Never report success from a queued/running workflow.
 
 **Integration blocker:** the Local Bridge status endpoint responds, but the configured workspace is `/Users/vu/Developer/giao-trinh-ikh`, not this CRM repository. No CRM commands were run through the mismatched workspace. Configure and verify a dedicated CRM working directory before using the Bridge for CRM-specific commands. This PR adds CI and documents the contract; it does not claim a CRM-specific MCP/Bridge configuration has been deployed.
+
+
+### Product write policy and legacy data audit — 2026-10-16 follow-up
+
+The current PR policy is admin-only product writes: active staff may read product documents, while active admins may create/update validated product documents; direct deletes are denied. UI controls mirror this policy, and Emulator tests check staff create/price-write denial plus an admin update. A read-only audit script now checks legacy order math, customer references and customer aggregate/projection consistency; see `docs/security/LEGACY_ORDER_DATA_AUDIT_RUNBOOK.md`. No production data was queried or changed during this work. The owner must run the script with explicitly scoped read credentials and review the report before any separate repair is approved.
+
+A committed `functions/package-lock.json` is now present, and CI has been changed to use `npm ci --prefix functions` rather than resolving Functions dependencies on every run.
