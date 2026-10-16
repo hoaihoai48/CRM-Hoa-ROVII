@@ -6,7 +6,7 @@
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { db, auth } from '../src/lib/firebase/config';
-import { createCustomer, getCustomerById, updateCustomer } from '../src/lib/services/customers';
+import { createCustomer, findCustomerByPhone, getCustomerById, updateCustomer } from '../src/lib/services/customers';
 import { createOrder, getOrderById, syncCustomerAggregates, updateOrder, updateOrderStatus } from '../src/lib/services/orders';
 import { Product } from '../src/types';
 
@@ -115,6 +115,54 @@ async function runTestSuite() {
   await setDoc(doc(db, 'products', p2.id), p2);
   await setDoc(doc(db, 'products', pInactive.id), pInactive);
   console.log('✅ Seeded test products into emulator.\n');
+
+  // ==========================================
+  // TEST: Vietnamese phone canonicalization and legacy compatibility
+  // ==========================================
+  console.log('--- TEST GUARD: Canonical phone identity and legacy aliases ---');
+  const canonicalPhoneCustomer = await createCustomer({
+    name: 'Khách Chuẩn Hóa',
+    phone: '0901234567',
+    address: '1 Canonical Street',
+  });
+  const internationalPhoneAlias = await createCustomer({
+    name: 'Khách Dùng Đầu Số Quốc Tế',
+    phone: '+84 901 234 567',
+    address: '1 Canonical Street',
+  });
+  assert(
+    internationalPhoneAlias.id === canonicalPhoneCustomer.id,
+    'National and +84 formats must resolve to the same customer',
+  );
+  assert(
+    internationalPhoneAlias.phoneNormalized === '0901234567',
+    'Stored phoneNormalized must use Vietnamese national format',
+  );
+  const aliasLookup = await findCustomerByPhone('+84 901 234 567');
+  assert(aliasLookup?.id === canonicalPhoneCustomer.id, 'Phone lookup must resolve international aliases');
+
+  // Simulate a record created before canonicalization used an 84... deterministic ID.
+  const legacyPhoneDigits = '84901234568';
+  const legacyCustomerId = `CUST_${legacyPhoneDigits}`;
+  await setDoc(doc(db, 'customers', legacyCustomerId), {
+    name: 'Khách Legacy',
+    phone: '+84901234568',
+    phoneNormalized: legacyPhoneDigits,
+    address: '2 Legacy Street',
+    totalOrders: 0,
+    totalSpent: 0,
+    lastOrderDate: '',
+    orderSummaries: [],
+    createdAt: new Date().toISOString(),
+  });
+  const legacyNationalLookup = await createCustomer({
+    name: 'Khách Legacy National Format',
+    phone: '0901234568',
+    address: '2 Legacy Street',
+  });
+  assert(legacyNationalLookup.id === legacyCustomerId, 'Create must reuse legacy international-format customer IDs');
+  const legacyInternationalLookup = await findCustomerByPhone('0901234568');
+  assert(legacyInternationalLookup?.id === legacyCustomerId, 'Lookup must find legacy phoneNormalized values');
 
   // ==========================================
   // TEST: Inactive / Invalid Product Guards
