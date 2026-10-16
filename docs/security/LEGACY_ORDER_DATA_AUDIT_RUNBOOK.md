@@ -7,7 +7,7 @@ The new order callables and Firestore rules prevent future client-side corruptio
 ## Safety guarantees
 
 - `functions/audit-legacy-orders.js` is read-only. It only queries `orders` and `customers`; it never writes, repairs, or deletes documents.
-- It requires an explicit `FIREBASE_PROJECT_ID` or `GCLOUD_PROJECT`. It refuses project IDs starting with `demo-` unless `FIRESTORE_EMULATOR_HOST` is explicitly set, so CI can validate the audit against a disposable Emulator.
+- It requires an explicit `FIREBASE_PROJECT_ID` or `GCLOUD_PROJECT`. Demo project IDs require `FIRESTORE_EMULATOR_HOST`; conversely, if the Emulator host is set, non-demo project IDs are rejected. This prevents accidentally believing an Emulator scan audited production, or pointing a demo scan at production.
 - Authenticate with Application Default Credentials for a principal that has only the read access needed for the audit when practical.
 - Output includes counts and at most 25 sample document IDs per anomaly category; it does not print customer names, phone numbers, addresses, or order line details.
 - A document may appear in more than one anomaly category. Exit code 1 means one or more anomalies were found; exit code 2 means the audit could not safely run.
