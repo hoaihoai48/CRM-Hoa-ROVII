@@ -747,6 +747,9 @@ async function runTestSuite() {
     status: 'active',
   });
   await signInWithEmailAndPassword(auth, adminEmail, adminPass);
+  await updateDoc(doc(db, 'products', p1.id), { note: 'Admin product-write policy test' });
+  console.log('     ✓ Admin product update succeeded as expected');
+  await updateDoc(doc(db, 'products', p1.id), { note: p1.note });
   await setDoc(doc(db, 'settings', 'store'), { storeName: 'Tiệm Hoa ROVII' }, { merge: true });
   console.log('     ✓ Admin settings write succeeded as expected');
 
