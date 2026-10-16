@@ -23,7 +23,7 @@ The current browser services use Firebase Web SDK transactions to update both or
 - The browser services now route create, edit, status, and aggregate repair through these callables. Auth, Firestore and Functions emulators are configured together; tests cover aggregate invariants, server-side pricing behavior, actor spoofing, and inactive/unauthenticated status mutation rejection.
 - CI installs and syntax-checks the Functions package and audits its dependency tree separately.
 
-**Important limitation:** the Firestore rules still permit active clients to write order/customer/product documents directly. A malicious client can bypass the callables until the rules are tightened. The current tests do not yet prove direct writes to computed fields are denied, and customer/product create/profile paths still need a final field-boundary review. This work therefore does not close the production write-integrity gate by itself. Do not deploy restrictive rules until the legitimate UI flows and migration have been verified end-to-end.
+**Important limitation:** this PR now denies direct client writes to orders and protects customer aggregate/identity fields in Firestore Rules. Emulator negative tests were added for forged order creation/status/totals/history and forged customer aggregates. This is a significant source-level boundary improvement, but the current head's CI must pass before it is considered verified. Product writes remain available to active members and still need a role/field-boundary decision; customer create/profile rules also need regression validation against every UI path. Do not deploy to production or claim the full system secure until CI passes and product/customer policy is explicitly reviewed.
 
 ## Required migration
 
@@ -37,7 +37,7 @@ The current browser services use Firebase Web SDK transactions to update both or
 ## Release acceptance criteria
 
 - A client cannot directly forge order summary totals, item unit prices, status, or status history.
-- A client cannot directly change totalOrders, totalSpent, lastOrderDate, or orderSummaries.
+- A client cannot directly create/update/delete orders or change customer aggregate/identity fields through the client SDK (covered by Emulator negative tests).
 - Server calculates order totals from current product records and validates allowed state transitions.
 - Valid create/edit/status workflows pass integration tests end-to-end.
 - Inactive and unauthenticated accounts cannot mutate business data.
