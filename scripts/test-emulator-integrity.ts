@@ -52,6 +52,42 @@ async function provisionUserMembership(
   }
 }
 
+function encodeFirestoreValue(value: unknown): Record<string, unknown> {
+  if (value === null || value === undefined) return { nullValue: null };
+  if (typeof value === 'string') return { stringValue: value };
+  if (typeof value === 'boolean') return { booleanValue: value };
+  if (typeof value === 'number') {
+    return Number.isInteger(value)
+      ? { integerValue: String(value) }
+      : { doubleValue: value };
+  }
+  if (Array.isArray(value)) return { arrayValue: { values: value.map(encodeFirestoreValue) } };
+  if (typeof value === 'object') {
+    const fields: Record<string, unknown> = {};
+    for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+      if (entry !== undefined) fields[key] = encodeFirestoreValue(entry);
+    }
+    return { mapValue: { fields } };
+  }
+  throw new Error(`Unsupported Firestore Emulator test value type: ${typeof value}`);
+}
+
+async function setDocumentAsAdmin(collectionName: string, documentId: string, data: Record<string, unknown>) {
+  const host = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'crm-hoa-rovii';
+  const url = `http://${host}/v1/projects/${projectId}/databases/(default)/documents/${collectionName}/${documentId}`;
+  const fields: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) fields[key] = encodeFirestoreValue(value);
+  }
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer owner' },
+    body: JSON.stringify({ fields }),
+  });
+  if (!res.ok) throw new Error(`Failed to seed ${collectionName}/${documentId} via Emulator admin API: ${await res.text()}`);
+}
+
 async function corruptCustomerAggregatesAsAdmin(customerId: string) {
   const host = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'crm-hoa-rovii';
@@ -152,10 +188,30 @@ async function runTestSuite() {
     createdAt: new Date().toISOString(),
   };
 
-  await setDoc(doc(db, 'products', p1.id), p1);
-  await setDoc(doc(db, 'products', p2.id), p2);
-  await setDoc(doc(db, 'products', pInactive.id), pInactive);
-  console.log('✅ Seeded test products into emulator.\n');
+  await setDocumentAsAdmin('products', p1.id, p1 as unknown as Record<string, unknown>);
+  await setDocumentAsAdmin('products', p2.id, p2 as unknown as Record<string, unknown>);
+  await setDocumentAsAdmin('products', pInactive.id, pInactive as unknown as Record<string, unknown>);
+  console.log('✅ Seeded test products into emulator.\\n');
+
+  console.log('--- SECURITY: Product catalog writes are admin-only ---');
+  let staffProductCreateBlocked = false;
+  try {
+    await setDoc(doc(db, 'products', 'PROD_STAFF_FORGED'), {
+      name: 'Forged Product', price: 1, unit: 'bó', isActive: true, createdAt: new Date().toISOString(),
+    });
+  } catch {
+    staffProductCreateBlocked = true;
+  }
+  assert(staffProductCreateBlocked, 'Active staff must not create products directly');
+
+  let staffPriceChangeBlocked = false;
+  try {
+    await updateDoc(doc(db, 'products', p1.id), { price: 1 });
+  } catch {
+    staffPriceChangeBlocked = true;
+  }
+  assert(staffPriceChangeBlocked, 'Active staff must not change product prices directly');
+
 
   // ==========================================
   // TEST: Vietnamese phone canonicalization and legacy compatibility
