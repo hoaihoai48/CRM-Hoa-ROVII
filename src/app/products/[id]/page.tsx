@@ -16,6 +16,7 @@ import { getProductById, updateProduct } from '@/lib/services';
 import { Product } from '@/types';
 import { formatVND } from '@/lib/utils/format';
 import { MultiImageUploader } from '@/components/common/MultiImageUploader';
+import { useAuth } from '@/components/auth/AuthProvider';
 
 interface ProductFormProps {
   product: Product;
@@ -23,6 +24,8 @@ interface ProductFormProps {
 }
 
 function ProductEditForm({ product, productId }: ProductFormProps) {
+  const { membership } = useAuth();
+  const canManageProducts = membership?.role === 'admin' && membership.status === 'active';
   const router = useRouter();
 
   const [name, setName] = useState(product.name);
@@ -39,6 +42,10 @@ function ProductEditForm({ product, productId }: ProductFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canManageProducts) {
+      setErrorMessage('Chỉ quản trị viên đang hoạt động mới được thay đổi sản phẩm.');
+      return;
+    }
     setIsLoading(true);
     setErrorMessage(null);
     updateProduct(productId, { 
@@ -244,6 +251,8 @@ function ProductEditForm({ product, productId }: ProductFormProps) {
 }
 
 function EditProductContent() {
+  const { membership } = useAuth();
+  const canManageProducts = membership?.role === 'admin' && membership.status === 'active';
   const params = useParams();
   const productId = params?.id as string;
 
@@ -284,6 +293,10 @@ function EditProductContent() {
   }, [productId]);
 
   const effectiveLoadError = !productId ? 'Mã sản phẩm không hợp lệ.' : loadError;
+
+  if (!canManageProducts) {
+    return <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">Chỉ quản trị viên đang hoạt động mới được tạo hoặc thay đổi sản phẩm.</div>;
+  }
 
   if (isLoading && productId) {
     return <div className="p-8 text-center text-sm text-stone-500">Đang tải sản phẩm...</div>;
