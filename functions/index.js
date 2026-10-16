@@ -1,4 +1,5 @@
 'use strict';
+/* eslint @typescript-eslint/no-require-imports: off */
 
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
