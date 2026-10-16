@@ -68,8 +68,25 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Product catalog and prices are financially sensitive: staff may read them,
+    // but only active admins may create/update/delete products. UI routes must mirror this policy.
     match /products/{productId} {
-      allow read, write: if isActiveMember();
+      allow read: if isActiveMember();
+      allow create, update: if isAdmin()
+        && request.resource.data.keys().hasOnly([
+          'name', 'price', 'unit', 'isActive', 'category',
+          'imageUrl', 'imageUrls', 'note', 'createdAt'
+        ])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.price is number
+        && request.resource.data.price >= 0
+        && request.resource.data.unit is string
+        && request.resource.data.unit.size() > 0
+        && request.resource.data.isActive is bool
+        && request.resource.data.createdAt is string
+        && request.resource.data.get('imageUrls', []) is list;
+      allow delete: if false;
     }
 
     // Store configuration is readable by active members, but editable only by admins.
