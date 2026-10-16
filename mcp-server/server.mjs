@@ -15,7 +15,15 @@ function send(message) {
   process.stdout.write(JSON.stringify(message) + "\n");
 }
 function result(id, text, isError = false) {
-  send({ jsonrpc: "2.0", id, result: { content: [{ type: "text", text }], ...(isError ? { isError: true } : {}) } });
+  const payload = { content: [{ type: "text", text }] };
+  try {
+    // Supplying structuredContent lets MCP clients expose the JSON payload as
+    // an object instead of silently dropping it when only text content exists.
+    payload.structuredContent = JSON.parse(text);
+  } catch {
+    // Plain-text tool errors remain valid MCP text content.
+  }
+  send({ jsonrpc: "2.0", id, result: { ...payload, ...(isError ? { isError: true } : {}) } });
 }
 function error(id, code, message) {
   send({ jsonrpc: "2.0", id, error: { code, message } });
