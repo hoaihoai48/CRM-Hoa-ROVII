@@ -50,26 +50,28 @@ exports.updateOrderStatusSecure = onCall({ region: 'us-central1' }, async (reque
   }
 
   const uid = request.auth.uid;
-  const membershipSnap = await db.doc(`users/${uid}`).get();
-  if (!membershipSnap.exists) {
-    throw new HttpsError('permission-denied', 'Tài khoản chưa được cấp quyền CRM.');
-  }
-  const membership = membershipSnap.data();
-  if (membership.status !== 'active' || !['admin', 'staff'].includes(membership.role)) {
-    throw new HttpsError('permission-denied', 'Tài khoản không có quyền cập nhật đơn hàng.');
-  }
-
+  const membershipRef = db.doc(`users/${uid}`);
   const orderId = requireText(request.data?.id, 'id', 160);
   const nextStatus = request.data?.status;
   if (!ALLOWED_STATUSES.has(nextStatus)) {
     throw new HttpsError('invalid-argument', 'Trạng thái đơn hàng không hợp lệ.');
   }
   const note = typeof request.data?.note === 'string' ? request.data.note.trim().slice(0, 500) : '';
-  const actorName = String(membership.name || membership.email || request.auth.token.email || 'Nhân viên').slice(0, 120);
-
   const orderRef = db.doc(`orders/${orderId}`);
   const now = new Date().toISOString();
   const result = await db.runTransaction(async (transaction) => {
+    // Read membership in the same transaction as the business mutation so a concurrent
+    // deactivation cannot race past a pre-transaction authorization check.
+    const membershipSnap = await transaction.get(membershipRef);
+    if (!membershipSnap.exists) {
+      throw new HttpsError('permission-denied', 'Tài khoản chưa được cấp quyền CRM.');
+    }
+    const membership = membershipSnap.data();
+    if (membership.status !== 'active' || !['admin', 'staff'].includes(membership.role)) {
+      throw new HttpsError('permission-denied', 'Tài khoản không có quyền cập nhật đơn hàng.');
+    }
+    const actorName = String(membership.name || membership.email || request.auth.token.email || 'Nhân viên').slice(0, 120);
+
     const orderSnap = await transaction.get(orderRef);
     if (!orderSnap.exists) {
       throw new HttpsError('not-found', 'Không tìm thấy đơn hàng.');
