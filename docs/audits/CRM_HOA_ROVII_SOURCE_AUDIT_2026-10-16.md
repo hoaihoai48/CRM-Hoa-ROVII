@@ -4,7 +4,7 @@
 - **Audit date:** 2026-10-16
 - **Reviewed base commit:** `c9d7871fbbfcc5a0c7176c1581340041928a3ee7`
 - **Scope:** package/configuration, Firebase rules/configuration, customer/order/product/staff/settings/storage services, AuthProvider, existing emulator integrity suite, workflow presence and current commit status.
-- **Execution note:** GitHub Actions run #11 passed lint, typecheck, Emulator integration tests and production build after the root-layout, test-session and phone-normalization fixes. A subsequent staff-provisioning compensation change and documentation corrections were added after that run; a fresh CI run is required for the latest head. The connected iKH Local Bridge status probe returned HTTP 404, so local Mac commands could not be run from this session.
+- **Execution note:** GitHub Actions run #18 passed lint, typecheck, Emulator integration tests and production build on the current code changes, including the staff-provisioning compensation and dependency audit reporting. The Local Bridge status endpoint is now responding, but it is configured for `/Users/vu/Developer/giao-trinh-ikh`, not this CRM repository, so it cannot safely execute CRM commands in the current configuration.
 
 ## Executive summary
 
@@ -38,7 +38,7 @@ The highest-priority unresolved issue is data-integrity enforcement at the Fires
 
 **Impact:** the user may authenticate but cannot access the CRM; the admin sees a failed operation while the account remains provisioned.
 
-**Action in this PR:** if writing the membership fails after Firebase Authentication creates the account, attempt a compensating deleteUser() on that newly created account. If cleanup also fails, surface the UID and both errors so an administrator can recover it deliberately. This is best-effort client-side compensation, not a substitute for server-side provisioning; it still needs a failure-path test.
+**Action in this PR:** if writing the membership fails after Firebase Authentication creates the account, attempt a compensating deleteUser() on that newly created account. If cleanup also fails, surface the UID and both errors so an administrator can recover it deliberately. This is best-effort client-side compensation, not a substitute for server-side provisioning; a forced failure-path test remains outstanding.
 
 ### P1 — CI was not present at the standard workflow paths
 
@@ -58,11 +58,11 @@ The highest-priority unresolved issue is data-integrity enforcement at the Fires
 
 **Action in this PR:** sign back in as the active test staff user after verifying the unauthenticated denial, and rename the later test labels to avoid reusing CASE K/L labels already used earlier. CI run #11 passed the complete Emulator suite and production build.
 
-### P2 — Dependency install reports advisories and engine mismatch on Node 22
+### P2 — Dependency vulnerabilities require version-by-version triage
 
-**Evidence:** the first CI install under Node 22 emitted engine warnings for installed Firebase packages requiring Node `>=24.12.0` and reported 20 npm audit findings (5 moderate, 15 high). This run did not include a full audit triage.
+**Evidence:** the current Node 24 CI install reports 20 npm audit findings: 15 high and 5 moderate, with no critical findings. The report identifies direct dependencies `firebase`, `firebase-tools`, and `eslint-config-next`, plus vulnerable transitive dependencies including `@firebase/firestore`, `@grpc/grpc-js`, `basic-ftp`, `braces`, `chokidar`, `fast-glob`, `get-uri`, `micromatch`, `pac-proxy-agent`, `proxy-agent`, `@google-cloud/pubsub`, `@opentelemetry/core`, `gaxios`, `re2`, and `uuid`. Most suggested fixes require reviewing version changes rather than a clearly safe patch-only upgrade.
 
-**Action in this PR:** move CI to Node 24 and current major versions of the setup actions. The 20 advisories remain to be reviewed separately; do not run `npm audit fix --force` blindly because it may introduce breaking upgrades.
+**Action in this PR:** add an informational npm audit summary to CI and upload the full JSON report as a 7-day artifact. Do not run `npm audit fix --force` blindly; dependency updates must be reviewed for compatibility and regenerated lockfile consistency. See [Dependency Audit](DEPENDENCY_AUDIT_2026-10-16.md).
 
 ### P2 — Unbounded list reads will become expensive as the dataset grows
 
