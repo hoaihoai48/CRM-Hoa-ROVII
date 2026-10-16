@@ -426,15 +426,8 @@ async function runTestSuite() {
   // CASE H: Self-Healing Invariant / Inconsistent Aggregate Repair
   // ==========================================
   console.log('\n--- CASE H: Self-Healing Against Inconsistent Document Aggregates & Projection ---');
-  // Intentionally corrupt customer aggregates AND orderSummaries projection in DB directly
-  const corruptedRef = doc(db, 'customers', custTrans.id);
-  const corruptedFakeSummary = {
-    id: 'CORRUPTED-ORDER',
-    status: 'completed',
-    total: 99999999,
-    createdAt: '2020-01-01T00:00:00.000Z',
-  };
-
+  // Intentionally corrupt aggregates through the Emulator's trusted admin REST path;
+  // client rules must continue to deny this same mutation.
   await corruptCustomerAggregatesAsAdmin(custTrans.id);
 
   const corruptedSnap = await getCustomerById(custTrans.id);
