@@ -17,27 +17,38 @@ The server requires an explicit `CRM_HOA_ROVII_ROOT`, verifies the repository's 
 - A local clone of this repository
 - Run `npm ci` in the repository before requesting checks (this server intentionally does not install dependencies).
 
-## Configure a local MCP client
+## Configure Codex (CLI and Codex Desktop)
 
-Use an absolute path to the clone. Example generic MCP client configuration:
+The Codex CLI and IDE/Desktop extension share MCP configuration. On the Mac that contains the local clone, run the following command after replacing the path with the real absolute path:
 
-```json
-{
-  "mcpServers": {
-    "crm-hoa-rovii-local": {
-      "command": "node",
-      "args": ["/ABSOLUTE/PATH/TO/CRM-Hoa-ROVII/mcp-server/server.mjs"],
-      "env": {
-        "CRM_HOA_ROVII_ROOT": "/ABSOLUTE/PATH/TO/CRM-Hoa-ROVII"
-      }
-    }
-  }
-}
+```bash
+codex mcp add crm-hoa-rovii-local \
+  --env CRM_HOA_ROVII_ROOT=/ABSOLUTE/PATH/TO/CRM-Hoa-ROVII \
+  -- node /ABSOLUTE/PATH/TO/CRM-Hoa-ROVII/mcp-server/server.mjs
 ```
 
-Replace both example paths with the actual path of the user's local clone. Do not put tokens, service-account keys, or other secrets in this configuration. Restart the MCP client after saving it, then call `crm_repo_status`; verify that the returned root is the intended CRM repository before running checks.
+Then verify registration:
 
-Client configuration formats differ. This example is the common `mcpServers` shape, not a claim that the MCP server has been registered automatically in ChatGPT/Codex.
+```bash
+codex mcp get crm-hoa-rovii-local
+codex mcp list
+```
+
+Restart/reload Codex if needed and call `crm_repo_status`. Confirm that the returned `root` is the actual CRM clone before running checks.
+
+Alternatively, add this to `~/.codex/config.toml`, replacing both paths:
+
+```toml
+[mcp_servers.crm-hoa-rovii-local]
+command = "node"
+args = ["/ABSOLUTE/PATH/TO/CRM-Hoa-ROVII/mcp-server/server.mjs"]
+env = { CRM_HOA_ROVII_ROOT = "/ABSOLUTE/PATH/TO/CRM-Hoa-ROVII" }
+enabled = true
+startup_timeout_sec = 20
+tool_timeout_sec = 600
+```
+
+Do not put tokens, service-account keys, or other secrets in this configuration. The generic `mcpServers` JSON shape used by some other clients is different; follow that client's configuration format if you are not using Codex. Repository changes do not automatically edit the user's `~/.codex/config.toml`; registration must be performed on the local machine.
 
 ## Smoke test
 
