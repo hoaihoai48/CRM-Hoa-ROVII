@@ -66,7 +66,7 @@ if (emulatorHost) {
 
 const functionsEmulatorHost = process.env.FUNCTIONS_EMULATOR_HOST || process.env.NEXT_PUBLIC_FUNCTIONS_EMULATOR_HOST;
 if (functionsEmulatorHost) {
-  const [host, portStr] = functionsEmulatorHost.replace(/^https?:\\/\\//, '').split(':');
+  const [host, portStr] = functionsEmulatorHost.replace('https://', '').replace('http://', '').split(':');
   try {
     connectFunctionsEmulator(functions, host, Number.parseInt(portStr, 10) || 5001);
   } catch {
