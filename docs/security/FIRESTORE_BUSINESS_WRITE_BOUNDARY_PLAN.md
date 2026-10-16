@@ -13,6 +13,16 @@ The current browser services use Firebase Web SDK transactions to update both or
 - Order edits change items and totals; status transitions change both order history and customer projections.
 - Denying order/customer writes immediately would break the current UI because these services write through the Firebase Web SDK.
 
+## Implemented first slice in PR #1 (not a full security fix)
+
+- Added a Firebase Cloud Functions v2 callable named `updateOrderStatusSecure` in `functions/index.js`.
+- The callable requires Firebase Authentication, reads `users/{uid}` on the server, and requires an active `admin` or `staff` membership for every mutation.
+- The server enforces the order-status state machine, derives the history actor from the membership record rather than trusting the browser's `actorName`, and atomically writes the order status/history plus customer aggregate projection.
+- The browser's `updateOrderStatus` service now calls this callable. The Auth, Firestore, and Functions emulators are configured together, and the integration suite checks trusted actor identity plus inactive/unauthenticated rejection.
+- CI installs and syntax-checks the Functions package and audits its dependency tree separately.
+
+**Important limitation:** this is only the status-mutation vertical slice. Order creation, order editing, aggregate repair, product/customer writes and direct Firestore rules have not all crossed the trusted boundary yet. Since current rules still allow active clients to write entire order/customer documents, this change alone does not close the production write-integrity vulnerability. Do not deploy/enforce the final rules or call the system secure until the remaining mutations are migrated and tested.
+
 ## Required migration
 
 1. **Add a trusted mutation backend** using Firebase Cloud Functions callable/HTTPS endpoints (or a secured Next.js server endpoint using Admin SDK). Verify Firebase ID token, active membership and role on every request. Never trust actorName, price, totals, role or status supplied by the browser.
