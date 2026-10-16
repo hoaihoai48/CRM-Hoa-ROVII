@@ -14,14 +14,24 @@ import { db } from '@/lib/firebase/config';
 import { Customer, CreateCustomerInput, UpdateCustomerInput } from '@/types';
 import { normalizeIsoString } from '@/lib/utils/timestamp';
 
-function normalizePhone(phone: string): string {
+function digitsOnly(phone: string): string {
   return phone.replace(/\D/g, '');
 }
 
-/** VN mobile: 10 digits starting 03/05/07/08/09, or +84 equivalent. */
+/** Store Vietnamese mobile numbers in national format so 0... and +84... share one identity. */
+function normalizePhone(phone: string): string {
+  const digits = digitsOnly(phone);
+  return /^84[35789]\d{8}$/.test(digits) ? `0${digits.slice(2)}` : digits;
+}
+
+function phoneLookupVariants(phone: string): string[] {
+  // Search the canonical format first, then the raw digit form for pre-existing records.
+  return [...new Set([normalizePhone(phone), digitsOnly(phone)])];
+}
+
+/** VN mobile: 10 digits starting 03/05/07/08/09, including the +84 equivalent. */
 export function isValidVNPhone(phone: string): boolean {
-  const digits = normalizePhone(phone);
-  return /^0[35789]\d{8}$/.test(digits) || /^84[35789]\d{8}$/.test(digits);
+  return /^0[35789]\d{8}$/.test(normalizePhone(phone));
 }
 
 function mapDocToCustomer(id: string, data: Record<string, unknown>): Customer {
@@ -78,24 +88,28 @@ export async function getCustomerById(id: string): Promise<Customer | null> {
 }
 
 export async function findCustomerByPhone(phone: string): Promise<Customer | null> {
-  const phoneNormalized = normalizePhone(phone);
-  if (!phoneNormalized) return null;
+  const variants = phoneLookupVariants(phone).filter(Boolean);
+  if (variants.length === 0) return null;
 
-  // 1. Check deterministic doc ID first
-  const deterministicRef = doc(db, 'customers', `CUST_${phoneNormalized}`);
-  const deterministicSnap = await getDoc(deterministicRef);
-  if (deterministicSnap.exists()) {
-    return mapDocToCustomer(deterministicSnap.id, deterministicSnap.data());
+  // Check deterministic IDs in canonical-first order, including IDs written before canonicalization.
+  for (const variant of variants) {
+    const deterministicSnap = await getDoc(doc(db, 'customers', `CUST_${variant}`));
+    if (deterministicSnap.exists()) {
+      return mapDocToCustomer(deterministicSnap.id, deterministicSnap.data());
+    }
   }
 
-  // 2. Query for backwards compatibility with existing legacy customer IDs
+  // Search canonical and legacy phoneNormalized values for non-deterministic customer IDs.
   const collRef = collection(db, 'customers');
-  const q = query(collRef, where('phoneNormalized', '==', phoneNormalized), limit(1));
-  const snapshot = await getDocs(q);
-
-  if (snapshot.empty) return null;
-  const docSnap = snapshot.docs[0];
-  return mapDocToCustomer(docSnap.id, docSnap.data());
+  for (const variant of variants) {
+    const q = query(collRef, where('phoneNormalized', '==', variant), limit(1));
+    const snapshot = await getDocs(q);
+    if (!snapshot.empty) {
+      const docSnap = snapshot.docs[0];
+      return mapDocToCustomer(docSnap.id, docSnap.data());
+    }
+  }
+  return null;
 }
 
 export async function createCustomer(input: CreateCustomerInput): Promise<Customer> {
@@ -106,20 +120,32 @@ export async function createCustomer(input: CreateCustomerInput): Promise<Custom
 
   const customerId = `CUST_${phoneNormalized}`;
   const customerRef = doc(db, 'customers', customerId);
-  const legacyQuery = query(
-    collection(db, 'customers'),
-    where('phoneNormalized', '==', phoneNormalized),
-    limit(1),
-  );
+  const variants = phoneLookupVariants(input.phone);
 
-  // Preflight check for legacy customer ID (querying is not supported on client tx.get)
-  const legacySnap = await getDocs(legacyQuery);
-  if (!legacySnap.empty) {
-    const legacyDoc = legacySnap.docs[0];
-    return mapDocToCustomer(legacyDoc.id, legacyDoc.data());
+  // Preserve existing records created before canonicalization, including deterministic legacy IDs.
+  for (const variant of variants) {
+    if (variant === phoneNormalized) continue;
+    const legacyIdSnap = await getDoc(doc(db, 'customers', `CUST_${variant}`));
+    if (legacyIdSnap.exists()) {
+      return mapDocToCustomer(legacyIdSnap.id, legacyIdSnap.data());
+    }
   }
 
-  // Use transaction with deterministic docRef to eliminate race condition
+  // Client transactions cannot query a collection, so preflight all canonical/legacy index values.
+  for (const variant of variants) {
+    const legacyQuery = query(
+      collection(db, 'customers'),
+      where('phoneNormalized', '==', variant),
+      limit(1),
+    );
+    const legacySnap = await getDocs(legacyQuery);
+    if (!legacySnap.empty) {
+      const legacyDoc = legacySnap.docs[0];
+      return mapDocToCustomer(legacyDoc.id, legacyDoc.data());
+    }
+  }
+
+  // Use transaction with canonical deterministic docRef to eliminate races between 0... and +84...
   return await runTransaction(db, async (tx) => {
     const existingSnap = await tx.get(customerRef);
     if (existingSnap.exists()) {
