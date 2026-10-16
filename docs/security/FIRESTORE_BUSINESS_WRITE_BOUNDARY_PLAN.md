@@ -1,56 +1,40 @@
-# Firestore Business Write Boundary — Remediation Plan
+# Firestore Business Write Boundary — Spark-Compatible Decision
 
-## Current decision
+## Decision for the current internal CRM
 
-**Production gate: not fixed yet.** Do not claim business-data write integrity is secure until critical writes are moved behind a trusted server boundary and direct client writes are denied by rules.
+The owner has confirmed this application is built for a trusted internal team and Firebase must remain on the free Spark plan. Cloud Functions require the Blaze plan to deploy; therefore, the application must not depend on callable Cloud Functions for its normal order workflows.
 
-The current browser services use Firebase Web SDK transactions to update both orders/{id} and materialized fields on customers/{id}. The current rules allow any active member to write entire documents. A client-side-only field allowlist cannot prove totals, line-item prices, state transitions, status history and customer aggregates are mutually consistent across documents.
+This branch restores client-side Firestore transactions for order creation, editing, status changes and aggregate maintenance. The existing service logic re-reads products within the transaction, calculates totals from current product prices, applies the order status state machine, and updates the order and customer projection atomically. Firestore Rules require an authenticated active admin/staff membership, enforce document schemas, keep customer phone identity immutable, prohibit deletes, and retain admin-only product catalog writes.
 
-## Why a rules-only patch is unsafe
+## Explicit trade-off
 
-- Allowing writes to customers for the order transaction also exposes the computed projection unless rules can independently verify it.
-- getAfter() can inspect documents in a transaction but cannot enumerate and recompute an arbitrary customer's complete orders collection.
-- Order edits change items and totals; status transitions change both order history and customer projections.
-- Denying order/customer writes immediately would break the current UI because these services write through the Firebase Web SDK.
+Firestore Security Rules cannot prove that a client-calculated order total matches the price of every product or recompute a customer's complete order history across arbitrary documents. In this Spark-compatible trusted-team model, the application relies on the shipped client service logic and trusted staff workflow for those business invariants. This is not an accusation against staff; it is a technical boundary that matters only if the app later needs to defend against a compromised or adversarial client.
 
-## Implemented mutation paths in PR #1 (not a full security fix)
+Do not describe this as server-enforced financial integrity. If the threat model changes (public customers, untrusted staff, strict audit requirements), move mutations to a trusted backend. Cloud Functions would require Blaze; alternatives would need their own hosting, authentication, secret management, and cost review.
 
-- Added Firebase Cloud Functions v2 callables in `functions/index.js`: `createOrderSecure`, `updateOrderSecure`, `updateOrderStatusSecure`, and `syncCustomerAggregatesSecure`.
-- Each callable requires Firebase Authentication and checks the current active `admin`/`staff` membership inside the same Firestore transaction as the mutation.
-- Create/edit operations re-read product documents on the server, validate quantity/price/discount constraints, calculate totals server-side, and atomically update the order and customer aggregate projection.
-- Status changes enforce the state machine and derive history actor identity from the trusted membership record instead of trusting browser-provided `actorName`.
-- Aggregate repair queries the authoritative orders collection on the server rather than accepting a client-provided projection.
-- The browser services now route create, edit, status, and aggregate repair through these callables. Auth, Firestore and Functions emulators are configured together; tests cover aggregate invariants, server-side pricing behavior, actor spoofing, and inactive/unauthenticated status mutation rejection.
-- CI installs the Functions package with committed `functions/package-lock.json` using `npm ci`, syntax-checks both the callable backend and read-only audit script, and audits its dependency tree separately.
+## Implemented on this branch
 
-**Important limitation:** this PR now denies direct client writes to orders and protects customer aggregate/identity fields in Firestore Rules. Emulator negative tests were added for forged order creation/status/totals/history and forged customer aggregates. This is a significant source-level boundary improvement, but the current head's CI must pass before it is considered verified. Product policy is now explicit: active staff can read the catalog but only active admins can create/update products; client-side create/edit controls mirror that rule, and Emulator tests assert staff writes are denied and admin updates succeed. Customer create/profile rules still need regression validation against every UI path. Do not deploy to production or claim the full system secure until CI passes and product/customer policy is explicitly reviewed.
+- Restored the pre-Functions client transaction implementation in `src/lib/services/orders.ts`.
+- Removed the client SDK dependency on `firebase/functions`.
+- Removed Functions from Firebase deploy/emulator configuration so routine workflows do not require a Functions runtime or deployment.
+- Updated Firestore Rules to allow active members to use the client transaction model while validating order/customer schemas and preserving immutable customer identity fields.
+- Kept product writes admin-only and deletes denied.
+- Updated Emulator tests to validate the Spark-compatible path and reject malformed order documents, while no longer claiming rules can block all forged financial values.
+- Emulator suite runs Auth and Firestore only.
 
-## Required migration
+## Operational guidance
 
-1. **Add a trusted mutation backend** using Firebase Cloud Functions callable/HTTPS endpoints (or a secured Next.js server endpoint using Admin SDK). Verify Firebase ID token, active membership and role on every request. Never trust actorName, price, totals, role or status supplied by the browser.
-2. **Move order mutations** (createOrder, updateOrder, updateOrderStatus) to the backend. Re-read product prices and active status on the server; validate quantity, discount, status transition and order ownership/relationships; calculate totals server-side; atomically update order and customer aggregates.
-3. **Move aggregate repair** (syncCustomerAggregates) behind a privileged server-only operation, or remove it from client-accessible code. It must not be a public arbitrary customer-field update.
-4. **Adjust Firestore Rules only after the client migration**: allow active members to read business records; deny direct client creates/updates/deletes on orders; allow customer profile-only updates while requiring computed fields to remain unchanged; restrict aggregate fields to trusted Admin SDK paths (which bypass Firestore Rules).
-5. **Add Emulator negative tests** proving direct active-member writes to order totals/status/history and customer aggregate fields are denied, while callable operations succeed for active members and fail for inactive/unauthenticated members.
-6. **Deploy in stages**: deploy backend, switch UI service calls, verify Emulator and staging, then enforce deny rules. Do not expose production secrets to PR workflows.
+1. Keep the Firebase project on Spark; do not link a billing account solely to enable Cloud Functions.
+2. Test with Auth and Firestore Emulators before deploying rules.
+3. Verify normal staff workflows: create customer, create order, edit new/confirmed order, move status, and view customer aggregates.
+4. Keep the app restricted to the trusted team and use strong account passwords, deactivate departing staff, and maintain periodic data exports/backups outside paid Firebase backup features.
+5. If the app's trust assumptions change, revisit the backend boundary before exposing it to public users.
 
 ## Release acceptance criteria
 
-- A client cannot directly forge order summary totals, item unit prices, status, or status history.
-- A client cannot directly create/update/delete orders or change customer aggregate/identity fields through the client SDK (covered by Emulator negative tests).
-- Server calculates order totals from current product records and validates allowed state transitions.
-- Valid create/edit/status workflows pass integration tests end-to-end.
-- Inactive and unauthenticated accounts cannot mutate business data.
-- Production rules are enforced only after the UI no longer depends on direct client writes.
-
-
-## Product catalog write policy (implemented in PR #1)
-
-Decision: product catalog writes are admin-only because the product document contains the sale price and active/inactive status, both of which directly affect order value and what staff can sell. Active staff may read product documents and create/edit orders through trusted callables; they may not create or modify product documents directly. There is no product-delete operation in the current service, so deletes are denied. Admin SDK callables still require explicit auth/membership validation because server SDK writes bypass Firestore Rules.
-
-The policy is enforced in `firestore.rules` and mirrored in the product list/create/edit UI. Emulator coverage checks that staff cannot create a product or alter a price and that an active admin can update a product. If business operations later require staff to edit non-financial metadata, add a narrowly scoped server endpoint or field allowlist with dedicated tests; do not reopen unrestricted client writes.
-
-
-## Reproducible Functions dependencies
-
-A committed `functions/package-lock.json` (npm lockfile v3) now records the Cloud Functions dependency graph. CI uses `npm ci --prefix functions`, which fails rather than silently recalculating the lockfile when the manifest and lock disagree. The lockfile was generated in the CI environment and checked against `functions/package.json` before being committed.
+- Active staff/admin can complete the intended order/customer workflows using client transactions on Spark.
+- Inactive and unauthenticated users cannot access or mutate protected records.
+- Staff cannot create/update/delete products; active admins can create/update product records.
+- Order/customer documents must satisfy the expected schema; customer phone identity cannot be rewritten.
+- No routine app flow requires Cloud Functions.
+- Documentation accurately states the trade-off: client-side calculation is not a trusted server-side security boundary.
