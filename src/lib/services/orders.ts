@@ -20,7 +20,6 @@ import {
   Product,
   CustomerOrderSummary
 } from '@/types';
-import { canTransitionOrderStatus } from '@/lib/utils/order-status';
 import { normalizeIsoString } from '@/lib/utils/timestamp';
 
 function mapDocToOrder(id: string, data: Record<string, unknown>): Order {
