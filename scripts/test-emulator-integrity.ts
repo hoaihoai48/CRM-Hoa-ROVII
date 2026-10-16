@@ -188,9 +188,9 @@ async function runTestSuite() {
     createdAt: new Date().toISOString(),
   };
 
-  await setDocumentAsAdmin('products', p1.id, p1 as unknown as Record<string, unknown>);
-  await setDocumentAsAdmin('products', p2.id, p2 as unknown as Record<string, unknown>);
-  await setDocumentAsAdmin('products', pInactive.id, pInactive as unknown as Record<string, unknown>);
+  await setDocumentAsAdmin('products', p1.id, Object.fromEntries(Object.entries(p1).filter(([key]) => key !== 'id')));
+  await setDocumentAsAdmin('products', p2.id, Object.fromEntries(Object.entries(p2).filter(([key]) => key !== 'id')));
+  await setDocumentAsAdmin('products', pInactive.id, Object.fromEntries(Object.entries(pInactive).filter(([key]) => key !== 'id')));
   console.log('✅ Seeded test products into emulator.\\n');
 
   console.log('--- SECURITY: Product catalog writes are admin-only ---');
