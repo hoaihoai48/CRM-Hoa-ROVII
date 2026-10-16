@@ -38,7 +38,7 @@ Không cho phép chuyển trạng thái tùy ý. Đơn đang giao, hoàn tất h
 
 ## Yêu cầu
 
-- Node.js 22 (CI target)
+- Node.js 24 (CI target; installed Firebase packages require Node >=24.12.0)
 - Java 21 trở lên để chạy Firebase Emulator tests
 - Firebase project/configuration cho chạy với môi trường thật
 
@@ -74,7 +74,7 @@ npm run test:emulator
 ## Giới hạn đã biết
 
 - Các quy tắc Firestore hiện cho phép active member ghi trực tiếp tài liệu `orders`, `customers` và `products`. Điều này có nghĩa validation ở client/service chưa phải ranh giới bảo mật; xem [Source Audit 2026-10-16](docs/audits/CRM_HOA_ROVII_SOURCE_AUDIT_2026-10-16.md) trước khi đưa hệ thống vào production.
-- Chuẩn hóa số điện thoại hiện chấp nhận cả dạng `0...` và `84...` nhưng chưa quy về một định dạng canonical, nên cần xử lý tương thích ngược để tránh khách hàng trùng.
+- Số điện thoại hợp lệ được chuẩn hóa về dạng quốc gia `0...`; tra cứu vẫn hỗ trợ hồ sơ cũ dạng `84...` để hạn chế trùng khách hàng.
 - Cần phân trang danh sách khi dữ liệu tăng.
 - Lưu Data URL trong Firestore chỉ phù hợp với catalog nhỏ và cần kiểm tra kích thước document.
 
