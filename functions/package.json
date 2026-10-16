@@ -6,7 +6,8 @@
     "node": "22"
   },
   "scripts": {
-    "lint": "node --check index.js"
+    "lint": "node --check index.js",
+    "audit:legacy-orders": "node audit-legacy-orders.js"
   },
   "dependencies": {
     "firebase-admin": "^13.5.0",
