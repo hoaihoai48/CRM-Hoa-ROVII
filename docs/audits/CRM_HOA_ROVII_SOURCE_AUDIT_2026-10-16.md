@@ -4,7 +4,7 @@
 - **Audit date:** 2026-10-16
 - **Reviewed base commit:** `c9d7871fbbfcc5a0c7176c1581340041928a3ee7`
 - **Scope:** package/configuration, Firebase rules/configuration, customer/order/product/staff/settings/storage services, AuthProvider, existing emulator integrity suite, workflow presence and current commit status.
-- **Execution limitation:** GitHub source was inspected through the connected GitHub integration. The connected iKH Local Bridge status probe returned HTTP 404, so local commands could not be run from this session. This report does not claim a fresh local lint/build/emulator run.
+- **Execution note:** the connected iKH Local Bridge status probe returned HTTP 404, so no local Mac command could be run from this session. A fresh GitHub Actions run was started from this PR. Its first pass reported lint PASS, then typecheck FAILED at `src/app/layout.tsx(22,50)` because `LayoutProps` was undefined in a clean checkout. That finding is fixed in this branch; CI must rerun to verify the fix and reach Emulator/build steps.
 
 ## Executive summary
 
@@ -42,9 +42,21 @@ The highest-priority unresolved issue is data-integrity enforcement at the Fires
 
 ### P1 — CI was not present at the standard workflow paths
 
-**Evidence:** `.github/workflows/ci.yml`, `ci.yaml`, and `deploy.yml` were not found. The latest reviewed commit status reported Vercel success only. `package.json` had no typecheck script. The repository already has `npm run test:emulator`, and prior audit notes indicate the local emulator run was blocked by JDK 17 while Firebase tooling requires JDK 21+.
+**Evidence:** `.github/workflows/ci.yml`, `ci.yaml`, and `deploy.yml` were not found on the reviewed base branch. The latest reviewed base commit status reported Vercel success only. `package.json` had no typecheck script. The repository already has an Emulator integration suite, and prior audit notes indicate a local run was blocked by JDK 17 while Firebase tooling requires JDK 21+.
 
-**Recommendation:** add a pull-request/push/manual quality workflow with Node 22 and Java 21, running lint, typecheck, Firebase Emulator integration tests, and production build. Keep workflow permissions read-only and do not expose production secrets to test jobs.
+**Action in this PR:** add PR/push/manual quality workflow with Node 24 and Java 21, running lint, typecheck, Firebase Emulator integration tests and production build. The first run passed lint but uncovered the independent TypeScript error noted below. The workflow must rerun after the fix before this baseline can be called green.
+
+### P1 — Clean-checkout TypeScript error (found by new CI)
+
+**Evidence:** the first GitHub Actions run failed at `src/app/layout.tsx(22,50): error TS2304: Cannot find name 'LayoutProps'.` The root layout used a generated Next route helper type that was not available before a build generated route types.
+
+**Action in this PR:** replace that dependency with an explicit `Readonly<{ children: ReactNode }>` type, which is sufficient because the layout does not consume route params. CI rerun is required to verify.
+
+### P2 — Dependency install reports advisories and engine mismatch on Node 22
+
+**Evidence:** the first CI install under Node 22 emitted engine warnings for installed Firebase packages requiring Node `>=24.12.0` and reported 20 npm audit findings (5 moderate, 15 high). This run did not include a full audit triage.
+
+**Action in this PR:** move CI to Node 24 and current major versions of the setup actions. The 20 advisories remain to be reviewed separately; do not run `npm audit fix --force` blindly because it may introduce breaking upgrades.
 
 ### P2 — Unbounded list reads will become expensive as the dataset grows
 
@@ -64,21 +76,20 @@ The highest-priority unresolved issue is data-integrity enforcement at the Fires
 
 ### P2 — README no longer matches implementation
 
-**Evidence:** README still describes mock data and Firebase as a future Phase 2, while services import Firebase Auth/Firestore and the repository has security rules, indexes, and emulator tests.
+**Evidence:** README on the base branch still described mock data and Firebase as a future Phase 2, while services already use Firebase Authentication/Firestore.
 
-**Recommendation:** document the actual architecture, current verification commands, and known limitations.
+**Action in this PR:** update README with current architecture, routes, setup requirements, commands and known risks.
 
-## Baseline commands
+## Test isolation and command setup
 
-The repository currently defines:
+The repository has no `.firebaserc` file. To prevent emulator tests from silently targeting a non-demo project, this PR adds `scripts/run-emulator-tests.mjs`, which runs Auth/Firestore emulators with the isolated project ID `demo-crm-hoa-rovii` and passes the same ID to the test process.
+
+Commands:
 
 - `npm run lint`
+- `npm run typecheck`
 - `npm run build`
 - `npm run test:emulator`
-
-TypeScript check is available directly as `npx tsc --noEmit`; this patch adds the equivalent `npm run typecheck` script.
-
-No fresh command result is asserted in this report. The new GitHub Actions workflow is intended to produce the first repeatable CI result after the branch is opened as a PR.
 
 ## MCP / execution architecture recommendation
 
@@ -91,4 +102,4 @@ Recommended separation:
 3. **GitHub connector:** use existing repository/PR APIs for file inspection, branch/PR creation and run status; avoid duplicating these APIs in MCP.
 4. **Results:** return command, exit code, bounded logs, commit SHA, workflow URL and artifact references. Never report success from a queued/running workflow.
 
-**Integration blocker:** the Local Bridge status tool returned HTTP 404 during this session. The Bridge implementation/configuration must be inspected and its endpoint restored before writing or registering new Bridge tools. This patch therefore adds CI and documents the contract; it does not claim an MCP server has been deployed or connected.
+**Integration blocker:** the Local Bridge status tool returned HTTP 404 during this session. Its repository README describes a local-first runtime that executes explicitly registered Python entrypoints without a shell; the existing implementation and endpoint configuration should be inspected before extending it. This PR adds CI and documents the contract; it does not claim an MCP server has been deployed or connected.
