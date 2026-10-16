@@ -36,6 +36,12 @@ Each task must run with the configured CRM repository as its working directory, 
 
 All mutating operations should be separated from read/check tools and should target a non-protected feature branch. PR merge and production deploy remain explicit human decisions.
 
-## Current blocker
+## Implementation status (2026-10-16)
 
-On 2026-10-16 the connected `mcp__iKH_Local_Bridge__get_bridge_status` call returned HTTP 404. Before implementing or registering additional Bridge tools, inspect the actual `hoaihoai48/ikh-local-bridge` repository and the local endpoint configuration, restore the existing Bridge connection, and verify its allowlist and path protections. Do not create a parallel Bridge implementation while the existing one is unverified.
+A dedicated, dependency-free stdio MCP server has been added under `mcp-server/` for the CRM repository. It exposes four narrow tools: `crm_repo_status`, `crm_read_file`, `crm_get_diff`, and `crm_run_check`. The latter accepts only `lint | typecheck | build | emulator-tests`; there is no arbitrary shell, install, deploy, commit, push, merge, or file-write tool. The server requires `CRM_HOA_ROVII_ROOT`, verifies the package name and Git root, and has path/secret/output bounds. CI runs syntax checks and a protocol/safety smoke test.
+
+The connected iKH Local Bridge still reports its workspace as `/Users/vu/Developer/giao-trinh-ikh`. Its path confinement correctly rejected a path attempting to escape that workspace. We did not repoint or modify that bridge because it is the curriculum workspace and the exposed tools do not provide a safe workspace-reconfiguration operation.
+
+## Remaining client-side registration
+
+Repository code and CI validation do not automatically register a server in ChatGPT/Codex. On the machine that has a local clone, add the generic `mcpServers` entry documented in `mcp-server/README.md`, substituting the actual absolute CRM clone path, then restart the MCP client and call `crm_repo_status`. Verify that the returned root is the CRM repo before running checks. The exact configuration file depends on the MCP client; no client config was edited by this repository-side change.
