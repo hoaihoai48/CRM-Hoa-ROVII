@@ -25,8 +25,11 @@ function normalizePhone(phone: string): string {
 }
 
 function phoneLookupVariants(phone: string): string[] {
-  // Search the canonical format first, then the raw digit form for pre-existing records.
-  return [...new Set([normalizePhone(phone), digitsOnly(phone)])];
+  const canonical = normalizePhone(phone);
+  const digits = digitsOnly(phone);
+  const international = /^0[35789]\d{8}$/.test(canonical) ? `84${canonical.slice(1)}` : '';
+  // Canonical first; then raw/international variants for records written before canonicalization.
+  return [...new Set([canonical, digits, international].filter(Boolean))];
 }
 
 /** VN mobile: 10 digits starting 03/05/07/08/09, including the +84 equivalent. */
