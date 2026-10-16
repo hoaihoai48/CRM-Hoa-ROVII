@@ -5,11 +5,11 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    function isActiveStaff() {
+    function isActiveAdmin() {
       return isAuthenticated()
         && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
         && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.status == 'active'
-        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'staff'];
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     function isImageFile() {
@@ -19,11 +19,12 @@ service firebase.storage {
     }
 
     // Public read for product images so customers & web views can render them
-    // Writes restricted to active staff/admins (consistent with Firestore policy)
+    // Product catalog policy: only active admins may upload, replace, or delete images.
+    // Public reads remain enabled so product images can render without an authenticated session.
     match /products/{allPaths=**} {
       allow read: if true;
-      allow write: if isActiveStaff() && isImageFile();
-      allow delete: if isActiveStaff();
+      allow create, update: if isActiveAdmin() && isImageFile();
+      allow delete: if isActiveAdmin();
     }
   }
 }
