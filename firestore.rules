@@ -103,11 +103,12 @@ service cloud.firestore {
     // Status changes must follow the state machine and append exactly one matching history entry.
     // Same-status order edits may append an edit-history entry without changing the lifecycle state.
     function validStatusChange(oldData, newData) {
-      return newData.status == oldData.status
-        || (
-          validStatusTransition(oldData.status, newData.status)
-          && newData.statusHistory.size() == oldData.statusHistory.size() + 1
-          && newData.statusHistory[newData.statusHistory.size() - 1].status == newData.status
+      return newData.statusHistory.size() == oldData.statusHistory.size() + 1
+        && newData.statusHistory.toSet().hasAll(oldData.statusHistory.toSet())
+        && newData.statusHistory[newData.statusHistory.size() - 1].status == newData.status
+        && (
+          newData.status == oldData.status
+          || validStatusTransition(oldData.status, newData.status)
         );
     }
 
