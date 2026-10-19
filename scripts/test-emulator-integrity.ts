@@ -423,6 +423,30 @@ async function runTestSuite() {
     createdBy: 'Tester',
   });
 
+  // Direct client writes must not bypass Firestore's status state machine.
+  let directInvalidTransitionBlocked = false;
+  try {
+    await updateDoc(doc(db, 'orders', oTrans.id), { status: 'completed' });
+  } catch {
+    directInvalidTransitionBlocked = true;
+  }
+  assert(
+    directInvalidTransitionBlocked,
+    'Firestore Rules must block a direct client transition from new to completed',
+  );
+
+  // A valid next status still requires a matching appended status-history entry.
+  let directStatusWithoutHistoryBlocked = false;
+  try {
+    await updateDoc(doc(db, 'orders', oTrans.id), { status: 'confirmed' });
+  } catch {
+    directStatusWithoutHistoryBlocked = true;
+  }
+  assert(
+    directStatusWithoutHistoryBlocked,
+    'Firestore Rules must block status changes that do not append a matching history entry',
+  );
+
   // Invalid transition test: new -> completed (not allowed without confirmed/delivering)
   let invalidTransitionBlocked = false;
   try {
