@@ -94,6 +94,24 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    function validStatusTransition(from, to) {
+      return (from == 'new' && to in ['confirmed', 'cancelled'])
+        || (from == 'confirmed' && to in ['delivering', 'cancelled'])
+        || (from == 'delivering' && to == 'completed');
+    }
+
+    // Status changes must follow the state machine and append exactly one matching history entry.
+    // Same-status order edits may append an edit-history entry without changing the lifecycle state.
+    function validStatusChange(oldData, newData) {
+      return newData.statusHistory.size() == oldData.statusHistory.size() + 1
+        && newData.statusHistory.toSet().hasAll(oldData.statusHistory.toSet())
+        && newData.statusHistory[newData.statusHistory.size() - 1].status == newData.status
+        && (
+          newData.status == oldData.status
+          || validStatusTransition(oldData.status, newData.status)
+        );
+    }
+
     // Spark-compatible model: authenticated active staff/admin use client transactions.
     // Rules enforce membership and schema, but cannot prove cross-document totals or
     // recompute a customer's complete order history. This is an internal trusted-team model.
@@ -102,6 +120,7 @@ service cloud.firestore {
       allow create: if isActiveMember() && validOrder(request.resource.data);
       allow update: if isActiveMember()
         && validOrder(request.resource.data)
+        && validStatusChange(resource.data, request.resource.data)
         && request.resource.data.customerId == resource.data.customerId
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.createdBy == resource.data.createdBy;
