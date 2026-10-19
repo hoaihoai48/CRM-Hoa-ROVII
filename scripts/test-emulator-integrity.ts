@@ -447,6 +447,17 @@ async function runTestSuite() {
     'Firestore Rules must block status changes that do not append a matching history entry',
   );
 
+  let directHistoryRewriteBlocked = false;
+  try {
+    await updateDoc(doc(db, 'orders', oTrans.id), { statusHistory: [] });
+  } catch {
+    directHistoryRewriteBlocked = true;
+  }
+  assert(
+    directHistoryRewriteBlocked,
+    'Firestore Rules must block replacing or deleting the existing order status history',
+  );
+
   // Invalid transition test: new -> completed (not allowed without confirmed/delivering)
   let invalidTransitionBlocked = false;
   try {
