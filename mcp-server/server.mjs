@@ -15,19 +15,60 @@ function send(message) {
   process.stdout.write(JSON.stringify(message) + "\n");
 }
 function result(id, text, isError = false) {
-  send({ jsonrpc: "2.0", id, result: { content: [{ type: "text", text }], ...(isError ? { isError: true } : {}) } });
+  const payload = { content: [{ type: "text", text }] };
+  try {
+    // Supplying structuredContent lets MCP clients expose the JSON payload as
+    // an object instead of silently dropping it when only text content exists.
+    payload.structuredContent = JSON.parse(text);
+  } catch {
+    // Plain-text tool errors remain valid MCP text content.
+  }
+  send({ jsonrpc: "2.0", id, result: { ...payload, ...(isError ? { isError: true } : {}) } });
 }
 function error(id, code, message) {
   send({ jsonrpc: "2.0", id, error: { code, message } });
 }
-function tool(name, description, properties = {}, required = []) {
-  return { name, description, inputSchema: { type: "object", properties, required, additionalProperties: false } };
+function tool(name, description, properties = {}, required = [], outputSchema) {
+  return {
+    name,
+    description,
+    inputSchema: { type: "object", properties, required, additionalProperties: false },
+    ...(outputSchema ? { outputSchema } : {})
+  };
 }
+const objectOutput = (properties, required = Object.keys(properties)) => ({
+  type: "object",
+  properties,
+  required,
+  additionalProperties: false
+});
 const TOOLS = [
-  tool("crm_repo_status", "Read-only Git status, branch and HEAD for the configured CRM-Hoa-ROVII working copy."),
-  tool("crm_read_file", "Read a bounded UTF-8 text file inside the configured repository. Secrets, dependencies, build output and paths outside the repository are blocked.", { path: { type: "string", description: "Repository-relative file path" } }, ["path"]),
-  tool("crm_get_diff", "Read-only Git diff for the configured working copy; returns at most 40 KB.", { staged: { type: "boolean", description: "Read staged diff instead of unstaged diff" } }),
-  tool("crm_run_check", "Run one allowlisted npm check only: lint, typecheck, build, or emulator-tests. No arbitrary shell commands, installs, deploys, commits, pushes, or merges.", { check: { type: "string", enum: [...ALLOWED_CHECKS] } }, ["check"])
+  tool("crm_repo_status", "Read-only Git status, branch and HEAD for the configured CRM-Hoa-ROVII working copy.", {}, [], objectOutput({
+    root: { type: "string" },
+    branch: { type: "string" },
+    head: { type: "string" },
+    status: { type: "string" },
+    readOnly: { type: "boolean" }
+  })),
+  tool("crm_read_file", "Read a bounded UTF-8 text file inside the configured repository. Secrets, dependencies, build output and paths outside the repository are blocked.", { path: { type: "string", description: "Repository-relative file path" } }, ["path"], objectOutput({
+    path: { type: "string" },
+    bytes: { type: "integer" },
+    content: { type: "string" }
+  })),
+  tool("crm_get_diff", "Read-only Git diff for the configured working copy; returns at most 40 KB.", { staged: { type: "boolean", description: "Read staged diff instead of unstaged diff" } }, [], objectOutput({
+    staged: { type: "boolean" },
+    exitCode: { type: "integer" },
+    truncated: { type: "boolean" },
+    diff: { type: "string" }
+  })),
+  tool("crm_run_check", "Run one allowlisted npm check only: lint, typecheck, build, or emulator-tests. No arbitrary shell commands, installs, deploys, commits, pushes, or merges.", { check: { type: "string", enum: [...ALLOWED_CHECKS] } }, ["check"], objectOutput({
+    check: { type: "string", enum: [...ALLOWED_CHECKS] },
+    exitCode: { type: "integer" },
+    timedOut: { type: "boolean" },
+    outputTruncated: { type: "boolean" },
+    stdout: { type: "string" },
+    stderr: { type: "string" }
+  }))
 ];
 
 async function getRoot() {

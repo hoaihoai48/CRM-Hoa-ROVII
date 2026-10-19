@@ -41,12 +41,20 @@ try {
   if (init.error || init.result?.serverInfo?.name !== "crm-hoa-rovii-local") throw new Error("MCP initialize failed: " + JSON.stringify(init));
   child.stdin.write(JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }) + "\n");
   const listed = await request("tools/list");
-  const names = listed.result?.tools?.map(t => t.name) ?? [];
-  for (const name of ["crm_repo_status", "crm_read_file", "crm_get_diff", "crm_run_check"]) if (!names.includes(name)) throw new Error("Missing MCP tool: " + name);
+  const tools = listed.result?.tools ?? [];
+  const names = tools.map(t => t.name);
+  for (const name of ["crm_repo_status", "crm_read_file", "crm_get_diff", "crm_run_check"]) {
+    if (!names.includes(name)) throw new Error("Missing MCP tool: " + name);
+    if (!tools.find(t => t.name === name)?.outputSchema) throw new Error("Missing outputSchema for MCP tool: " + name);
+  }
   const status = await request("tools/call", { name: "crm_repo_status", arguments: {} });
   if (status.result?.isError) throw new Error("Status tool failed: " + JSON.stringify(status));
-  const parsed = JSON.parse(status.result.content[0].text);
-  if (parsed.head.length !== 40 || !parsed.root.endsWith("CRM-Hoa-ROVII")) throw new Error("Status tool returned unexpected repository: " + JSON.stringify(parsed));
+  const parsed = status.result.structuredContent ?? JSON.parse(status.result.content[0].text);
+  if (parsed.head.length !== 40 || !parsed.root.toLowerCase().endsWith("crm-hoa-rovii")) throw new Error("Status tool returned unexpected repository: " + JSON.stringify(parsed));
+  const read = await request("tools/call", { name: "crm_read_file", arguments: { path: "README.md" } });
+  if (read.result?.isError) throw new Error("Read-file tool failed: " + JSON.stringify(read));
+  const readPayload = read.result.structuredContent ?? JSON.parse(read.result.content[0].text);
+  if (readPayload.path !== "README.md" || !readPayload.content.includes("# CRM Hoa ROVII")) throw new Error("Read-file returned incomplete content.");
   const blocked = await request("tools/call", { name: "crm_read_file", arguments: { path: "../package.json" } });
   if (!blocked.result?.isError) throw new Error("Path traversal was not blocked.");
   const badCommand = await request("tools/call", { name: "crm_run_check", arguments: { check: "deploy" } });

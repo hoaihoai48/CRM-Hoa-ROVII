@@ -4,7 +4,7 @@
 
 ## Trạng thái hiện tại
 
-Ứng dụng sử dụng **Next.js App Router + TypeScript** cho giao diện, **Firebase Authentication** cho đăng nhập và **Cloud Firestore** cho dữ liệu nghiệp vụ. Repository có Firestore/Storage Security Rules, Firestore indexes và bộ kiểm thử tích hợp dùng Firebase Emulator.
+Ứng dụng sử dụng **Next.js App Router + TypeScript** cho giao diện, **Firebase Authentication** cho đăng nhập và **Cloud Firestore** cho dữ liệu nghiệp vụ. Repository có Firestore Security Rules, Firestore indexes và bộ kiểm thử tích hợp dùng Firebase Emulator. Ảnh sản phẩm được nén trên trình duyệt và lưu dưới dạng Data URL trong Firestore; ứng dụng không sử dụng Firebase Storage.
 
 ## Phạm vi V1
 
@@ -55,8 +55,6 @@ Khi chạy với Firebase thật, cấu hình các biến môi trường phù h�
 - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
 - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
 - `NEXT_PUBLIC_FIREBASE_APP_ID`
-- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` (khi dùng Storage)
-- `NEXT_PUBLIC_FIREBASE_STORAGE_ENABLED=true` (chỉ khi Storage đã được cấu hình)
 
 Không commit file `.env.local`, credentials hoặc secrets.
 
