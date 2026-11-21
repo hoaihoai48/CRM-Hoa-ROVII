@@ -19,6 +19,7 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -28,7 +29,6 @@
     "firebase-tools": "^15.33.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
-    "typescript": "^5",
-    "@playwright/test": "^1.65.1"
+    "typescript": "^5"
   }
-}\n
+}
