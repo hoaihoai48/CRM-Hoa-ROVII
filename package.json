@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test:emulator": "node scripts/run-emulator-tests.mjs"
+    "test:emulator": "node scripts/run-emulator-tests.mjs",
+    "test:e2e": "firebase emulators:exec --project crm-hoa-rovii --only auth,firestore \"playwright test\""
   },
   "dependencies": {
     "firebase": "^13.0.0",
@@ -27,6 +28,7 @@
     "firebase-tools": "^15.33.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
-    "typescript": "^5"
+    "typescript": "^5",
+    "@playwright/test": "^1.65.1"
   }
-}
+}\n
