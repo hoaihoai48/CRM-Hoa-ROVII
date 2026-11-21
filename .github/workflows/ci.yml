@@ -43,7 +43,7 @@ jobs:
           java-version: '21'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-audit --no-fund
 
       - name: Install Cloud Functions dependencies from committed lockfile
         run: npm ci --prefix functions --no-audit --no-fund

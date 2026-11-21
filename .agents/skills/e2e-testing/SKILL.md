@@ -339,6 +339,9 @@ These repository-specific rules take precedence over generic examples above:
 - CI captures HTML/JUnit reports, traces on first retry, screenshots on failure and video on failure. Artifacts are retained for 7 days.
 - Do not silently skip a failing test. A quarantine requires a linked issue, explicit owner, reason and expiry/revisit condition.
 - Start with authentication and access-control smoke tests, then add feature-specific scenarios with the delivery step they protect.
+- The ROVII order lifecycle E2E currently covers synthetic customer/order creation, edits while `new` and `confirmed`, transitions through `confirmed` → `delivering` → `completed`, totals, history length and customer aggregates.
+- For order forms, respect native HTML input constraints (`min`, `max`, `step`) in test values; after submitting, wait for a durable postcondition (edit form closed, status action changed, or persisted Emulator document state), not merely the continued visibility of an existing action button.
+- Use Firebase Emulator REST `Authorization: Bearer owner` only for deterministic fixture seeding/inspection; the application interactions themselves must use a signed-in synthetic Auth Emulator identity and Firestore Security Rules.
 
 Reference sources:
 - Playwright official CI guide: https://playwright.dev/docs/ci

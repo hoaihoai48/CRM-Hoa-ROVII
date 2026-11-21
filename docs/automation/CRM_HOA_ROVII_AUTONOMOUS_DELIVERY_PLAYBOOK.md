@@ -161,20 +161,43 @@ A scheduled agent/check-in may:
 
 Scheduling is a trigger to resume work, not a guarantee of uninterrupted execution or an unlimited chain of agents. Every run must re-read repository state and this playbook; do not assume a previous run completed successfully. Avoid overlapping runs and conflicting branches. Never let an automation merge a PR or deploy to production.
 
-## 7. Progress log
+## 7. Completed delivery steps
+
+### S0 — Baseline & delivery infrastructure
+
+<badge>PASS</badge> CI, Firebase Emulator, authenticated Playwright smoke test and production build passed.
+
+- PR #8: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/8
+- Verified workflow: https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44903815116
+- Playwright: 4/4 passed (authentication form, anonymous dashboard guard, invalid credentials, active synthetic member login)
+
+### S1 — Order workflow integrity
+
+<badge>PASS</badge> Order lifecycle, history integrity, atomic customer projection and aggregate regression gates passed.
+
+- PR #9: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/9
+- Branch: `feat/order-workflow-integrity`
+- Head commit: `6c603747f0de25dd676bcefaa29eebc490f1f572`
+- Verified workflow: https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44907652688
+- Playwright: 5/5 passed, including create/edit/confirm/edit-confirmed/deliver/complete order journey
+- Emulator: PASS — lifecycle, invalid transitions, history tampering, projection atomicity, aggregate repair and concurrency cases
+- Static/build gates: PASS — dependency install/audit, Functions syntax, MCP smoke tests, ESLint, TypeScript and production build
+
+## 8. Progress log
 
 | Field | Value |
 |---|---|
-| Active step | S0 — Baseline & delivery infrastructure |
-| Step status | PASS — CI, Emulator integration, authenticated browser smoke test and production build all passed |
-| Branch / PR | `feat/ci-playwright-emulator-e2e` — https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/8 |
-| Commit SHA | `2c24fafa79568f3ff267d125e624fe4c26744986` |
-| CI run | https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44903815116 |
-| Playwright result | 4/4 PASS — login form, anonymous dashboard redirect, invalid credentials, active synthetic member login/dashboard |
-| Emulator integration | PASS — existing Firestore/Auth integrity suite |
-| Static/build gates | PASS — npm ci, Functions lint, MCP checks, ESLint, TypeScript, production build |
-| Preview verification | Vercel PR deployment check PASS; interactive Preview walkthrough not applicable to this test-infrastructure-only change |
+| Active step | S2 — Sales workflow completion |
+| Step status | READY — S0 and S1 quality gates passed; S1 PR is ready for review but not merged |
+| S0 PR | https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/8 |
+| S1 PR | https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/9 |
+| S1 commit | `6c603747f0de25dd676bcefaa29eebc490f1f572` |
+| CI run | https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44907652688 |
+| Playwright result | 5/5 PASS — 4 auth/access tests + complete order lifecycle |
+| Emulator result | PASS — all integration and invariant checks |
+| Vercel PR check | PASS — https://vercel.com/vu-nhim/tiem-hoa-rovii/E9N8oW7FWNUF9DrVkwz6nZwKsxVP |
 | Production data | NOT ACCESSED |
-| Next permitted step | S1 — Order workflow integrity |
+| Merge / production deployment | NOT PERFORMED |
+| Next permitted step | S2 — audit recipient/delivery details, scheduling, order code, staff assignment and printable order view against existing implementation and verified business requirements |
 
 Do not mark a step PASS unless all required exit criteria have verifiable evidence.

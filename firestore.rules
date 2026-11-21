@@ -94,17 +94,85 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Spark-compatible model: authenticated active staff/admin use client transactions.
-    // Rules enforce membership and schema, but cannot prove cross-document totals or
-    // recompute a customer's complete order history. This is an internal trusted-team model.
+    function validInitialOrder(data) {
+      return validOrder(data)
+        && data.status == 'new'
+        && data.statusHistory.size() == 1
+        && validStatusHistoryEntry(data.statusHistory[0])
+        && data.statusHistory[0].status == 'new';
+    }
+
+    function validStatusHistoryEntry(entry) {
+      return entry is map
+        && entry.keys().hasOnly(['id', 'status', 'timestamp', 'note', 'actorName'])
+        && entry.keys().hasAll(['id', 'status', 'timestamp', 'actorName'])
+        && entry.id is string
+        && entry.id.size() > 0
+        && entry.status in ['new', 'confirmed', 'delivering', 'completed', 'cancelled']
+        && entry.timestamp is string
+        && entry.timestamp.size() > 0
+        && entry.actorName is string
+        && entry.actorName.size() > 0
+        && (!('note' in entry.keys()) || entry.note == null || entry.note is string);
+    }
+
+    function validStatusTransition(from, to) {
+      return (from == 'new' && to in ['confirmed', 'cancelled'])
+        || (from == 'confirmed' && to in ['delivering', 'cancelled'])
+        || (from == 'delivering' && to == 'completed');
+    }
+
+    // History must append exactly one valid entry while preserving the complete prior
+    // list in its original order. Same-status edits are permitted only before delivery.
+    // Lifecycle transitions may change only status + history, never order/financial data.
+    function validStatusChange(oldData, newData) {
+      let historySize = newData.statusHistory.size();
+      let sameStatus = newData.status == oldData.status;
+      let historyEntry = newData.statusHistory[historySize - 1];
+      return historySize == oldData.statusHistory.size() + 1
+        && newData.statusHistory == oldData.statusHistory.concat([historyEntry])
+        && validStatusHistoryEntry(historyEntry)
+        && historyEntry.status == newData.status
+        && (
+          (sameStatus && oldData.status in ['new', 'confirmed'])
+          || (
+            !sameStatus
+            && validStatusTransition(oldData.status, newData.status)
+            && newData.diff(oldData).affectedKeys().hasOnly(['status', 'statusHistory'])
+          )
+        );
+    }
+
+    // Order writes must keep the corresponding per-order customer projection coherent
+    // in the same transaction/batch. This does not prove the customer's full aggregates.
+    function hasMatchingCustomerOrderProjection(orderId, orderData) {
+      let customerAfter = getAfter(
+        /databases/$(database)/documents/customers/$(orderData.customerId)
+      );
+      let expectedSummary = {
+        'id': orderId,
+        'status': orderData.status,
+        'total': orderData.summary.total,
+        'createdAt': orderData.createdAt
+      };
+      return customerAfter.data.orderSummaries is list
+        && expectedSummary in customerAfter.data.orderSummaries;
+    }
+
+    // Spark-compatible internal-team model. Rules enforce lifecycle and document invariants,
+    // but cannot prove cross-document arithmetic or reconstruct customer aggregates.
     match /orders/{orderId} {
       allow read: if isActiveMember();
-      allow create: if isActiveMember() && validOrder(request.resource.data);
+      allow create: if isActiveMember()
+        && validInitialOrder(request.resource.data)
+        && hasMatchingCustomerOrderProjection(orderId, request.resource.data);
       allow update: if isActiveMember()
         && validOrder(request.resource.data)
+        && validStatusChange(resource.data, request.resource.data)
         && request.resource.data.customerId == resource.data.customerId
         && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.createdBy == resource.data.createdBy;
+        && request.resource.data.createdBy == resource.data.createdBy
+        && hasMatchingCustomerOrderProjection(orderId, request.resource.data);
       allow delete: if false;
     }
 
