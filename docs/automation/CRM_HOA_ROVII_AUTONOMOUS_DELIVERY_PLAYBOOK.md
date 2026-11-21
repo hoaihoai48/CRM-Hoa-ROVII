@@ -74,15 +74,17 @@ Add tests alongside the feature they protect. Do not build a huge speculative te
 
 ### 3.4 CI integration
 
-The pull-request workflow should run, in order:
+The existing pull-request workflow runs, in order:
 
 1. Dependency installation with the lockfile.
-2. Lint and TypeScript checks.
-3. Unit tests.
-4. Firebase Emulator integration/security tests.
-5. Production build.
-6. Playwright browser installation and E2E tests.
-7. Upload Playwright report, trace and failure screenshots as CI artifacts.
+2. Cloud Functions syntax check and dependency audit report.
+3. MCP syntax/safety smoke tests.
+4. Lint and TypeScript checks.
+5. Firebase Emulator integration/security tests.
+6. Install Chromium only with `npx playwright install --with-deps chromium`.
+7. Run `npm run test:e2e` against isolated Auth/Firestore Emulators.
+8. Production build.
+9. Upload Playwright HTML/JUnit report, traces and failure screenshots as CI artifacts (7-day retention).
 
 Use supported project runtime versions from the repository configuration (currently documented as Node.js 24 and Java 21+ for Emulator tests). Keep CI permissions minimal. Avoid printing environment variables or secrets.
 
@@ -165,14 +167,14 @@ Update this section at the end of each delivery step (or link a dedicated step r
 
 | Field | Value |
 |---|---|
-| Active step | Not started / S0 / S1 / ... |
-| Step status | NOT STARTED / IN PROGRESS / PASS / BLOCKED |
-| Branch / PR | — |
-| Commit SHA(s) | — |
-| CI run | — |
-| Playwright result | NOT RUN |
-| Preview verification | NOT RUN |
-| Known risks / blockers | — |
-| Next permitted step | S0 only after baseline inspection |
+| Active step | S0 — Baseline & delivery infrastructure |
+| Step status | IN PROGRESS — CI and initial browser coverage pass; authenticated synthetic-member journey included |
+| Branch / PR | `feat/ci-playwright-emulator-e2e` — https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/8 |
+| Commit SHA(s) | `2a5302a8964d4d3bcd3cbafa7ea235ca823a3cc5` (CI baseline) |
+| CI run | https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44903564830 |
+| Playwright result | 3/3 PASS on initial CI run; authenticated membership journey added in follow-up commit and awaits CI |
+| Preview verification | Vercel PR check passed; interactive Preview verification NOT RUN |
+| Known risks / blockers | Full Preview browser verification still pending |
+| Next permitted step | Complete authenticated E2E verification, then re-assess S0 exit criteria |
 
 Do not mark a step PASS unless all required exit criteria have verifiable evidence.
