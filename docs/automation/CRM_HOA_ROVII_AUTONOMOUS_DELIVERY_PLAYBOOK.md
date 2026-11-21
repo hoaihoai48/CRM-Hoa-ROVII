@@ -82,7 +82,7 @@ The existing pull-request workflow runs, in order:
 4. Lint and TypeScript checks.
 5. Firebase Emulator integration/security tests.
 6. Install Chromium only with `npx playwright install --with-deps chromium`.
-7. Run `npm run test:e2e` against isolated Auth/Firestore Emulators.
+7. Run `npm run test:e2e` against isolated Auth/Firestore Emulators (login form, anonymous route guard, invalid credentials and active synthetic-member login).
 8. Production build.
 9. Upload Playwright HTML/JUnit report, traces and failure screenshots as CI artifacts (7-day retention).
 
@@ -161,20 +161,20 @@ A scheduled agent/check-in may:
 
 Scheduling is a trigger to resume work, not a guarantee of uninterrupted execution or an unlimited chain of agents. Every run must re-read repository state and this playbook; do not assume a previous run completed successfully. Avoid overlapping runs and conflicting branches. Never let an automation merge a PR or deploy to production.
 
-## 7. Progress log template
-
-Update this section at the end of each delivery step (or link a dedicated step report from the PR).
+## 7. Progress log
 
 | Field | Value |
 |---|---|
 | Active step | S0 — Baseline & delivery infrastructure |
-| Step status | IN PROGRESS — CI and initial browser coverage pass; authenticated synthetic-member journey included |
+| Step status | PASS — CI, Emulator integration, authenticated browser smoke test and production build all passed |
 | Branch / PR | `feat/ci-playwright-emulator-e2e` — https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/8 |
-| Commit SHA(s) | `2a5302a8964d4d3bcd3cbafa7ea235ca823a3cc5` (CI baseline) |
-| CI run | https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44903564830 |
-| Playwright result | 3/3 PASS on initial CI run; authenticated membership journey added in follow-up commit and awaits CI |
-| Preview verification | Vercel PR check passed; interactive Preview verification NOT RUN |
-| Known risks / blockers | Full Preview browser verification still pending |
-| Next permitted step | Complete authenticated E2E verification, then re-assess S0 exit criteria |
+| Commit SHA | `2c24fafa79568f3ff267d125e624fe4c26744986` |
+| CI run | https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44903815116 |
+| Playwright result | 4/4 PASS — login form, anonymous dashboard redirect, invalid credentials, active synthetic member login/dashboard |
+| Emulator integration | PASS — existing Firestore/Auth integrity suite |
+| Static/build gates | PASS — npm ci, Functions lint, MCP checks, ESLint, TypeScript, production build |
+| Preview verification | Vercel PR deployment check PASS; interactive Preview walkthrough not applicable to this test-infrastructure-only change |
+| Production data | NOT ACCESSED |
+| Next permitted step | S1 — Order workflow integrity |
 
 Do not mark a step PASS unless all required exit criteria have verifiable evidence.
