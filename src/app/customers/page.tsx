@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { 
   Users, 
@@ -14,14 +14,20 @@ import { PageHeader, EmptyState } from '@/components/common/Cards';
 import { SearchInput } from '@/components/common/Input';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
 import { ZaloButton } from '@/components/common/ZaloButton';
-import { createCustomer, listCustomers } from '@/lib/services';
+import { createCustomer, listCustomers, listCustomersPage } from '@/lib/services';
+import type { CustomerPageCursor } from '@/lib/services/customers';
 import { formatDateShort } from '@/lib/utils/format';
 
 function CustomersPageContent() {
   const [customers, setCustomers] = useState<Awaited<ReturnType<typeof listCustomers>>>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [nextCursor, setNextCursor] = useState<CustomerPageCursor | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [isFullDatasetLoaded, setIsFullDatasetLoaded] = useState(false);
+  const loadRequestRef = useRef(0);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
@@ -30,39 +36,89 @@ function CustomersPageContent() {
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  const loadCustomers = useCallback(() => {
+  const loadFirstPage = useCallback(() => {
+    const requestId = ++loadRequestRef.current;
     setIsLoading(true);
     setLoadError(null);
-    listCustomers()
-      .then(setCustomers)
-      .catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải danh sách khách hàng.'))
-      .finally(() => setIsLoading(false));
-  }, []);
-
-  useEffect(() => {
-    let ignore = false;
-    listCustomers()
-      .then((data) => {
-        if (!ignore) {
-          setCustomers(data);
-          setLoadError(null);
-        }
+    setIsFullDatasetLoaded(false);
+    listCustomersPage(null, 50)
+      .then((page) => {
+        if (requestId !== loadRequestRef.current) return;
+        setCustomers(page.items);
+        setNextCursor(page.nextCursor);
+        setHasMore(page.hasMore);
       })
       .catch((error) => {
-        if (!ignore) {
+        if (requestId === loadRequestRef.current) {
           setLoadError(error instanceof Error ? error.message : 'Không thể tải danh sách khách hàng.');
         }
       })
       .finally(() => {
-        if (!ignore) {
-          setIsLoading(false);
-        }
+        if (requestId === loadRequestRef.current) setIsLoading(false);
       });
-
-    return () => {
-      ignore = true;
-    };
   }, []);
+
+  const loadFullCustomers = useCallback(() => {
+    const requestId = ++loadRequestRef.current;
+    setIsLoading(true);
+    setLoadError(null);
+    listCustomers()
+      .then((data) => {
+        if (requestId !== loadRequestRef.current) return;
+        setCustomers(data);
+        setNextCursor(null);
+        setHasMore(false);
+        setIsFullDatasetLoaded(true);
+      })
+      .catch((error) => {
+        if (requestId === loadRequestRef.current) {
+          setLoadError(error instanceof Error ? error.message : 'Không thể tải danh sách khách hàng.');
+        }
+      })
+      .finally(() => {
+        if (requestId === loadRequestRef.current) setIsLoading(false);
+      });
+  }, []);
+
+  const loadCustomers = useCallback(() => {
+    if (searchTerm.trim()) loadFullCustomers();
+    else loadFirstPage();
+  }, [loadFirstPage, loadFullCustomers, searchTerm]);
+
+  useEffect(() => {
+    loadFirstPage();
+    return () => {
+      loadRequestRef.current += 1;
+    };
+  }, [loadFirstPage]);
+
+  useEffect(() => {
+    if (searchTerm.trim() && !isFullDatasetLoaded) {
+      loadFullCustomers();
+    } else if (!searchTerm.trim() && isFullDatasetLoaded) {
+      loadFirstPage();
+    }
+  }, [searchTerm, isFullDatasetLoaded, loadFirstPage, loadFullCustomers]);
+
+  const loadMoreCustomers = useCallback(async () => {
+    if (!nextCursor || !hasMore || isLoadingMore || isFullDatasetLoaded) return;
+    const requestId = ++loadRequestRef.current;
+    setIsLoadingMore(true);
+    setLoadError(null);
+    try {
+      const page = await listCustomersPage(nextCursor, 50);
+      if (requestId !== loadRequestRef.current) return;
+      setCustomers((current) => [...current, ...page.items]);
+      setNextCursor(page.nextCursor);
+      setHasMore(page.hasMore);
+    } catch (error) {
+      if (requestId === loadRequestRef.current) {
+        setLoadError(error instanceof Error ? error.message : 'Không thể tải thêm khách hàng.');
+      }
+    } finally {
+      if (requestId === loadRequestRef.current) setIsLoadingMore(false);
+    }
+  }, [nextCursor, hasMore, isLoadingMore, isFullDatasetLoaded]);
 
   const filteredCustomers = useMemo(() => {
     if (!searchTerm.trim()) return customers;
@@ -264,6 +320,20 @@ function CustomersPageContent() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {!isLoading && !loadError && hasMore && !isFullDatasetLoaded && (
+        <div className="mt-6 flex flex-col items-center gap-2">
+          <p className="text-xs text-stone-500">Đang hiển thị {customers.length} khách hàng gần nhất</p>
+          <button
+            type="button"
+            onClick={loadMoreCustomers}
+            disabled={isLoadingMore}
+            className="rounded-lg border border-stone-200 bg-white px-5 py-2.5 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-50"
+          >
+            {isLoadingMore ? 'Đang tải thêm...' : 'Tải thêm khách hàng'}
+          </button>
         </div>
       )}
     </>
