@@ -232,3 +232,17 @@ Do not mark a step PASS unless all required exit criteria have verifiable eviden
 - Scope limited to MCP output schemas, structuredContent and smoke-test coverage for schema declarations and README file reads.
 - Fresh CI run #44966591236 pending at handoff; Vercel check passed.
 - Firebase Storage removal was excluded; the existing optional Storage path remains unchanged. Any future Spark-only image-storage refactor must enforce Firestore document size constraints.
+
+
+## 12. Delivery session continuation — 2026-11-22 (PR #10 and S2 audit)
+
+- PR #10 merged by squash after all PR CI checks passed and the Preview deployment was Ready; no review threads/submissions existed.
+- PR #10 merge SHA: `6ac8304c8df47fe0c2a94dd444591a59ebb5b2da`.
+- PR CI run #44966591236: PASS — MCP schemas/protocol/safety, lint, typecheck, Emulator integration, Chromium/Playwright E2E, build and diagnostics.
+- Post-merge main run #44967174708 was still running at last inspection; Emulator job in progress after lint/typecheck/MCP passed. Playwright and build had not run yet.
+- S2 read-only audit began. Current customer snapshot conflates purchaser and recipient; delivery details are a single datetime field; order note combines greeting card text and delivery instructions. No dedicated recipient fields, delivery slot/window, staff assignment UID or print view identified in examined order types/UI.
+- Generated order ID currently uses `DH-${crypto.randomUUID()}`; creator and status actors are stored as display names, not membership IDs.
+- Found a potential orphan-customer path: UI creates a customer before starting the order transaction. If order creation subsequently fails, customer remains without an order.
+- Firestore Rules whitelist order document keys, so schema additions require coordinated TypeScript/service/rules/tests changes.
+- No application implementation or data migration has been started for S2. No production data touched and no production deployment/billing/configuration change.
+- Next action: inspect the complete order detail/update implementation and tests; inspect order E2E and emulator fixtures; record a proposed backward-compatible data model. Do not guess business policies for recipient semantics, delivery windows, assignment, or printed receipt contents.
