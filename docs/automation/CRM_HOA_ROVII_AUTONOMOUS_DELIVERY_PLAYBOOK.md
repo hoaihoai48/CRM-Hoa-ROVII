@@ -3,7 +3,7 @@
 - **Repository:** hoaihoai48/CRM-Hoa-ROVII
 - **Default branch:** main
 - **Operating model:** internal-first, SaaS-ready architecture, Firebase Spark-compatible, sales and CRM first
-- **Current delivery state:** S0/S1 complete; S2 technical hardening delivered through PR #18; Firebase F-02 Storage authorization is resolved by PR #22; F-01/F-03/F-04/F-05 remain in the security backlog; S2 business semantics await owner decisions.
+- **Current delivery state:** S0/S1 complete; S2 technical hardening delivered through PR #18; Firebase F-02 Storage authorization is resolved by PR #22 with PR-head and post-merge main CI passing; F-01/F-03/F-04/F-05 remain in the security backlog; S2 business semantics await owner decisions.
 
 ## 1. Non-negotiable delivery rules
 
@@ -232,3 +232,11 @@ Both Vercel Previews were Ready with zero unresolved feedback. No production dat
 - Branch: docs/record-pr22-storage-security-merge-2026-11-23; initial head e36bf7fa119601ab4c5d0722a0d93805b8c6fb83; base merge 3efd04c601b4bffaa976edad38c282e921d82be4.
 - Codex code review was running on the initial head at last inspection. Re-request if the branch changes; merge only after the final-head review completes without findings and the diff remains docs-only.
 - Actions and Preview are not applicable to this Markdown-only change; no CI/Preview result is claimed.
+
+
+## 20. Post-merge verification — PR #22 (2026-11-23)
+
+- GitHub Actions push run #45047810582 on exact main merge `3efd04c601b4bffaa976edad38c282e921d82be4` completed SUCCESS; job #137286140172 confirms every step completed, including Auth/Firestore/Storage Emulator tests, Playwright and production build.
+- PR #22 is verified at both final PR head CI #45043911114 and post-merge main CI #45047810582. The previous NOT VERIFIED note is superseded by this evidence.
+- PR #24 remains docs-only: code review passed on head `56e9055936f89d687b8acbd7db6d0d08ccb9a6f9`; documentation-focused security review is pending. Actions and Preview are not applicable under the paths-ignore/non-runtime policy.
+- Next delivery step after PR #24 is closed: F-01 customer aggregate integrity, beginning with a focused Rules/Emulator design that preserves all valid create/edit/status/cancel transactions.
