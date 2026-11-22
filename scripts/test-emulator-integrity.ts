@@ -1416,7 +1416,7 @@ async function runTestSuite() {
   const dashboardBase = Date.parse('2099-01-01T00:00:00.000Z');
   for (let i = 0; i < 8; i++) {
     const id = `DASH-ORDER-${String(i).padStart(3, '0')}`;
-    const createdAt = new Date(dashboardBase + i * 60 * 60 * 1000).toISOString();
+    const createdAt = new Date(dashboardBase + (i === 7 ? 24 * 60 * 60 * 1000 : i * 60 * 60 * 1000)).toISOString();
     const status = i === 0 ? 'completed' : 'new';
     await setDocumentAsAdmin('orders', id, {
       customerId: dashboardCustomer.id,
