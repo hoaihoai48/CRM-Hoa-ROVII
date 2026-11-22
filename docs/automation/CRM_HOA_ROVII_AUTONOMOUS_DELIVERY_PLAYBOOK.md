@@ -132,7 +132,7 @@ Add tests alongside the feature they protect. Prefer accessible selectors and st
 | #17 | Customer order-history cursor pagination (25 rows + load more) | 8ce9930ee181b1fca788e823a53ffac8860d9067 | PR #45008095660 PASS; post-merge main #45008325128 PASS |
 | #18 | Require authenticated actor UID on appended history for UID-attributed orders | 83c354436ff9dfedca180832fcec324c03a36ffa | PR #45008498582 PASS; post-merge main #45008753697 PASS |
 | #21 | Firebase Security & Access-Control source audit | e728de1b8b98f91e976a3336a657720f4020f6b8 | Docs-only; code review + independent security review completed |
-| #22 | Active-admin product image Storage Rules + Storage Emulator suite and demo-only test guards | 3efd04c601b4bffaa976edad38c282e921d82be4 | PR #45043911114 PASS on final head; post-merge main Actions not yet returned |
+| #22 | Active-admin product image Storage Rules + Storage Emulator suite and demo-only test guards | 3efd04c601b4bffaa976edad38c282e921d82be4 | PR #45043911114 PASS on final head; post-merge main #45047810582 PASS |
 
 ### S2 technical invariants and trade-offs
 
@@ -162,7 +162,7 @@ The audit contains a backward-compatible optional-field candidate and regression
 
 | Field | Value |
 |---|---|
-| Active step | PR #24 documentation-only handoff synchronization is open for review; verify PR #22 post-merge main CI, then begin F-01 customer aggregate Rules hardening |
+| Active step | PR #24 documentation-only handoff synchronization is open for final-head security review; PR #22 post-merge main CI is verified; then begin F-01 customer aggregate Rules hardening |
 | S0 | COMPLETE |
 | S1 | COMPLETE |
 | S2 technical hardening | COMPLETE through PR #18 |
@@ -174,13 +174,13 @@ The audit contains a backward-compatible optional-field candidate and regression
 | Post-merge main CI | #45008753697 — PASS (PR #18); #45008325128 — PASS (PR #17) |
 | Production data | NOT ACCESSED |
 | Production deployment | NOT PERFORMED |
-| Next action | Complete PR #24 documentation review/merge; verify post-merge main Actions for PR #22; then address F-01 customer scalar aggregate tampering with Emulator negative/positive coverage and a backward-compatible Rules design |
+| Next action | Complete PR #24 final-head review/merge; then address F-01 customer scalar aggregate tampering with Emulator negative/positive coverage and a backward-compatible Rules design |
 
 PR #17 paginates customer detail history (25-row pages); PR #18 makes actor UIDs mandatory on appended history entries for UID-attributed orders while preserving legacy compatibility. Do not mark S2 fully complete until the remaining owner decisions have been implemented and their end-to-end acceptance criteria pass.
 
 ## 10. Resume instruction
 
-Every new run must re-read this playbook and docs/automation/CRM_HOA_ROVII_CURRENT_STATE.md, fetch the live main ref, inspect open PRs/branches and the latest Actions/review state, and continue from the earliest incomplete step. PRs #8–#22 are merged; PR #23 is closed unmerged; PR #24 is the active docs-only handoff synchronization. Verify post-merge main CI for PR #22 before claiming it passed. Never infer a successful CI result from a started or cancelled workflow.
+Every new run must re-read this playbook and docs/automation/CRM_HOA_ROVII_CURRENT_STATE.md, fetch the live main ref, inspect open PRs/branches and the latest Actions/review state, and continue from the earliest incomplete step. PRs #8–#22 are merged; PR #23 is closed unmerged; PR #24 is the active docs-only handoff synchronization. PR #22 PR-head CI #45043911114 and post-merge main CI #45047810582 both completed SUCCESS. Never infer a successful CI result from a started or cancelled workflow.
 
 
 ## 11. Delivery update — PRs #17–#18
@@ -238,5 +238,5 @@ Both Vercel Previews were Ready with zero unresolved feedback. No production dat
 
 - GitHub Actions push run #45047810582 on exact main merge `3efd04c601b4bffaa976edad38c282e921d82be4` completed SUCCESS; job #137286140172 confirms every step completed, including Auth/Firestore/Storage Emulator tests, Playwright and production build.
 - PR #22 is verified at both final PR head CI #45043911114 and post-merge main CI #45047810582. The previous NOT VERIFIED note is superseded by this evidence.
-- PR #24 remains docs-only: code review passed on head `56e9055936f89d687b8acbd7db6d0d08ccb9a6f9`; documentation-focused security review is pending. Actions and Preview are not applicable under the paths-ignore/non-runtime policy.
+- PR #24 remains docs-only: the prior code review passed on head `56e9055936f89d687b8acbd7db6d0d08ccb9a6f9`; the latest docs update requires fresh code/security review. Actions and Preview are not applicable under the paths-ignore/non-runtime policy.
 - Next delivery step after PR #24 is closed: F-01 customer aggregate integrity, beginning with a focused Rules/Emulator design that preserves all valid create/edit/status/cancel transactions.
