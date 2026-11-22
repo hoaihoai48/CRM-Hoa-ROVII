@@ -89,202 +89,202 @@ service cloud.firestore {
     // Keep each Rules expression small enough for the Firestore Rules evaluator.
     // The projection is active-only; its first row is latest and its last row is oldest.
     function validSummaryChunk0(summaries) {
-      return summaries.size() <= 0 || validCustomerOrderSummary(summaries[0])
-        && summaries.size() <= 1 || validCustomerOrderSummary(summaries[1])
-        && summaries.size() <= 2 || validCustomerOrderSummary(summaries[2])
-        && summaries.size() <= 3 || validCustomerOrderSummary(summaries[3])
-        && summaries.size() <= 4 || validCustomerOrderSummary(summaries[4])
-        && summaries.size() <= 5 || validCustomerOrderSummary(summaries[5])
-        && summaries.size() <= 6 || validCustomerOrderSummary(summaries[6])
-        && summaries.size() <= 7 || validCustomerOrderSummary(summaries[7])
-        && summaries.size() <= 8 || validCustomerOrderSummary(summaries[8])
-        && summaries.size() <= 9 || validCustomerOrderSummary(summaries[9]);
+      return (summaries.size() <= 0 || validCustomerOrderSummary(summaries[0]))
+        && (summaries.size() <= 1 || validCustomerOrderSummary(summaries[1]))
+        && (summaries.size() <= 2 || validCustomerOrderSummary(summaries[2]))
+        && (summaries.size() <= 3 || validCustomerOrderSummary(summaries[3]))
+        && (summaries.size() <= 4 || validCustomerOrderSummary(summaries[4]))
+        && (summaries.size() <= 5 || validCustomerOrderSummary(summaries[5]))
+        && (summaries.size() <= 6 || validCustomerOrderSummary(summaries[6]))
+        && (summaries.size() <= 7 || validCustomerOrderSummary(summaries[7]))
+        && (summaries.size() <= 8 || validCustomerOrderSummary(summaries[8]))
+        && (summaries.size() <= 9 || validCustomerOrderSummary(summaries[9]));
     }
 
     function validSummaryChunk1(summaries) {
-      return summaries.size() <= 10 || validCustomerOrderSummary(summaries[10])
-        && summaries.size() <= 11 || validCustomerOrderSummary(summaries[11])
-        && summaries.size() <= 12 || validCustomerOrderSummary(summaries[12])
-        && summaries.size() <= 13 || validCustomerOrderSummary(summaries[13])
-        && summaries.size() <= 14 || validCustomerOrderSummary(summaries[14])
-        && summaries.size() <= 15 || validCustomerOrderSummary(summaries[15])
-        && summaries.size() <= 16 || validCustomerOrderSummary(summaries[16])
-        && summaries.size() <= 17 || validCustomerOrderSummary(summaries[17])
-        && summaries.size() <= 18 || validCustomerOrderSummary(summaries[18])
-        && summaries.size() <= 19 || validCustomerOrderSummary(summaries[19]);
+      return (summaries.size() <= 10 || validCustomerOrderSummary(summaries[10]))
+        && (summaries.size() <= 11 || validCustomerOrderSummary(summaries[11]))
+        && (summaries.size() <= 12 || validCustomerOrderSummary(summaries[12]))
+        && (summaries.size() <= 13 || validCustomerOrderSummary(summaries[13]))
+        && (summaries.size() <= 14 || validCustomerOrderSummary(summaries[14]))
+        && (summaries.size() <= 15 || validCustomerOrderSummary(summaries[15]))
+        && (summaries.size() <= 16 || validCustomerOrderSummary(summaries[16]))
+        && (summaries.size() <= 17 || validCustomerOrderSummary(summaries[17]))
+        && (summaries.size() <= 18 || validCustomerOrderSummary(summaries[18]))
+        && (summaries.size() <= 19 || validCustomerOrderSummary(summaries[19]));
     }
 
     function validSummaryChunk2(summaries) {
-      return summaries.size() <= 20 || validCustomerOrderSummary(summaries[20])
-        && summaries.size() <= 21 || validCustomerOrderSummary(summaries[21])
-        && summaries.size() <= 22 || validCustomerOrderSummary(summaries[22])
-        && summaries.size() <= 23 || validCustomerOrderSummary(summaries[23])
-        && summaries.size() <= 24 || validCustomerOrderSummary(summaries[24])
-        && summaries.size() <= 25 || validCustomerOrderSummary(summaries[25])
-        && summaries.size() <= 26 || validCustomerOrderSummary(summaries[26])
-        && summaries.size() <= 27 || validCustomerOrderSummary(summaries[27])
-        && summaries.size() <= 28 || validCustomerOrderSummary(summaries[28])
-        && summaries.size() <= 29 || validCustomerOrderSummary(summaries[29]);
+      return (summaries.size() <= 20 || validCustomerOrderSummary(summaries[20]))
+        && (summaries.size() <= 21 || validCustomerOrderSummary(summaries[21]))
+        && (summaries.size() <= 22 || validCustomerOrderSummary(summaries[22]))
+        && (summaries.size() <= 23 || validCustomerOrderSummary(summaries[23]))
+        && (summaries.size() <= 24 || validCustomerOrderSummary(summaries[24]))
+        && (summaries.size() <= 25 || validCustomerOrderSummary(summaries[25]))
+        && (summaries.size() <= 26 || validCustomerOrderSummary(summaries[26]))
+        && (summaries.size() <= 27 || validCustomerOrderSummary(summaries[27]))
+        && (summaries.size() <= 28 || validCustomerOrderSummary(summaries[28]))
+        && (summaries.size() <= 29 || validCustomerOrderSummary(summaries[29]));
     }
 
     function validSummaryChunk3(summaries) {
-      return summaries.size() <= 30 || validCustomerOrderSummary(summaries[30])
-        && summaries.size() <= 31 || validCustomerOrderSummary(summaries[31])
-        && summaries.size() <= 32 || validCustomerOrderSummary(summaries[32])
-        && summaries.size() <= 33 || validCustomerOrderSummary(summaries[33])
-        && summaries.size() <= 34 || validCustomerOrderSummary(summaries[34])
-        && summaries.size() <= 35 || validCustomerOrderSummary(summaries[35])
-        && summaries.size() <= 36 || validCustomerOrderSummary(summaries[36])
-        && summaries.size() <= 37 || validCustomerOrderSummary(summaries[37])
-        && summaries.size() <= 38 || validCustomerOrderSummary(summaries[38])
-        && summaries.size() <= 39 || validCustomerOrderSummary(summaries[39]);
+      return (summaries.size() <= 30 || validCustomerOrderSummary(summaries[30]))
+        && (summaries.size() <= 31 || validCustomerOrderSummary(summaries[31]))
+        && (summaries.size() <= 32 || validCustomerOrderSummary(summaries[32]))
+        && (summaries.size() <= 33 || validCustomerOrderSummary(summaries[33]))
+        && (summaries.size() <= 34 || validCustomerOrderSummary(summaries[34]))
+        && (summaries.size() <= 35 || validCustomerOrderSummary(summaries[35]))
+        && (summaries.size() <= 36 || validCustomerOrderSummary(summaries[36]))
+        && (summaries.size() <= 37 || validCustomerOrderSummary(summaries[37]))
+        && (summaries.size() <= 38 || validCustomerOrderSummary(summaries[38]))
+        && (summaries.size() <= 39 || validCustomerOrderSummary(summaries[39]));
     }
 
     function validSummaryChunk4(summaries) {
-      return summaries.size() <= 40 || validCustomerOrderSummary(summaries[40])
-        && summaries.size() <= 41 || validCustomerOrderSummary(summaries[41])
-        && summaries.size() <= 42 || validCustomerOrderSummary(summaries[42])
-        && summaries.size() <= 43 || validCustomerOrderSummary(summaries[43])
-        && summaries.size() <= 44 || validCustomerOrderSummary(summaries[44])
-        && summaries.size() <= 45 || validCustomerOrderSummary(summaries[45])
-        && summaries.size() <= 46 || validCustomerOrderSummary(summaries[46])
-        && summaries.size() <= 47 || validCustomerOrderSummary(summaries[47])
-        && summaries.size() <= 48 || validCustomerOrderSummary(summaries[48])
-        && summaries.size() <= 49 || validCustomerOrderSummary(summaries[49]);
+      return (summaries.size() <= 40 || validCustomerOrderSummary(summaries[40]))
+        && (summaries.size() <= 41 || validCustomerOrderSummary(summaries[41]))
+        && (summaries.size() <= 42 || validCustomerOrderSummary(summaries[42]))
+        && (summaries.size() <= 43 || validCustomerOrderSummary(summaries[43]))
+        && (summaries.size() <= 44 || validCustomerOrderSummary(summaries[44]))
+        && (summaries.size() <= 45 || validCustomerOrderSummary(summaries[45]))
+        && (summaries.size() <= 46 || validCustomerOrderSummary(summaries[46]))
+        && (summaries.size() <= 47 || validCustomerOrderSummary(summaries[47]))
+        && (summaries.size() <= 48 || validCustomerOrderSummary(summaries[48]))
+        && (summaries.size() <= 49 || validCustomerOrderSummary(summaries[49]));
     }
 
     function validSummaryChunk5(summaries) {
-      return summaries.size() <= 50 || validCustomerOrderSummary(summaries[50]);
+      return (summaries.size() <= 50 || validCustomerOrderSummary(summaries[50]));
     }
 
     function validLatestChunk0(summaries) {
-      return summaries.size() <= 1 || summaryAtLeastAsRecent(summaries[0], summaries[1])
-        && summaries.size() <= 2 || summaryAtLeastAsRecent(summaries[0], summaries[2])
-        && summaries.size() <= 3 || summaryAtLeastAsRecent(summaries[0], summaries[3])
-        && summaries.size() <= 4 || summaryAtLeastAsRecent(summaries[0], summaries[4])
-        && summaries.size() <= 5 || summaryAtLeastAsRecent(summaries[0], summaries[5])
-        && summaries.size() <= 6 || summaryAtLeastAsRecent(summaries[0], summaries[6])
-        && summaries.size() <= 7 || summaryAtLeastAsRecent(summaries[0], summaries[7])
-        && summaries.size() <= 8 || summaryAtLeastAsRecent(summaries[0], summaries[8])
-        && summaries.size() <= 9 || summaryAtLeastAsRecent(summaries[0], summaries[9])
-        && summaries.size() <= 10 || summaryAtLeastAsRecent(summaries[0], summaries[10]);
+      return (summaries.size() <= 1 || summaryAtLeastAsRecent(summaries[0], summaries[1]))
+        && (summaries.size() <= 2 || summaryAtLeastAsRecent(summaries[0], summaries[2]))
+        && (summaries.size() <= 3 || summaryAtLeastAsRecent(summaries[0], summaries[3]))
+        && (summaries.size() <= 4 || summaryAtLeastAsRecent(summaries[0], summaries[4]))
+        && (summaries.size() <= 5 || summaryAtLeastAsRecent(summaries[0], summaries[5]))
+        && (summaries.size() <= 6 || summaryAtLeastAsRecent(summaries[0], summaries[6]))
+        && (summaries.size() <= 7 || summaryAtLeastAsRecent(summaries[0], summaries[7]))
+        && (summaries.size() <= 8 || summaryAtLeastAsRecent(summaries[0], summaries[8]))
+        && (summaries.size() <= 9 || summaryAtLeastAsRecent(summaries[0], summaries[9]))
+        && (summaries.size() <= 10 || summaryAtLeastAsRecent(summaries[0], summaries[10]));
     }
 
     function validLatestChunk1(summaries) {
-      return summaries.size() <= 11 || summaryAtLeastAsRecent(summaries[0], summaries[11])
-        && summaries.size() <= 12 || summaryAtLeastAsRecent(summaries[0], summaries[12])
-        && summaries.size() <= 13 || summaryAtLeastAsRecent(summaries[0], summaries[13])
-        && summaries.size() <= 14 || summaryAtLeastAsRecent(summaries[0], summaries[14])
-        && summaries.size() <= 15 || summaryAtLeastAsRecent(summaries[0], summaries[15])
-        && summaries.size() <= 16 || summaryAtLeastAsRecent(summaries[0], summaries[16])
-        && summaries.size() <= 17 || summaryAtLeastAsRecent(summaries[0], summaries[17])
-        && summaries.size() <= 18 || summaryAtLeastAsRecent(summaries[0], summaries[18])
-        && summaries.size() <= 19 || summaryAtLeastAsRecent(summaries[0], summaries[19])
-        && summaries.size() <= 20 || summaryAtLeastAsRecent(summaries[0], summaries[20]);
+      return (summaries.size() <= 11 || summaryAtLeastAsRecent(summaries[0], summaries[11]))
+        && (summaries.size() <= 12 || summaryAtLeastAsRecent(summaries[0], summaries[12]))
+        && (summaries.size() <= 13 || summaryAtLeastAsRecent(summaries[0], summaries[13]))
+        && (summaries.size() <= 14 || summaryAtLeastAsRecent(summaries[0], summaries[14]))
+        && (summaries.size() <= 15 || summaryAtLeastAsRecent(summaries[0], summaries[15]))
+        && (summaries.size() <= 16 || summaryAtLeastAsRecent(summaries[0], summaries[16]))
+        && (summaries.size() <= 17 || summaryAtLeastAsRecent(summaries[0], summaries[17]))
+        && (summaries.size() <= 18 || summaryAtLeastAsRecent(summaries[0], summaries[18]))
+        && (summaries.size() <= 19 || summaryAtLeastAsRecent(summaries[0], summaries[19]))
+        && (summaries.size() <= 20 || summaryAtLeastAsRecent(summaries[0], summaries[20]));
     }
 
     function validLatestChunk2(summaries) {
-      return summaries.size() <= 21 || summaryAtLeastAsRecent(summaries[0], summaries[21])
-        && summaries.size() <= 22 || summaryAtLeastAsRecent(summaries[0], summaries[22])
-        && summaries.size() <= 23 || summaryAtLeastAsRecent(summaries[0], summaries[23])
-        && summaries.size() <= 24 || summaryAtLeastAsRecent(summaries[0], summaries[24])
-        && summaries.size() <= 25 || summaryAtLeastAsRecent(summaries[0], summaries[25])
-        && summaries.size() <= 26 || summaryAtLeastAsRecent(summaries[0], summaries[26])
-        && summaries.size() <= 27 || summaryAtLeastAsRecent(summaries[0], summaries[27])
-        && summaries.size() <= 28 || summaryAtLeastAsRecent(summaries[0], summaries[28])
-        && summaries.size() <= 29 || summaryAtLeastAsRecent(summaries[0], summaries[29])
-        && summaries.size() <= 30 || summaryAtLeastAsRecent(summaries[0], summaries[30]);
+      return (summaries.size() <= 21 || summaryAtLeastAsRecent(summaries[0], summaries[21]))
+        && (summaries.size() <= 22 || summaryAtLeastAsRecent(summaries[0], summaries[22]))
+        && (summaries.size() <= 23 || summaryAtLeastAsRecent(summaries[0], summaries[23]))
+        && (summaries.size() <= 24 || summaryAtLeastAsRecent(summaries[0], summaries[24]))
+        && (summaries.size() <= 25 || summaryAtLeastAsRecent(summaries[0], summaries[25]))
+        && (summaries.size() <= 26 || summaryAtLeastAsRecent(summaries[0], summaries[26]))
+        && (summaries.size() <= 27 || summaryAtLeastAsRecent(summaries[0], summaries[27]))
+        && (summaries.size() <= 28 || summaryAtLeastAsRecent(summaries[0], summaries[28]))
+        && (summaries.size() <= 29 || summaryAtLeastAsRecent(summaries[0], summaries[29]))
+        && (summaries.size() <= 30 || summaryAtLeastAsRecent(summaries[0], summaries[30]));
     }
 
     function validLatestChunk3(summaries) {
-      return summaries.size() <= 31 || summaryAtLeastAsRecent(summaries[0], summaries[31])
-        && summaries.size() <= 32 || summaryAtLeastAsRecent(summaries[0], summaries[32])
-        && summaries.size() <= 33 || summaryAtLeastAsRecent(summaries[0], summaries[33])
-        && summaries.size() <= 34 || summaryAtLeastAsRecent(summaries[0], summaries[34])
-        && summaries.size() <= 35 || summaryAtLeastAsRecent(summaries[0], summaries[35])
-        && summaries.size() <= 36 || summaryAtLeastAsRecent(summaries[0], summaries[36])
-        && summaries.size() <= 37 || summaryAtLeastAsRecent(summaries[0], summaries[37])
-        && summaries.size() <= 38 || summaryAtLeastAsRecent(summaries[0], summaries[38])
-        && summaries.size() <= 39 || summaryAtLeastAsRecent(summaries[0], summaries[39])
-        && summaries.size() <= 40 || summaryAtLeastAsRecent(summaries[0], summaries[40]);
+      return (summaries.size() <= 31 || summaryAtLeastAsRecent(summaries[0], summaries[31]))
+        && (summaries.size() <= 32 || summaryAtLeastAsRecent(summaries[0], summaries[32]))
+        && (summaries.size() <= 33 || summaryAtLeastAsRecent(summaries[0], summaries[33]))
+        && (summaries.size() <= 34 || summaryAtLeastAsRecent(summaries[0], summaries[34]))
+        && (summaries.size() <= 35 || summaryAtLeastAsRecent(summaries[0], summaries[35]))
+        && (summaries.size() <= 36 || summaryAtLeastAsRecent(summaries[0], summaries[36]))
+        && (summaries.size() <= 37 || summaryAtLeastAsRecent(summaries[0], summaries[37]))
+        && (summaries.size() <= 38 || summaryAtLeastAsRecent(summaries[0], summaries[38]))
+        && (summaries.size() <= 39 || summaryAtLeastAsRecent(summaries[0], summaries[39]))
+        && (summaries.size() <= 40 || summaryAtLeastAsRecent(summaries[0], summaries[40]));
     }
 
     function validLatestChunk4(summaries) {
-      return summaries.size() <= 41 || summaryAtLeastAsRecent(summaries[0], summaries[41])
-        && summaries.size() <= 42 || summaryAtLeastAsRecent(summaries[0], summaries[42])
-        && summaries.size() <= 43 || summaryAtLeastAsRecent(summaries[0], summaries[43])
-        && summaries.size() <= 44 || summaryAtLeastAsRecent(summaries[0], summaries[44])
-        && summaries.size() <= 45 || summaryAtLeastAsRecent(summaries[0], summaries[45])
-        && summaries.size() <= 46 || summaryAtLeastAsRecent(summaries[0], summaries[46])
-        && summaries.size() <= 47 || summaryAtLeastAsRecent(summaries[0], summaries[47])
-        && summaries.size() <= 48 || summaryAtLeastAsRecent(summaries[0], summaries[48])
-        && summaries.size() <= 49 || summaryAtLeastAsRecent(summaries[0], summaries[49])
-        && summaries.size() <= 50 || summaryAtLeastAsRecent(summaries[0], summaries[50]);
+      return (summaries.size() <= 41 || summaryAtLeastAsRecent(summaries[0], summaries[41]))
+        && (summaries.size() <= 42 || summaryAtLeastAsRecent(summaries[0], summaries[42]))
+        && (summaries.size() <= 43 || summaryAtLeastAsRecent(summaries[0], summaries[43]))
+        && (summaries.size() <= 44 || summaryAtLeastAsRecent(summaries[0], summaries[44]))
+        && (summaries.size() <= 45 || summaryAtLeastAsRecent(summaries[0], summaries[45]))
+        && (summaries.size() <= 46 || summaryAtLeastAsRecent(summaries[0], summaries[46]))
+        && (summaries.size() <= 47 || summaryAtLeastAsRecent(summaries[0], summaries[47]))
+        && (summaries.size() <= 48 || summaryAtLeastAsRecent(summaries[0], summaries[48]))
+        && (summaries.size() <= 49 || summaryAtLeastAsRecent(summaries[0], summaries[49]))
+        && (summaries.size() <= 50 || summaryAtLeastAsRecent(summaries[0], summaries[50]));
     }
 
     function validOldestChunk0(summaries) {
-      return summaries.size() <= 1 || summaryNoLater(summaries[summaries.size() - 1], summaries[1])
-        && summaries.size() <= 2 || summaryNoLater(summaries[summaries.size() - 1], summaries[2])
-        && summaries.size() <= 3 || summaryNoLater(summaries[summaries.size() - 1], summaries[3])
-        && summaries.size() <= 4 || summaryNoLater(summaries[summaries.size() - 1], summaries[4])
-        && summaries.size() <= 5 || summaryNoLater(summaries[summaries.size() - 1], summaries[5])
-        && summaries.size() <= 6 || summaryNoLater(summaries[summaries.size() - 1], summaries[6])
-        && summaries.size() <= 7 || summaryNoLater(summaries[summaries.size() - 1], summaries[7])
-        && summaries.size() <= 8 || summaryNoLater(summaries[summaries.size() - 1], summaries[8])
-        && summaries.size() <= 9 || summaryNoLater(summaries[summaries.size() - 1], summaries[9])
-        && summaries.size() <= 10 || summaryNoLater(summaries[summaries.size() - 1], summaries[10]);
+      return (summaries.size() <= 1 || summaryNoLater(summaries[summaries.size() - 1], summaries[1]))
+        && (summaries.size() <= 2 || summaryNoLater(summaries[summaries.size() - 1], summaries[2]))
+        && (summaries.size() <= 3 || summaryNoLater(summaries[summaries.size() - 1], summaries[3]))
+        && (summaries.size() <= 4 || summaryNoLater(summaries[summaries.size() - 1], summaries[4]))
+        && (summaries.size() <= 5 || summaryNoLater(summaries[summaries.size() - 1], summaries[5]))
+        && (summaries.size() <= 6 || summaryNoLater(summaries[summaries.size() - 1], summaries[6]))
+        && (summaries.size() <= 7 || summaryNoLater(summaries[summaries.size() - 1], summaries[7]))
+        && (summaries.size() <= 8 || summaryNoLater(summaries[summaries.size() - 1], summaries[8]))
+        && (summaries.size() <= 9 || summaryNoLater(summaries[summaries.size() - 1], summaries[9]))
+        && (summaries.size() <= 10 || summaryNoLater(summaries[summaries.size() - 1], summaries[10]));
     }
 
     function validOldestChunk1(summaries) {
-      return summaries.size() <= 11 || summaryNoLater(summaries[summaries.size() - 1], summaries[11])
-        && summaries.size() <= 12 || summaryNoLater(summaries[summaries.size() - 1], summaries[12])
-        && summaries.size() <= 13 || summaryNoLater(summaries[summaries.size() - 1], summaries[13])
-        && summaries.size() <= 14 || summaryNoLater(summaries[summaries.size() - 1], summaries[14])
-        && summaries.size() <= 15 || summaryNoLater(summaries[summaries.size() - 1], summaries[15])
-        && summaries.size() <= 16 || summaryNoLater(summaries[summaries.size() - 1], summaries[16])
-        && summaries.size() <= 17 || summaryNoLater(summaries[summaries.size() - 1], summaries[17])
-        && summaries.size() <= 18 || summaryNoLater(summaries[summaries.size() - 1], summaries[18])
-        && summaries.size() <= 19 || summaryNoLater(summaries[summaries.size() - 1], summaries[19])
-        && summaries.size() <= 20 || summaryNoLater(summaries[summaries.size() - 1], summaries[20]);
+      return (summaries.size() <= 11 || summaryNoLater(summaries[summaries.size() - 1], summaries[11]))
+        && (summaries.size() <= 12 || summaryNoLater(summaries[summaries.size() - 1], summaries[12]))
+        && (summaries.size() <= 13 || summaryNoLater(summaries[summaries.size() - 1], summaries[13]))
+        && (summaries.size() <= 14 || summaryNoLater(summaries[summaries.size() - 1], summaries[14]))
+        && (summaries.size() <= 15 || summaryNoLater(summaries[summaries.size() - 1], summaries[15]))
+        && (summaries.size() <= 16 || summaryNoLater(summaries[summaries.size() - 1], summaries[16]))
+        && (summaries.size() <= 17 || summaryNoLater(summaries[summaries.size() - 1], summaries[17]))
+        && (summaries.size() <= 18 || summaryNoLater(summaries[summaries.size() - 1], summaries[18]))
+        && (summaries.size() <= 19 || summaryNoLater(summaries[summaries.size() - 1], summaries[19]))
+        && (summaries.size() <= 20 || summaryNoLater(summaries[summaries.size() - 1], summaries[20]));
     }
 
     function validOldestChunk2(summaries) {
-      return summaries.size() <= 21 || summaryNoLater(summaries[summaries.size() - 1], summaries[21])
-        && summaries.size() <= 22 || summaryNoLater(summaries[summaries.size() - 1], summaries[22])
-        && summaries.size() <= 23 || summaryNoLater(summaries[summaries.size() - 1], summaries[23])
-        && summaries.size() <= 24 || summaryNoLater(summaries[summaries.size() - 1], summaries[24])
-        && summaries.size() <= 25 || summaryNoLater(summaries[summaries.size() - 1], summaries[25])
-        && summaries.size() <= 26 || summaryNoLater(summaries[summaries.size() - 1], summaries[26])
-        && summaries.size() <= 27 || summaryNoLater(summaries[summaries.size() - 1], summaries[27])
-        && summaries.size() <= 28 || summaryNoLater(summaries[summaries.size() - 1], summaries[28])
-        && summaries.size() <= 29 || summaryNoLater(summaries[summaries.size() - 1], summaries[29])
-        && summaries.size() <= 30 || summaryNoLater(summaries[summaries.size() - 1], summaries[30]);
+      return (summaries.size() <= 21 || summaryNoLater(summaries[summaries.size() - 1], summaries[21]))
+        && (summaries.size() <= 22 || summaryNoLater(summaries[summaries.size() - 1], summaries[22]))
+        && (summaries.size() <= 23 || summaryNoLater(summaries[summaries.size() - 1], summaries[23]))
+        && (summaries.size() <= 24 || summaryNoLater(summaries[summaries.size() - 1], summaries[24]))
+        && (summaries.size() <= 25 || summaryNoLater(summaries[summaries.size() - 1], summaries[25]))
+        && (summaries.size() <= 26 || summaryNoLater(summaries[summaries.size() - 1], summaries[26]))
+        && (summaries.size() <= 27 || summaryNoLater(summaries[summaries.size() - 1], summaries[27]))
+        && (summaries.size() <= 28 || summaryNoLater(summaries[summaries.size() - 1], summaries[28]))
+        && (summaries.size() <= 29 || summaryNoLater(summaries[summaries.size() - 1], summaries[29]))
+        && (summaries.size() <= 30 || summaryNoLater(summaries[summaries.size() - 1], summaries[30]));
     }
 
     function validOldestChunk3(summaries) {
-      return summaries.size() <= 31 || summaryNoLater(summaries[summaries.size() - 1], summaries[31])
-        && summaries.size() <= 32 || summaryNoLater(summaries[summaries.size() - 1], summaries[32])
-        && summaries.size() <= 33 || summaryNoLater(summaries[summaries.size() - 1], summaries[33])
-        && summaries.size() <= 34 || summaryNoLater(summaries[summaries.size() - 1], summaries[34])
-        && summaries.size() <= 35 || summaryNoLater(summaries[summaries.size() - 1], summaries[35])
-        && summaries.size() <= 36 || summaryNoLater(summaries[summaries.size() - 1], summaries[36])
-        && summaries.size() <= 37 || summaryNoLater(summaries[summaries.size() - 1], summaries[37])
-        && summaries.size() <= 38 || summaryNoLater(summaries[summaries.size() - 1], summaries[38])
-        && summaries.size() <= 39 || summaryNoLater(summaries[summaries.size() - 1], summaries[39])
-        && summaries.size() <= 40 || summaryNoLater(summaries[summaries.size() - 1], summaries[40]);
+      return (summaries.size() <= 31 || summaryNoLater(summaries[summaries.size() - 1], summaries[31]))
+        && (summaries.size() <= 32 || summaryNoLater(summaries[summaries.size() - 1], summaries[32]))
+        && (summaries.size() <= 33 || summaryNoLater(summaries[summaries.size() - 1], summaries[33]))
+        && (summaries.size() <= 34 || summaryNoLater(summaries[summaries.size() - 1], summaries[34]))
+        && (summaries.size() <= 35 || summaryNoLater(summaries[summaries.size() - 1], summaries[35]))
+        && (summaries.size() <= 36 || summaryNoLater(summaries[summaries.size() - 1], summaries[36]))
+        && (summaries.size() <= 37 || summaryNoLater(summaries[summaries.size() - 1], summaries[37]))
+        && (summaries.size() <= 38 || summaryNoLater(summaries[summaries.size() - 1], summaries[38]))
+        && (summaries.size() <= 39 || summaryNoLater(summaries[summaries.size() - 1], summaries[39]))
+        && (summaries.size() <= 40 || summaryNoLater(summaries[summaries.size() - 1], summaries[40]));
     }
 
     function validOldestChunk4(summaries) {
-      return summaries.size() <= 41 || summaryNoLater(summaries[summaries.size() - 1], summaries[41])
-        && summaries.size() <= 42 || summaryNoLater(summaries[summaries.size() - 1], summaries[42])
-        && summaries.size() <= 43 || summaryNoLater(summaries[summaries.size() - 1], summaries[43])
-        && summaries.size() <= 44 || summaryNoLater(summaries[summaries.size() - 1], summaries[44])
-        && summaries.size() <= 45 || summaryNoLater(summaries[summaries.size() - 1], summaries[45])
-        && summaries.size() <= 46 || summaryNoLater(summaries[summaries.size() - 1], summaries[46])
-        && summaries.size() <= 47 || summaryNoLater(summaries[summaries.size() - 1], summaries[47])
-        && summaries.size() <= 48 || summaryNoLater(summaries[summaries.size() - 1], summaries[48])
-        && summaries.size() <= 49 || summaryNoLater(summaries[summaries.size() - 1], summaries[49])
-        && summaries.size() <= 50 || summaryNoLater(summaries[summaries.size() - 1], summaries[50]);
+      return (summaries.size() <= 41 || summaryNoLater(summaries[summaries.size() - 1], summaries[41]))
+        && (summaries.size() <= 42 || summaryNoLater(summaries[summaries.size() - 1], summaries[42]))
+        && (summaries.size() <= 43 || summaryNoLater(summaries[summaries.size() - 1], summaries[43]))
+        && (summaries.size() <= 44 || summaryNoLater(summaries[summaries.size() - 1], summaries[44]))
+        && (summaries.size() <= 45 || summaryNoLater(summaries[summaries.size() - 1], summaries[45]))
+        && (summaries.size() <= 46 || summaryNoLater(summaries[summaries.size() - 1], summaries[46]))
+        && (summaries.size() <= 47 || summaryNoLater(summaries[summaries.size() - 1], summaries[47]))
+        && (summaries.size() <= 48 || summaryNoLater(summaries[summaries.size() - 1], summaries[48]))
+        && (summaries.size() <= 49 || summaryNoLater(summaries[summaries.size() - 1], summaries[49]))
+        && (summaries.size() <= 50 || summaryNoLater(summaries[summaries.size() - 1], summaries[50]));
     }
 
     function validProjectionBounds(summaries) {
@@ -333,72 +333,72 @@ service cloud.firestore {
     }
 
     function previousProjectionChunk0(oldSummaries, newSummaries, orderId, canDropOldest, oldestSummary) {
-      return oldSummaries.size() <= 0 || oldSummaryMayBeRemoved(oldSummaries[0], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 1 || oldSummaryMayBeRemoved(oldSummaries[1], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 2 || oldSummaryMayBeRemoved(oldSummaries[2], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 3 || oldSummaryMayBeRemoved(oldSummaries[3], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 4 || oldSummaryMayBeRemoved(oldSummaries[4], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 5 || oldSummaryMayBeRemoved(oldSummaries[5], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 6 || oldSummaryMayBeRemoved(oldSummaries[6], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 7 || oldSummaryMayBeRemoved(oldSummaries[7], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 8 || oldSummaryMayBeRemoved(oldSummaries[8], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 9 || oldSummaryMayBeRemoved(oldSummaries[9], newSummaries, orderId, canDropOldest, oldestSummary);
+      return (oldSummaries.size() <= 0 || oldSummaryMayBeRemoved(oldSummaries[0], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 1 || oldSummaryMayBeRemoved(oldSummaries[1], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 2 || oldSummaryMayBeRemoved(oldSummaries[2], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 3 || oldSummaryMayBeRemoved(oldSummaries[3], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 4 || oldSummaryMayBeRemoved(oldSummaries[4], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 5 || oldSummaryMayBeRemoved(oldSummaries[5], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 6 || oldSummaryMayBeRemoved(oldSummaries[6], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 7 || oldSummaryMayBeRemoved(oldSummaries[7], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 8 || oldSummaryMayBeRemoved(oldSummaries[8], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 9 || oldSummaryMayBeRemoved(oldSummaries[9], newSummaries, orderId, canDropOldest, oldestSummary));
     }
 
     function previousProjectionChunk1(oldSummaries, newSummaries, orderId, canDropOldest, oldestSummary) {
-      return oldSummaries.size() <= 10 || oldSummaryMayBeRemoved(oldSummaries[10], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 11 || oldSummaryMayBeRemoved(oldSummaries[11], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 12 || oldSummaryMayBeRemoved(oldSummaries[12], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 13 || oldSummaryMayBeRemoved(oldSummaries[13], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 14 || oldSummaryMayBeRemoved(oldSummaries[14], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 15 || oldSummaryMayBeRemoved(oldSummaries[15], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 16 || oldSummaryMayBeRemoved(oldSummaries[16], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 17 || oldSummaryMayBeRemoved(oldSummaries[17], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 18 || oldSummaryMayBeRemoved(oldSummaries[18], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 19 || oldSummaryMayBeRemoved(oldSummaries[19], newSummaries, orderId, canDropOldest, oldestSummary);
+      return (oldSummaries.size() <= 10 || oldSummaryMayBeRemoved(oldSummaries[10], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 11 || oldSummaryMayBeRemoved(oldSummaries[11], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 12 || oldSummaryMayBeRemoved(oldSummaries[12], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 13 || oldSummaryMayBeRemoved(oldSummaries[13], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 14 || oldSummaryMayBeRemoved(oldSummaries[14], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 15 || oldSummaryMayBeRemoved(oldSummaries[15], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 16 || oldSummaryMayBeRemoved(oldSummaries[16], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 17 || oldSummaryMayBeRemoved(oldSummaries[17], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 18 || oldSummaryMayBeRemoved(oldSummaries[18], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 19 || oldSummaryMayBeRemoved(oldSummaries[19], newSummaries, orderId, canDropOldest, oldestSummary));
     }
 
     function previousProjectionChunk2(oldSummaries, newSummaries, orderId, canDropOldest, oldestSummary) {
-      return oldSummaries.size() <= 20 || oldSummaryMayBeRemoved(oldSummaries[20], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 21 || oldSummaryMayBeRemoved(oldSummaries[21], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 22 || oldSummaryMayBeRemoved(oldSummaries[22], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 23 || oldSummaryMayBeRemoved(oldSummaries[23], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 24 || oldSummaryMayBeRemoved(oldSummaries[24], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 25 || oldSummaryMayBeRemoved(oldSummaries[25], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 26 || oldSummaryMayBeRemoved(oldSummaries[26], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 27 || oldSummaryMayBeRemoved(oldSummaries[27], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 28 || oldSummaryMayBeRemoved(oldSummaries[28], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 29 || oldSummaryMayBeRemoved(oldSummaries[29], newSummaries, orderId, canDropOldest, oldestSummary);
+      return (oldSummaries.size() <= 20 || oldSummaryMayBeRemoved(oldSummaries[20], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 21 || oldSummaryMayBeRemoved(oldSummaries[21], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 22 || oldSummaryMayBeRemoved(oldSummaries[22], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 23 || oldSummaryMayBeRemoved(oldSummaries[23], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 24 || oldSummaryMayBeRemoved(oldSummaries[24], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 25 || oldSummaryMayBeRemoved(oldSummaries[25], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 26 || oldSummaryMayBeRemoved(oldSummaries[26], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 27 || oldSummaryMayBeRemoved(oldSummaries[27], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 28 || oldSummaryMayBeRemoved(oldSummaries[28], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 29 || oldSummaryMayBeRemoved(oldSummaries[29], newSummaries, orderId, canDropOldest, oldestSummary));
     }
 
     function previousProjectionChunk3(oldSummaries, newSummaries, orderId, canDropOldest, oldestSummary) {
-      return oldSummaries.size() <= 30 || oldSummaryMayBeRemoved(oldSummaries[30], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 31 || oldSummaryMayBeRemoved(oldSummaries[31], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 32 || oldSummaryMayBeRemoved(oldSummaries[32], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 33 || oldSummaryMayBeRemoved(oldSummaries[33], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 34 || oldSummaryMayBeRemoved(oldSummaries[34], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 35 || oldSummaryMayBeRemoved(oldSummaries[35], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 36 || oldSummaryMayBeRemoved(oldSummaries[36], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 37 || oldSummaryMayBeRemoved(oldSummaries[37], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 38 || oldSummaryMayBeRemoved(oldSummaries[38], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 39 || oldSummaryMayBeRemoved(oldSummaries[39], newSummaries, orderId, canDropOldest, oldestSummary);
+      return (oldSummaries.size() <= 30 || oldSummaryMayBeRemoved(oldSummaries[30], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 31 || oldSummaryMayBeRemoved(oldSummaries[31], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 32 || oldSummaryMayBeRemoved(oldSummaries[32], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 33 || oldSummaryMayBeRemoved(oldSummaries[33], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 34 || oldSummaryMayBeRemoved(oldSummaries[34], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 35 || oldSummaryMayBeRemoved(oldSummaries[35], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 36 || oldSummaryMayBeRemoved(oldSummaries[36], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 37 || oldSummaryMayBeRemoved(oldSummaries[37], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 38 || oldSummaryMayBeRemoved(oldSummaries[38], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 39 || oldSummaryMayBeRemoved(oldSummaries[39], newSummaries, orderId, canDropOldest, oldestSummary));
     }
 
     function previousProjectionChunk4(oldSummaries, newSummaries, orderId, canDropOldest, oldestSummary) {
-      return oldSummaries.size() <= 40 || oldSummaryMayBeRemoved(oldSummaries[40], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 41 || oldSummaryMayBeRemoved(oldSummaries[41], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 42 || oldSummaryMayBeRemoved(oldSummaries[42], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 43 || oldSummaryMayBeRemoved(oldSummaries[43], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 44 || oldSummaryMayBeRemoved(oldSummaries[44], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 45 || oldSummaryMayBeRemoved(oldSummaries[45], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 46 || oldSummaryMayBeRemoved(oldSummaries[46], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 47 || oldSummaryMayBeRemoved(oldSummaries[47], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 48 || oldSummaryMayBeRemoved(oldSummaries[48], newSummaries, orderId, canDropOldest, oldestSummary)
-        && oldSummaries.size() <= 49 || oldSummaryMayBeRemoved(oldSummaries[49], newSummaries, orderId, canDropOldest, oldestSummary);
+      return (oldSummaries.size() <= 40 || oldSummaryMayBeRemoved(oldSummaries[40], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 41 || oldSummaryMayBeRemoved(oldSummaries[41], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 42 || oldSummaryMayBeRemoved(oldSummaries[42], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 43 || oldSummaryMayBeRemoved(oldSummaries[43], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 44 || oldSummaryMayBeRemoved(oldSummaries[44], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 45 || oldSummaryMayBeRemoved(oldSummaries[45], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 46 || oldSummaryMayBeRemoved(oldSummaries[46], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 47 || oldSummaryMayBeRemoved(oldSummaries[47], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 48 || oldSummaryMayBeRemoved(oldSummaries[48], newSummaries, orderId, canDropOldest, oldestSummary))
+        && (oldSummaries.size() <= 49 || oldSummaryMayBeRemoved(oldSummaries[49], newSummaries, orderId, canDropOldest, oldestSummary));
     }
 
     function previousProjectionChunk5(oldSummaries, newSummaries, orderId, canDropOldest, oldestSummary) {
-      return oldSummaries.size() <= 50 || oldSummaryMayBeRemoved(oldSummaries[50], newSummaries, orderId, canDropOldest, oldestSummary);
+      return (oldSummaries.size() <= 50 || oldSummaryMayBeRemoved(oldSummaries[50], newSummaries, orderId, canDropOldest, oldestSummary));
     }
 
     function validPreviousProjectionRetention(oldSummaries, newSummaries, orderId, canDropOldest, oldestSummary) {
