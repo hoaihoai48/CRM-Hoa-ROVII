@@ -141,14 +141,9 @@ service cloud.firestore {
       return oldSummaries is list
         && oldSummaries.size() == 10
         && validProjectionBounds(oldSummaries)
-        && (
-          !beforeExists
-          || (
-            afterStatus != 'cancelled'
-            && !(oldOrderSummary in oldSummaries)
-            && summaryAtLeastAsRecent(expectedSummary, oldSummaries[9])
-          )
-        );
+        && afterStatus != 'cancelled'
+        && summaryAtLeastAsRecent(expectedSummary, oldSummaries[9])
+        && (!beforeExists || !(oldOrderSummary in oldSummaries));
     }
 
     function oldSummaryMayBeRemoved(summary, newSummaries, orderId, canDropOldest, oldestSummary) {
