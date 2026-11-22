@@ -90,19 +90,6 @@ service cloud.firestore {
     // The projection is active-only; its first row is latest and its last row is oldest.
     // Keep the active-only projection small enough for Firestore Rules' expression budget.
     // Its first row is latest and its last row is oldest.
-    function validSummaryChunk0(summaries) {
-      return (summaries.size() <= 0 || validCustomerOrderSummary(summaries[0]))
-        && (summaries.size() <= 1 || validCustomerOrderSummary(summaries[1]))
-        && (summaries.size() <= 2 || validCustomerOrderSummary(summaries[2]))
-        && (summaries.size() <= 3 || validCustomerOrderSummary(summaries[3]))
-        && (summaries.size() <= 4 || validCustomerOrderSummary(summaries[4]))
-        && (summaries.size() <= 5 || validCustomerOrderSummary(summaries[5]))
-        && (summaries.size() <= 6 || validCustomerOrderSummary(summaries[6]))
-        && (summaries.size() <= 7 || validCustomerOrderSummary(summaries[7]))
-        && (summaries.size() <= 8 || validCustomerOrderSummary(summaries[8]))
-        && (summaries.size() <= 9 || validCustomerOrderSummary(summaries[9]));
-    }
-
     function validLatestChunk0(summaries) {
       return (summaries.size() <= 1 || summaryAtLeastAsRecent(summaries[0], summaries[1]))
         && (summaries.size() <= 2 || summaryAtLeastAsRecent(summaries[0], summaries[2]))
@@ -132,9 +119,9 @@ service cloud.firestore {
     function validProjectionBounds(summaries) {
       return summaries is list
         && summaries.size() <= 10
-        && validSummaryChunk0(summaries)
+        && (summaries.size() == 0 || validCustomerOrderSummary(summaries[0]))
         && validLatestChunk0(summaries)
-        && validOldestChunk0(summaries);
+        && (summaries.size() < 10 || validOldestChunk0(summaries));
     }
 
     function isSafeOldestCompaction(oldSummaries, beforeExists, oldOrderSummary, expectedSummary, afterStatus) {
@@ -146,33 +133,16 @@ service cloud.firestore {
         && (!beforeExists || !(oldOrderSummary in oldSummaries));
     }
 
-    function oldSummaryMayBeRemoved(summary, newSummaries, orderId, canDropOldest, oldestSummary) {
-      return summary is map
-        && (
-          summary.status == 'cancelled'
-          || summary.id == orderId
-          || summary in newSummaries
-          || (canDropOldest && summary == oldestSummary)
-        );
-    }
-
-    function previousProjectionChunk0(oldSummaries, newSummaries, orderId, canDropOldest, oldestSummary) {
-      return (oldSummaries.size() <= 0 || oldSummaryMayBeRemoved(oldSummaries[0], newSummaries, orderId, canDropOldest, oldestSummary))
-        && (oldSummaries.size() <= 1 || oldSummaryMayBeRemoved(oldSummaries[1], newSummaries, orderId, canDropOldest, oldestSummary))
-        && (oldSummaries.size() <= 2 || oldSummaryMayBeRemoved(oldSummaries[2], newSummaries, orderId, canDropOldest, oldestSummary))
-        && (oldSummaries.size() <= 3 || oldSummaryMayBeRemoved(oldSummaries[3], newSummaries, orderId, canDropOldest, oldestSummary))
-        && (oldSummaries.size() <= 4 || oldSummaryMayBeRemoved(oldSummaries[4], newSummaries, orderId, canDropOldest, oldestSummary))
-        && (oldSummaries.size() <= 5 || oldSummaryMayBeRemoved(oldSummaries[5], newSummaries, orderId, canDropOldest, oldestSummary))
-        && (oldSummaries.size() <= 6 || oldSummaryMayBeRemoved(oldSummaries[6], newSummaries, orderId, canDropOldest, oldestSummary))
-        && (oldSummaries.size() <= 7 || oldSummaryMayBeRemoved(oldSummaries[7], newSummaries, orderId, canDropOldest, oldestSummary))
-        && (oldSummaries.size() <= 8 || oldSummaryMayBeRemoved(oldSummaries[8], newSummaries, orderId, canDropOldest, oldestSummary))
-        && (oldSummaries.size() <= 9 || oldSummaryMayBeRemoved(oldSummaries[9], newSummaries, orderId, canDropOldest, oldestSummary));
-    }
-
-    function validPreviousProjectionRetention(oldSummaries, newSummaries, orderId, canDropOldest, oldestSummary) {
+    // Existing summaries may only disappear when they belong to the order being
+    // mutated or are the verified oldest row during a full-cache compaction. Legacy
+    // cancelled/malformed rows require the admin repair path before staff order writes.
+    function validPreviousProjectionRetention(oldSummaries, newSummaries, oldOrderSummary, canDropOldest, oldestSummary) {
+      let allowedRemoved = [oldOrderSummary].toSet().union(
+        canDropOldest ? [oldestSummary].toSet() : [].toSet()
+      );
       return oldSummaries is list
         && oldSummaries.size() <= 10
-        && previousProjectionChunk0(oldSummaries, newSummaries, orderId, canDropOldest, oldestSummary);
+        && oldSummaries.toSet().difference(newSummaries.toSet()).hasOnly(allowedRemoved);
     }
 
     function validCustomer(data) {
@@ -442,13 +412,14 @@ service cloud.firestore {
         && oldSummaries.size() <= 10
         && validProjectionBounds(newSummaries)
         && validCustomerRefill(customerId, orderId, newSummaries, afterStatus, refillSummary)
+        && newSummaries.toSet().size() == newSummaries.size()
         && newSummaries.toSet().hasOnly(allowedNewSummaries)
         && (
           (afterStatus == 'cancelled' && !(expectedSummary in newSummaries))
           || (afterStatus != 'cancelled' && (expectedSummary in newSummaries || mayOmitChangedSummary))
         )
         && validPreviousProjectionRetention(
-          oldSummaries, newSummaries, orderId, canDropOldest, oldestSummary
+          oldSummaries, newSummaries, oldOrderSummary, canDropOldest, oldestSummary
         );
     }
 
