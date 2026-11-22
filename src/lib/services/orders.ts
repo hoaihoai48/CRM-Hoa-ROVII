@@ -27,7 +27,7 @@ import {
 import { canTransitionOrderStatus } from '@/lib/utils/order-status';
 import { normalizeIsoString } from '@/lib/utils/timestamp';
 
-const MAX_CUSTOMER_ORDER_SUMMARIES = 50;
+const MAX_CUSTOMER_ORDER_SUMMARIES = 51;
 
 function mapCustomerOrderSummaries(raw: unknown): CustomerOrderSummary[] {
   if (!Array.isArray(raw)) return [];
@@ -44,38 +44,28 @@ function mapCustomerOrderSummaries(raw: unknown): CustomerOrderSummary[] {
  * being changed (Firestore Rules require that exact projection in the same write).
  * Small histories retain their previous complete shape for backward compatibility.
  */
+function compareCustomerOrderSummaryDesc(a: CustomerOrderSummary, b: CustomerOrderSummary): number {
+  if (a.createdAt !== b.createdAt) return a.createdAt > b.createdAt ? -1 : 1;
+  if (a.id === b.id) return 0;
+  return a.id > b.id ? -1 : 1;
+}
+
 function projectCustomerOrderSummaries(
   existing: CustomerOrderSummary[],
   changed: CustomerOrderSummary
 ): CustomerOrderSummary[] {
-  const all = [...existing.filter((summary) => summary.id !== changed.id), changed];
-  if (all.length <= MAX_CUSTOMER_ORDER_SUMMARIES) return all;
-
-  const recentActive = all
-    .filter((summary) => summary.status !== 'cancelled')
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
-    .slice(0, MAX_CUSTOMER_ORDER_SUMMARIES);
-
-  if (changed.status === 'cancelled') {
-    return [...recentActive, changed];
-  }
-  if (recentActive.some((summary) => summary.id === changed.id)) {
-    return recentActive;
-  }
-  return [...recentActive.slice(0, MAX_CUSTOMER_ORDER_SUMMARIES - 1), changed];
-}
-
-function latestDate(summaries: CustomerOrderSummary[]): string {
-  return summaries.reduce(
-    (latest, summary) => summary.createdAt > latest ? summary.createdAt : latest,
-    ''
-  );
+  // Cancelled orders remain canonical in /orders but are removed from this active-only
+  // cache. Sorting on every mutation makes the latest/oldest projection boundaries
+  // independently verifiable by Firestore Rules.
+  const active = existing.filter((summary) => summary.status !== 'cancelled' && summary.id !== changed.id);
+  if (changed.status !== 'cancelled') active.push(changed);
+  return active.sort(compareCustomerOrderSummaryDesc).slice(0, MAX_CUSTOMER_ORDER_SUMMARIES);
 }
 
 function latestActiveSummary(summaries: CustomerOrderSummary[]): CustomerOrderSummary | null {
   return summaries
     .filter((summary) => summary.status !== 'cancelled')
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))[0] ?? null;
+    .sort(compareCustomerOrderSummaryDesc)[0] ?? null;
 }
 
 function mapDocToOrder(id: string, data: Record<string, unknown>): Order {
@@ -183,12 +173,10 @@ export async function syncCustomerAggregates(customerId: string): Promise<void> 
         createdAt: order.createdAt,
       };
     });
-    const boundedProjection = scannedSummaries.length <= MAX_CUSTOMER_ORDER_SUMMARIES
-      ? scannedSummaries
-      : scannedSummaries
-          .filter((summary) => summary.status !== 'cancelled')
-          .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
-          .slice(0, MAX_CUSTOMER_ORDER_SUMMARIES);
+    const boundedProjection = scannedSummaries
+      .filter((summary) => summary.status !== 'cancelled')
+      .sort(compareCustomerOrderSummaryDesc)
+      .slice(0, MAX_CUSTOMER_ORDER_SUMMARIES);
 
     try {
       await runTransaction(db, async (tx) => {
@@ -481,18 +469,11 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
       createdAt: now,
     };
     const projectedSummaries = projectCustomerOrderSummaries(existingSummaries, newOrderSummary);
-    const fallbackActive = existingSummaries.filter((summary) => summary.status !== 'cancelled');
-    const currentLastOrderDate = typeof custRaw.lastOrderDate === 'string' && custRaw.lastOrderDate
-      ? normalizeIsoString(custRaw.lastOrderDate)
-      : latestDate(fallbackActive);
-    const advancesLastOrderDate = now > currentLastOrderDate;
-    const currentLastOrderDateOrderId = typeof custRaw.lastOrderDateOrderId === 'string' && custRaw.lastOrderDateOrderId
-      ? custRaw.lastOrderDateOrderId
-      : null;
+    const latestActive = latestActiveSummary(projectedSummaries);
 
     const updatedCustomerAggregates = {
-      lastOrderDate: advancesLastOrderDate ? now : currentLastOrderDate,
-      lastOrderDateOrderId: advancesLastOrderDate ? orderId : currentLastOrderDateOrderId,
+      lastOrderDate: latestActive?.createdAt || '',
+      lastOrderDateOrderId: latestActive?.id || null,
       lastOrderMutationOrderId: orderId,
       lastOrderMutationId: initialHistory.id,
       orderSummaries: projectedSummaries,
@@ -581,34 +562,18 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
     };
     const projectedSummaries = projectCustomerOrderSummaries(existingSummaries, changedSummary);
 
-    const fallbackActive = existingSummaries.filter((summary) => summary.status !== 'cancelled');
     const totalOrdersDelta = (input.status === 'cancelled' ? 0 : 1)
       - (currentStatus === 'cancelled' ? 0 : 1);
     const totalSpentDelta = (input.status === 'completed' ? orderTotal : 0)
       - (currentStatus === 'completed' ? orderTotal : 0);
-    const currentLastOrderDate = typeof custRaw.lastOrderDate === 'string' && custRaw.lastOrderDate
-      ? normalizeIsoString(custRaw.lastOrderDate)
-      : latestDate(fallbackActive);
-    const currentLastOrderDateOrderId = typeof custRaw.lastOrderDateOrderId === 'string' && custRaw.lastOrderDateOrderId
-      ? custRaw.lastOrderDateOrderId
-      : null;
-    let lastOrderDate = currentLastOrderDate;
-    let lastOrderDateOrderId = currentLastOrderDateOrderId;
-    if (input.status === 'cancelled' && orderCreatedAt >= currentLastOrderDate) {
-      const latestActive = latestActiveSummary(projectedSummaries);
-      lastOrderDate = latestActive?.createdAt || '';
-      lastOrderDateOrderId = latestActive?.id || null;
-    } else if (orderCreatedAt > currentLastOrderDate) {
-      lastOrderDate = orderCreatedAt;
-      lastOrderDateOrderId = id;
-    }
+    const latestActive = latestActiveSummary(projectedSummaries);
 
     // 3. WRITES (Atomic)
     tx.update(customerRef, {
       totalOrders: increment(totalOrdersDelta),
       totalSpent: increment(totalSpentDelta),
-      lastOrderDate,
-      lastOrderDateOrderId,
+      lastOrderDate: latestActive?.createdAt || '',
+      lastOrderDateOrderId: latestActive?.id || null,
       lastOrderMutationOrderId: id,
       lastOrderMutationId: updatedHistory[updatedHistory.length - 1].id,
       orderSummaries: projectedSummaries,
@@ -746,9 +711,12 @@ export async function updateOrder(id: string, input: UpdateOrderInput): Promise<
       total,
       createdAt: normalizeIsoString(orderData.createdAt),
     });
+    const latestActive = latestActiveSummary(projectedSummaries);
 
     // 4. WRITES (Atomic)
     tx.update(customerRef, {
+      lastOrderDate: latestActive?.createdAt || '',
+      lastOrderDateOrderId: latestActive?.id || null,
       orderSummaries: projectedSummaries,
       lastOrderMutationOrderId: id,
       lastOrderMutationId: editEntry.id,
