@@ -5,7 +5,10 @@ import {
   getDoc, 
   query, 
   orderBy,
+  startAfter,
   limit,
+  type DocumentData,
+  type QueryDocumentSnapshot,
   runTransaction,
   where
 } from 'firebase/firestore';
@@ -218,6 +221,41 @@ export async function syncCustomerAggregates(customerId: string): Promise<void> 
   throw new Error(
     `Could not repair aggregates for customer ${customerId}: customer orders changed during ${maxAttempts} consecutive attempts.`
   );
+}
+
+export type OrderPageCursor = QueryDocumentSnapshot<DocumentData>;
+
+export interface OrderPage {
+  items: Order[];
+  nextCursor: OrderPageCursor | null;
+  hasMore: boolean;
+}
+
+/**
+ * Cursor-based order browsing. The caller may request additional pages without
+ * reading the entire collection; search/filter flows can still use listOrders()
+ * when they need the existing global substring-search semantics.
+ */
+export async function listOrdersPage(
+  cursor: OrderPageCursor | null = null,
+  pageSize = 50
+): Promise<OrderPage> {
+  const safePageSize = Number.isFinite(pageSize)
+    ? Math.min(Math.max(Math.floor(pageSize), 1), 100)
+    : 50;
+  const ordersRef = collection(db, 'orders');
+  const pageQuery = cursor
+    ? query(ordersRef, orderBy('createdAt', 'desc'), startAfter(cursor), limit(safePageSize + 1))
+    : query(ordersRef, orderBy('createdAt', 'desc'), limit(safePageSize + 1));
+  const snapshot = await getDocs(pageQuery);
+  const pageDocs = snapshot.docs.slice(0, safePageSize);
+  const lastDoc = pageDocs.at(-1) || null;
+
+  return {
+    items: pageDocs.map((docSnap) => mapDocToOrder(docSnap.id, docSnap.data())),
+    nextCursor: lastDoc,
+    hasMore: snapshot.docs.length > safePageSize,
+  };
 }
 
 export async function listOrders(): Promise<Order[]> {
