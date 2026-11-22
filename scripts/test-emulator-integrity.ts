@@ -1034,6 +1034,33 @@ async function runTestSuite() {
   }
   assert(oversizedProjectionBlocked, 'Case M: Firestore Rules reject a customer projection larger than 51 entries');
 
+  await setDocumentAsAdmin('customers', scaleCustomer.id, {
+    name: scaleCustomer.name,
+    phone: scaleCustomer.phone,
+    phoneNormalized: scaleCustomer.phoneNormalized,
+    address: scaleCustomer.address,
+    totalOrders: scaleAfterCreate!.totalOrders,
+    totalSpent: scaleAfterCreate!.totalSpent,
+    lastOrderDate: scaleAfterCreate!.lastOrderDate,
+    orderSummaries: Array.from({ length: 52 }, (_, index) => ({
+      id: `LEGACY-SUMMARY-${index}`,
+      status: 'new',
+      total: 1000,
+      createdAt: new Date(scaleBase + index * 60_000).toISOString(),
+    })),
+    note: null,
+    createdAt: scaleCustomer.createdAt,
+  });
+  const legacyProfileUpdate = await updateCustomer(scaleCustomer.id, {
+    name: 'Khách hàng Scale đã cập nhật',
+    address: '88 Scale Street, updated',
+    note: 'Legacy projection compatibility',
+  });
+  assert(legacyProfileUpdate.name === 'Khách hàng Scale đã cập nhật', 'Case M: profile edits remain allowed for legacy projections larger than 51');
+  await syncCustomerAggregates(scaleCustomer.id);
+  const compactedLegacyCustomer = await getCustomerById(scaleCustomer.id);
+  assert((compactedLegacyCustomer!.orderSummaries ?? []).length <= 50, 'Case M: aggregate repair compacts a legacy oversized projection');
+
   // ==========================================
   // SECURITY TESTS: Role-based Firestore Authorization
   // ==========================================
