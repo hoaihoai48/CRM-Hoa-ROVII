@@ -1,297 +1,178 @@
 # CRM Hoa ROVII — Autonomous Delivery & Quality Playbook
 
-- **Repository:** `hoaihoai48/CRM-Hoa-ROVII`
-- **Default branch:** `main`
+- **Repository:** hoaihoai48/CRM-Hoa-ROVII
+- **Default branch:** main
 - **Operating model:** internal-first, SaaS-ready architecture, Firebase Spark-compatible, sales and CRM first
-- **Status:** operating policy and implementation plan; this document does not claim that Playwright has already been installed or that any application feature has been changed.
+- **Current delivery state:** S0/S1 complete; S2 technical hardening delivered through PR #16; S2 business semantics await owner decisions.
 
 ## 1. Non-negotiable delivery rules
 
-1. Work in small, ordered delivery steps. Finish, test, inspect and record the current step before starting the next one.
-2. If any required check fails, stop progression, diagnose and fix the current step. Do not hide failures or mark the step complete because the build alone passed.
-3. Do not require the owner to open a local Mac, run commands or manually test the UI for routine verification. Prefer GitHub Actions, Firebase Emulators and a Vercel Preview deployment.
-4. Never claim that a test was run unless the corresponding command/workflow actually ran and its result was inspected.
-5. Never use production customer/order data for automated tests. Use Firebase Auth/Firestore Emulators or a dedicated isolated test project and test accounts.
-6. Do not merge to `main`, deploy to production, change billing plans, enable paid Firebase services, or run destructive data migrations without explicit owner approval.
-7. If credentials, environment configuration, permissions, an unavailable runner or a human-only decision blocks progress, stop and report the exact blocker. Do not invent a successful result.
+1. Work in small, ordered delivery steps. Finish, test, inspect and record each step before starting unrelated work.
+2. If a required check fails, diagnose and fix the current step. Never hide failures or mark a step complete because the build alone passed.
+3. Do not require the owner to open a local Mac, run commands or manually test the UI for routine verification. Prefer GitHub Actions, Firebase Emulators and Vercel Preview.
+4. Never claim that a test ran unless the corresponding workflow actually ran and its completed result was inspected.
+5. Never use production customer/order data for automated tests. Use Firebase Auth/Firestore Emulators and synthetic identities.
+6. The owner delegated routine engineering decisions, including merging ordinary low-risk code/docs PRs after all required checks pass and the diff is reviewed. This delegation does not include production deployment/release, paid-service/billing changes, destructive migrations or production data repair.
+7. Preserve Firebase Spark compatibility. Do not introduce paid Firebase services, Cloud Functions or external paid search services without approval.
+8. If credentials, permissions, unavailable infrastructure, ambiguous business rules or high-risk actions block progress, stop only at that boundary and ask the owner for the specific decision/approval.
+9. Do not interrupt the owner with continuous progress reports. Continue autonomously; update this playbook and the current-state handoff at meaningful milestones.
 
-## 2. Required quality gates for every delivery step
+## 2. Required quality gates
 
-A step is complete only when all applicable gates pass:
+A delivery step is complete only when all applicable gates pass:
 
 | Gate | Required evidence |
 |---|---|
 | Source review | Relevant services, types, Firestore Rules, indexes and affected UI routes inspected |
-| Static quality | `npm run lint` and `npm run typecheck` pass |
-| Unit/integration | Relevant unit tests and Firebase Emulator tests pass |
-| Production build | `npm run build` passes |
-| Browser E2E | Playwright tests pass against an isolated test environment |
-| Preview verification | Preview deployment is ready; critical flows and browser console/network errors are inspected |
-| Regression | Existing critical flows still work; no unrelated regression is known |
-| Git hygiene | One or a small number of cohesive commits, clean diff, PR contains test evidence |
-| Handoff | Step status, commit SHA, PR URL, CI run URL, test summary and remaining risks recorded |
+| Static quality | npm run lint and npm run typecheck pass |
+| Integration/security | Firebase Emulator tests pass, including negative Rules cases where applicable |
+| Browser E2E | Playwright tests pass against isolated Auth/Firestore Emulators |
+| Production build | npm run build passes |
+| Preview | Vercel Preview is Ready; inspect feedback/review threads and critical flows when supported |
+| Regression | Existing critical flows remain intact; known trade-offs are documented |
+| Git hygiene | Feature branch, cohesive commits, focused PR, final head SHA checked |
+| Handoff | Status, commit SHA, PR/CI links, tests, risks and next action recorded |
 
-A gate that cannot run must be marked **BLOCKED / NOT RUN**, with the reason. It must not be marked PASS.
+A gate that cannot run must be marked BLOCKED / NOT RUN with the reason. Never mark it PASS.
 
-## 3. Playwright strategy — browser testing without owner-local testing
+## 3. Test architecture and environment
 
-### 3.1 Test architecture
+### 3.1 Preferred test environment
 
-Add Playwright as a repository development dependency and configure `@playwright/test` with:
+1. Run Next.js and Firebase Auth/Firestore Emulators in GitHub Actions.
+2. Seed synthetic records and unique test identities only.
+3. Run Emulator integration/security tests.
+4. Run Playwright against the isolated app.
+5. Run the production build.
+6. Use Vercel Preview for deployment readiness and feedback checks; Preview alone does not prove a human workflow walkthrough or safe database wiring.
 
-- Chromium as the initial required browser; add Firefox/WebKit only when the product and CI budget justify it.
-- Separate E2E configuration and scripts, for example `test:e2e` and `test:e2e:ui`.
-- Deterministic fixtures and test data; unique test identifiers per run.
-- Screenshots, traces and videos on failure (retain only what is useful to diagnose failures).
-- Stable accessible selectors (`getByRole`, labels and test IDs where necessary), not brittle CSS/XPath selectors.
-- No production credentials or secrets in committed files, screenshots, traces or logs.
+Do not point write-capable E2E tests at production Firebase. Do not include production credentials or secrets in fixtures, screenshots, traces or logs.
 
-### 3.2 Test environment
+### 3.2 Current CI workflow
 
-Preferred order:
+The repository workflow currently runs:
 
-1. Run the Next.js app and Firebase Auth/Firestore Emulators in GitHub Actions.
-2. Seed only synthetic test data and create/reuse dedicated test identities.
-3. Run Playwright against that isolated app.
-4. Deploy a Vercel Preview for a second smoke/regression pass when environment variables and safe test data are available.
+1. npm dependency installation with lockfile.
+2. Cloud Functions syntax and dependency audit report.
+3. MCP syntax/protocol/safety smoke tests.
+4. ESLint and TypeScript typecheck.
+5. Firebase Auth/Firestore Emulator integration tests.
+6. Chromium install and Playwright browser E2E.
+7. Production build.
+8. Playwright diagnostics artifact upload.
 
-Do not point write-capable E2E tests at the production Firebase project. Preview deployment by itself is not proof that the app is connected to a safe database.
+Current runner versions: Node.js 24 and Java 21. CI concurrency cancels superseded runs on the same ref; do not interpret cancelled runs as passing.
 
 ### 3.3 Minimum browser scenarios
 
 | Area | Required scenarios |
 |---|---|
-| Authentication | Valid login, invalid login, logout, unauthenticated route protection |
-| Staff/permissions | Admin-only pages and actions; staff access boundaries |
-| Customers | Create, edit, search, open profile and view purchase history |
+| Authentication | Valid/invalid login, logout, unauthenticated route protection |
+| Staff/permissions | Admin-only actions and staff access boundaries |
+| Customers | Create/edit/search/profile/history |
 | Products | Create/edit where permitted, price and active/inactive state |
-| Orders | Create, view, edit allowed fields, totals and validation |
-| Order lifecycle | Allowed transitions, forbidden transitions, history consistency |
-| Resilience | Empty states, validation errors, loading/error states, duplicate submission protection |
-| Responsive | Critical workflows at desktop and mobile viewport sizes |
+| Orders | Create/view/edit, validation and total calculation |
+| Order lifecycle | Allowed/forbidden transitions and append-only history |
+| Print | Print action and print-media visibility |
+| Resilience | Empty/loading/error states and duplicate-submit protection |
+| Responsive | Critical flows at desktop and mobile widths |
 
-Add tests alongside the feature they protect. Do not build a huge speculative test suite before understanding the current application behavior.
+Add tests alongside the feature they protect. Prefer accessible selectors and stable labels.
 
-### 3.4 CI integration
+## 4. Delivery protocol
 
-The existing pull-request workflow runs, in order:
+1. Read the current-state handoff and inspect live GitHub refs, open PRs and recent Actions runs.
+2. Identify the earliest incomplete or failing delivery step; do not skip failed gates.
+3. Work on a feature branch, not directly on main.
+4. Inspect all affected layers before changing a data contract: TypeScript types, service functions, Firestore Rules, indexes, UI, Emulator tests and Playwright.
+5. Group related files into cohesive commits; avoid one commit per file and unrelated feature bundles.
+6. Open/update a focused PR with goal, scope, data/Rules/index impact, exact test results, Preview URL and risks.
+7. Before merge, verify the exact final PR head SHA, completed CI result, Preview feedback, reviews and unresolved inline threads.
+8. When all required gates pass and no unresolved high-risk issue remains, the delegated agent may mark the PR ready and squash-merge it. Use expected_head_sha to prevent merging a moved head.
+9. Verify the post-merge main workflow before recording final PASS.
+10. Update the audit, current-state handoff and this playbook. Never deploy production as a side effect of a code merge.
 
-1. Dependency installation with the lockfile.
-2. Cloud Functions syntax check and dependency audit report.
-3. MCP syntax/safety smoke tests.
-4. Lint and TypeScript checks.
-5. Firebase Emulator integration/security tests.
-6. Install Chromium only with `npx playwright install --with-deps chromium`.
-7. Run `npm run test:e2e` against isolated Auth/Firestore Emulators (login form, anonymous route guard, invalid credentials and active synthetic-member login).
-8. Production build.
-9. Upload Playwright HTML/JUnit report, traces and failure screenshots as CI artifacts (7-day retention).
+## 5. Git and pull-request policy
 
-Use supported project runtime versions from the repository configuration (currently documented as Node.js 24 and Java 21+ for Emulator tests). Keep CI permissions minimal. Avoid printing environment variables or secrets.
+- One feature/fix/docs branch per cohesive delivery step.
+- Multiple files implementing one feature belong in the same logical commit.
+- Do not combine unrelated features merely to reduce commit count.
+- PR descriptions must include goal/scope, affected files, schema/Rules/index impact, exact tests, CI/Preview links, risks and rollback/migration notes.
+- Merge normal low-risk PRs autonomously only after the checks above pass. Ask the owner for business semantics, production release, billing, production data repair/migration, or irreversible/high-risk actions.
+- Preserve historical UUID order IDs and existing Firestore documents unless an explicitly approved migration is designed.
 
-## 4. Step-by-step delivery protocol
+## 6. S0/S1 completed delivery
 
-Only one implementation step is active at a time. The next step starts only after the current step has passed its quality gates and its outcome has been recorded.
-
-| Step | Scope | Exit criteria |
-|---|---|---|
-| S0 — Baseline & delivery infrastructure | Re-check current `main`, open PRs, CI, environment constraints, test scripts and security risks; establish Playwright and isolated E2E foundation | Baseline is current; lint/typecheck/build/Emulator tests are green; at least one authenticated browser smoke test passes in CI; no production data touched |
-| S1 — Order workflow integrity | Audit and complete order validation, status state machine, status history, totals and customer aggregate consistency | Positive and negative Emulator tests pass; Playwright covers create/edit/status lifecycle; concurrency and invalid transitions are tested |
-| S2 — Sales workflow completion | Improve order entry, recipient/delivery information, schedule, order code, staff assignment and printable order view according to verified business requirements | End-to-end order workflow passes on desktop/mobile; calculations and validation are verified |
-| S3 — Customer CRM | Customer profile, purchase history, segmentation foundations, interaction history and follow-up data model | Customer CRUD/search/history and permission tests pass; no duplicate/incorrect aggregate regressions |
-| S4 — Product catalog | Product categories/types, variants or options where justified, image constraints and pricing model | Product management E2E passes; Firestore document size and Spark constraints verified |
-| S5 — Operations & finance foundations | Payment ledger, expenses, inventory/supplier foundations only after sales/CRM data contracts are stable | Reconciliation and permission tests pass; no totals inferred from untrusted client state |
-| S6 — Reporting & automation | Useful operational metrics, reminders and low-cost automation within Spark constraints | Metrics reconcile against source records; recurring work has observable status and failure handling |
-
-This is an ordered backlog, not permission to implement every item without validating the current source and actual shop workflow. Re-scope a step if the codebase or owner requirements contradict this plan.
-
-## 5. Git, branch, commit and pull-request policy
-
-### Branching
-
-- Never develop directly on `main`.
-- Use one feature/fix/docs branch per cohesive delivery step.
-- Keep a PR focused on one step or one tightly related outcome.
-- Do not create a PR for every individual file.
-
-### Commit grouping
-
-A commit represents one complete logical change, not one file.
-
-Good examples:
-
-- `feat(orders): complete order lifecycle workflow`
-- `test(orders): cover order lifecycle and validation`
-- `feat(crm): add customer interaction history`
-- `test(e2e): add customer and order browser coverage`
-
-Rules:
-
-- Multiple files that implement one feature belong in the same commit.
-- Do not create one commit per file.
-- Do not combine unrelated features merely to reduce the commit count.
-- Prefer a small number of meaningful commits per step; split only when the changes are independently understandable/revertible (for example, implementation versus a separate test-only follow-up).
-- Avoid fixup/noise commits in the final PR history where practical.
-- Each commit must be coherent; the PR as a whole must pass all required gates.
-
-### Pull-request requirements
-
-Every PR description must include:
-
-- Goal and scope.
-- Key files/modules changed.
-- Data model, Firestore Rules and index impact.
-- Tests run and exact PASS/FAIL/BLOCKED status.
-- CI and Preview URLs where available.
-- Screenshots or Playwright report for UI changes.
-- Risks, migration/rollback notes and out-of-scope items.
-
-Do not merge automatically. The owner retains the final merge and production-release decision.
-
-## 6. Autonomous execution and scheduled follow-up
-
-A scheduled agent/check-in may:
-
-1. Read this playbook and inspect the repository's current branch, open PRs and latest CI results.
-2. Identify the earliest incomplete step; never skip a failed or blocked earlier step.
-3. Continue only that step on a feature branch.
-4. Run the available checks and Playwright E2E; inspect actual results.
-5. Group related files into meaningful commits and open/update a focused PR when the changes are ready.
-6. Stop on missing credentials, unavailable test infrastructure, ambiguous business rules, data migration risk, failed checks or any action requiring owner approval.
-7. Report what changed, commit/PR references, tests and evidence, blockers, and the exact next action.
-
-Scheduling is a trigger to resume work, not a guarantee of uninterrupted execution or an unlimited chain of agents. Every run must re-read repository state and this playbook; do not assume a previous run completed successfully. Avoid overlapping runs and conflicting branches. Never let an automation merge a PR or deploy to production.
-
-## 7. Completed delivery steps
-
-### S0 — Baseline & delivery infrastructure
-
-<badge>PASS</badge> CI, Firebase Emulator, authenticated Playwright smoke test and production build passed.
+### S0 — CI and Playwright foundation
 
 - PR #8: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/8
-- Verified workflow: https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44903815116
-- Playwright: 4/4 passed (authentication form, anonymous dashboard guard, invalid credentials, active synthetic member login)
+- Merge: c63f2da0d2250bf8957877ce33e17142a8d6f8d3
+- Established isolated Emulator + Playwright CI and authenticated browser smoke coverage.
 
 ### S1 — Order workflow integrity
 
-<badge>PASS</badge> Order lifecycle, history integrity, atomic customer projection and aggregate regression gates passed.
-
 - PR #9: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/9
-- Branch: `feat/order-workflow-integrity`
-- Head commit: `6c603747f0de25dd676bcefaa29eebc490f1f572`
-- Verified workflow: https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44907652688
-- Playwright: 5/5 passed, including create/edit/confirm/edit-confirmed/deliver/complete order journey
-- Emulator: PASS — lifecycle, invalid transitions, history tampering, projection atomicity, aggregate repair and concurrency cases
-- Static/build gates: PASS — dependency install/audit, Functions syntax, MCP smoke tests, ESLint, TypeScript and production build
+- Merge: 8ea157041599ca95966a02695e7c1a25ffe3c9a7
+- State graph: new → confirmed/cancelled; confirmed → delivering/cancelled; delivering → completed.
+- History is append-only; lifecycle transitions can change only status/history; content edits are limited to new/confirmed.
+- Service transactions recompute product prices and customer aggregates; Rules enforce matching order/customer projection atomically.
+- PR CI #44966311523 and post-merge main CI #44966474046 passed.
 
-## 8. Progress log
+## 7. S2 delivered technical work
+
+| PR | Delivered | Merge SHA | CI |
+|---|---|---|---|
+| #10 | MCP structured output schemas and smoke tests | 6ac8304c8df47fe0c2a94dd444591a59ebb5b2da | PR #44966591236 + main #44967174708 PASS |
+| #11 | Atomic first-time customer + first order creation | 73bb72ca19e5af82027e7f27096e693cb5892497 | PR #44982355903 + main #44982521247 PASS |
+| #12 | Optional creator/history actor UIDs, validated against auth UID | 64c539e423c78bfe0b7089889b40d479afdfa799 | PR #44982896197 + main #44983058488 PASS |
+| #13 | Browser-native A4 printable order slip | bd3e259082b8f600db4474e39947b0ee0218e4fa | PR #44983725322 + main #44983907739 PASS |
+| #14 | Bounded customer order projection; lifetime aggregate deltas | 568083053d7311f6d5abbe608f3a100f0c803444 | PR #44985057671 + main #44985288167 PASS |
+| #15 | Dashboard local-day range + six newest orders | 4ce6d95095141180cb855426bff8c94c722b880b | PR #44985805872 + main #44986041575 PASS |
+| #16 | Cursor pagination for orders/customers | 7e923b5a0a996468a211f76b8d1ff715699e3ce4 | PR head 83e0d6c09978ea163e7b4d0f6280d3dd3b0f2f8c; PR #44988852658 PASS; main #44989024153 pending final verification |
+
+### S2 technical invariants and trade-offs
+
+- New customer and first order are written in one transaction; no orphan customer on failed order creation.
+- Creator UID and history actor UID are optional for legacy compatibility; no staff assignment permission change.
+- Print uses browser-native print CSS; no PDF dependency.
+- Customer recent-order projection is capped at 51 entries; lifetime counters update by transaction deltas; full order history remains canonical in orders.
+- Dashboard reads only the local-day range plus six newest orders.
+- Normal order/customer browsing loads 50-row snapshot-cursor pages with explicit load-more.
+- Search and non-default order status filters still load the full collection to preserve the existing global substring-search contract. This is intentional and documented.
+- Customer detail order history remains unpaginated and may be considered separately.
+
+## 8. S2 business decisions — do not guess
+
+The following are documented in docs/audits/CRM_HOA_ROVII_S2_ORDER_WORKFLOW_AUDIT_2026-11-22.md and require owner input before implementation:
+
+1. Whether customerSnapshot represents purchaser/contact and whether recipient can differ; recipient phone/address required or optional.
+2. Exact delivery datetime, predefined time slots, or both; timezone and past-date rules.
+3. Whether greeting-card message, delivery instructions and internal note are separate fields, and who can see each.
+4. Human-readable order-code format, uniqueness scope and reset cadence. Keep UUID document ID canonical.
+5. Single/multiple staff assignment, who can assign/reassign, and visibility/edit permissions.
+6. Customer receipt, internal fulfilment sheet, or both; required print fields and branding.
+
+The audit contains a backward-compatible optional-field candidate and regression matrix. Implement only after these semantics are confirmed. Do not backfill production records or change existing order IDs as part of ordinary feature work.
+
+## 9. Progress log and next action
 
 | Field | Value |
 |---|---|
-| Active step | S2 — Sales workflow completion |
-| Step status | IN PROGRESS — S0, S1 and MCP PR #10 merged; S2 read-only audit in progress |
-| S0 PR | MERGED — https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/8 (c63f2da0d2250bf8957877ce33e17142a8d6f8d3) |
-| S1 PR | MERGED — https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/9 (8ea157041599ca95966a02695e7c1a25ffe3c9a7) |
-| S1 commit | `53781a838495ac6bcf438dc42214ae4a7faf464e` (PR head); merge `8ea157041599ca95966a02695e7c1a25ffe3c9a7` |
-| CI run | https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44966311523 — PASS |
-| Playwright result | 5/5 PASS — 4 auth/access tests + complete order lifecycle |
-| Emulator result | PASS — all integration and invariant checks |
-| Vercel PR check | PASS — https://vercel.com/vu-nhim/tiem-hoa-rovii/E9N8oW7FWNUF9DrVkwz6nZwKsxVP |
+| Active step | S2 — business semantics pending owner decisions |
+| S0 | COMPLETE |
+| S1 | COMPLETE |
+| S2 technical hardening | COMPLETE through PR #16 |
+| Open PR inventory | None at last inspection |
+| Latest code merge | 7e923b5a0a996468a211f76b8d1ff715699e3ce4 |
+| Final PR #16 CI | #44988852658 — PASS |
+| PR #16 Preview | Ready; zero unresolved feedback |
+| Post-merge main CI | #44989024153 — pending final verification |
 | Production data | NOT ACCESSED |
-| Merge | S0 and S1 merged; production deployment NOT PERFORMED |
-| Next permitted step | Continue S2 read-only audit and prepare a backward-compatible proposal/test matrix before implementation |
+| Production deployment | NOT PERFORMED |
+| Next action | Verify #44989024153; then wait for the S2 business decisions before changing schema/UX |
 
-Do not mark a step PASS unless all required exit criteria have verifiable evidence.
+Do not mark S2 fully complete until the owner decisions have been implemented and the relevant end-to-end acceptance criteria pass.
 
+## 10. Resume instruction
 
-## 9. Delivery session log — 2026-11-22
-
-- PR #8 was squash-merged to main as `c63f2da0d2250bf8957877ce33e17142a8d6f8d3` after CI and Vercel checks passed.
-- PR #6 was closed without merge; PR #9 is the canonical replacement.
-- PR #9 was retargeted to main and its description refreshed.
-- Squash merge caused the S1 branch to diverge from main by one historical S0 commit. Synchronize/rebase the S1 branch onto the new main, then rerun PR CI before merging.
-- Main post-merge workflow #44966225503 was still in progress at handoff; verify its final conclusion.
-- No production deployment, production data access, billing change or destructive migration occurred.
-
-
-## 10. Delivery session log — 2026-11-22
-
-- PR #8 merged to main by squash (`c63f2da0d2250bf8957877ce33e17142a8d6f8d3`).
-- PR #6 closed without merge because its implementation was superseded by PR #9.
-- PR #9 branch synchronized with main after the squash-history mismatch; final head `53781a838495ac6bcf438dc42214ae4a7faf464e`.
-- Final PR #9 GitHub Actions run #44966311523 passed all gates: dependency installation/audit, Functions syntax, MCP safety smoke, lint, typecheck, Emulator suite, Playwright, production build and artifact upload. Vercel Preview feedback check passed with zero unresolved feedback.
-- PR #9 marked ready and squash-merged to main (`8ea157041599ca95966a02695e7c1a25ffe3c9a7`).
-- S0 and S1 are complete. PR #5 is the only remaining open PR and must be revalidated before any merge.
-- No production deployment, production data access, billing changes or destructive migrations.
-
-
-## 11. MCP follow-up — 2026-11-22
-
-- Closed stale PR #5 without merging its combined diff.
-- Extracted the MCP structured-output portion into PR #10: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/10
-- New branch: `feat/mcp-structured-tool-outputs`
-- Scope limited to MCP output schemas, structuredContent and smoke-test coverage for schema declarations and README file reads.
-- Fresh CI run #44966591236 pending at handoff; Vercel check passed.
-- Firebase Storage removal was excluded; the existing optional Storage path remains unchanged. Any future Spark-only image-storage refactor must enforce Firestore document size constraints.
-
-
-## 12. Delivery session continuation — 2026-11-22 (PR #10 and S2 audit)
-
-- PR #10 merged by squash after all PR CI checks passed and the Preview deployment was Ready; no review threads/submissions existed.
-- PR #10 merge SHA: `6ac8304c8df47fe0c2a94dd444591a59ebb5b2da`.
-- PR CI run #44966591236: PASS — MCP schemas/protocol/safety, lint, typecheck, Emulator integration, Chromium/Playwright E2E, build and diagnostics.
-- Post-merge main workflow #44967174708 completed PASS; Emulator integration, Playwright Chromium E2E, production build and diagnostics upload all succeeded.
-- S2 read-only audit began. Current customer snapshot conflates purchaser and recipient; delivery details are a single datetime field; order note combines greeting card text and delivery instructions. No dedicated recipient fields, delivery slot/window, staff assignment UID or print view identified in examined order types/UI.
-- Generated order ID currently uses `DH-${crypto.randomUUID()}`; creator and status actors are stored as display names, not membership IDs.
-- Found a potential orphan-customer path: UI creates a customer before starting the order transaction. If order creation subsequently fails, customer remains without an order.
-- Firestore Rules whitelist order document keys, so schema additions require coordinated TypeScript/service/rules/tests changes.
-- No application implementation or data migration has been started for S2. No production data touched and no production deployment/billing/configuration change.
-- Next action: inspect the complete order detail/update implementation and tests; inspect order E2E and emulator fixtures; record a proposed backward-compatible data model. Do not guess business policies for recipient semantics, delivery windows, assignment, or printed receipt contents.
-
-
-- Final post-merge CI status: workflow #44967174708 completed successfully on `main` commit `6ac8304c8df47fe0c2a94dd444591a59ebb5b2da`.
-
-
-## 13. S2 continuation — 2026-11-22
-
-- PR #11 (https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/11) is merged at `73bb72ca19e5af82027e7f27096e693cb5892497`. It implements atomic first-time customer + order creation using a single Firestore transaction, with matching Firestore Rules `getAfter()` validation. New-customer form no longer pre-creates the customer.
-- Emulator tests cover failed transaction rollback/no orphan, forged customer projection denial, and successful atomic first-order projection. Existing Playwright order flow exercises the new path.
-- S2 read-only findings and requirements deliberately left open are recorded in `docs/audits/CRM_HOA_ROVII_S2_ORDER_WORKFLOW_AUDIT_2026-11-22.md`.
-- PR CI run #44982355903 PASS. Post-merge main workflow #44982521247 PASS, including Firebase Emulator integration, Playwright E2E and production build.
-- No production data, deployment, billing changes, or destructive migrations.
-
-
-- Confirmed final post-merge main CI #44982521247 completed `success` on commit `73bb72ca19e5af82027e7f27096e693cb5892497`.
-
-
-## 14. S2 continuation — stable actor identity
-
-- PR #12 merged by squash at `64c539e423c78bfe0b7089889b40d479afdfa799`.
-- New order creator UID (`createdByUid`) and history actor UID (`actorUid`) are populated from the authenticated membership UID. Firestore Rules bind supplied UIDs to `request.auth.uid` and make creator UID immutable.
-- Legacy records remain compatible because both fields are optional; no migration or staff assignment permissions were introduced.
-- PR CI #44982896197 and post-merge main CI #44983058488 both PASS, including Emulator, Playwright and production build.
-
-
-## 15. S2 continuation — printable order slip
-
-- PR #13 merged by squash at `bd3e259082b8f600db4474e39947b0ee0218e4fa`.
-- Order detail now has a browser-native print action and an A4 print-only layout. It prints the available order snapshot and totals while suppressing CRM navigation, action controls and the internal status timeline.
-- Playwright verifies the print action and print-media visibility. PR CI #44983725322 and post-merge main CI #44983907739 PASS, including Emulator, E2E and production build.
-- Presentation-only: no schema/rules/data/dependency or paid-service changes.
-
-
-## 16. S2 continuation — bounded customer aggregate projection
-
-- PR #14 merged at `568083053d7311f6d5abbe608f3a100f0c803444`.
-- `orderSummaries` is bounded to 50 recent active rows plus at most one currently changed cancelled row (51 maximum) for Firestore Rules coherence. Full history stays in the `orders` collection.
-- Create/status transactions use aggregate deltas; edits to new/confirmed orders only update their summary row. `syncCustomerAggregates()` still rebuilds exact totals from canonical orders and compacts legacy oversized arrays.
-- Rules cap changed projections but preserve profile-only edits to unchanged legacy oversized arrays.
-- Emulator Case N covers 65 synthetic orders and all bounded-projection edge cases. PR CI #44985057671 and post-merge main CI #44985288167 PASS, including Emulator, Playwright and build.
-- No production data migration, Cloud Functions, paid Firebase service or deployment.
-
-
-## 17. S2 continuation — dashboard bounded reads
-
-- PR #15 merged at `4ce6d95095141180cb855426bff8c94c722b880b`.
-- Dashboard now queries only the local-day order window plus the six newest orders, replacing a full collection download. Local-day boundaries are converted to ISO UTC, fixing the UTC date-prefix mismatch.
-- Emulator Case P validates seven in-day synthetic records across two dates and the six-newest limit. PR CI #44985805872 and post-merge main CI #44986041575 PASS.
-- `/orders` and `/customers` remain unpaginated because current search is a client-side substring search across the full dataset. See the new collection-read pagination audit; do not silently narrow search scope.
+Every new run must re-read this playbook and docs/automation/CRM_HOA_ROVII_CURRENT_STATE.md, fetch the live main ref, inspect open PRs and the latest Actions runs, and continue from the earliest incomplete step. PRs #8–#16 must not be repeated. Never infer a successful CI result from a started or cancelled workflow.
