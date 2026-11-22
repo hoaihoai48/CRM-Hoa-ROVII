@@ -184,3 +184,82 @@ body {
   background: var(--brand-light);
   color: var(--brand-primary);
 }
+
+/* Order print view: render only the order content, not CRM navigation/actions. */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #111827 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .printable-order,
+  .printable-order * {
+    visibility: visible !important;
+  }
+
+  .printable-order {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .print-order-heading {
+    display: block !important;
+  }
+
+  .print-hide {
+    display: none !important;
+  }
+
+  .printable-order .bg-white,
+  .printable-order .bg-stone-50,
+  .printable-order .bg-stone-50\/70 {
+    background: #fff !important;
+  }
+
+  .printable-order .shadow-2xs,
+  .printable-order .shadow-xs {
+    box-shadow: none !important;
+  }
+
+  .printable-order .rounded-xl {
+    border-radius: 0 !important;
+  }
+
+  .printable-order .overflow-hidden {
+    overflow: visible !important;
+  }
+
+  .printable-order a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+
+  .printable-order .grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .printable-order > .grid > div:first-child {
+    grid-column: 1 / -1 !important;
+  }
+
+  .printable-order .p-4,
+  .printable-order [class~="sm:p-5"] {
+    padding: 10px !important;
+  }
+}

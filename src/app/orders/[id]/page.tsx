@@ -7,7 +7,8 @@ import {
   User, 
   Phone, 
   MapPin, 
-  Clock
+  Clock,
+  Printer
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -233,6 +234,14 @@ function OrderDetailContent() {
                 Sửa đơn hàng
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 bg-white border border-stone-200 hover:bg-stone-50 rounded-lg cursor-pointer"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              In đơn hàng
+            </button>
             <ZaloButton phone={initialOrder.customerSnapshot.phone} size="md" variant="outline" />
           </div>
         }
@@ -369,6 +378,12 @@ function OrderDetailContent() {
         </div>
       )}
 
+      <section className="printable-order">
+        <header className="hidden print-order-heading mb-6">
+          <p className="text-xs font-semibold tracking-widest text-stone-500 uppercase">Phiếu đơn hàng</p>
+          <h1 className="text-2xl font-bold text-stone-900 mt-1">{orderId}</h1>
+          <p className="text-xs text-stone-500 mt-1">Tạo lúc {formatDate(initialOrder.createdAt)} · Người tạo: {initialOrder.createdBy}</p>
+        </header>
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column (8 cols): Order details & Products */}
@@ -382,7 +397,7 @@ function OrderDetailContent() {
 
             {/* Chỉ hiển thị các chuyển trạng thái hợp lệ theo workflow */}
             {getNextOrderStatuses(currentStatus).length > 0 && (
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+              <div className="print-hide flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
                 <span className="text-xs font-semibold text-stone-400 mr-1">Chuyển:</span>
                 {getNextOrderStatuses(currentStatus).map((nextStatus) => {
                   const labels: Record<OrderStatus, string> = {
@@ -425,7 +440,7 @@ function OrderDetailContent() {
               </h3>
               <Link
                 href={`/customers/${initialOrder.customerId}`}
-                className="text-xs font-semibold text-rose-600 hover:text-rose-700"
+                className="print-hide text-xs font-semibold text-rose-600 hover:text-rose-700"
               >
                 Hồ sơ khách hàng →
               </Link>
@@ -510,7 +525,7 @@ function OrderDetailContent() {
         </div>
 
         {/* Right Column (4 cols): Timeline & History */}
-        <div className="lg:col-span-4 space-y-6">
+        <div className="print-hide lg:col-span-4 space-y-6">
           {/* Order Status History Timeline */}
           <div className="bg-white rounded-xl border border-stone-200/80 p-4 sm:p-5 shadow-2xs">
             <h3 className="text-sm font-bold text-stone-900 pb-3 mb-4 border-b border-stone-100 flex items-center gap-2">
@@ -550,6 +565,7 @@ function OrderDetailContent() {
           </div>
         </div>
       </div>
+      </section>
     
     </>
   );
