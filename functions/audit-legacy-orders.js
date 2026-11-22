@@ -52,7 +52,7 @@ function summarizeCustomer(orders) {
     totalSpent: completed.reduce((sum, order) => sum + order.total, 0),
     lastOrderDate: latestActive?.createdAt || '',
     lastOrderDateOrderId: latestActive?.id || null,
-    orderSummaries: active.slice(0, 20),
+    orderSummaries: active.slice(0, 10),
   };
 }
 
