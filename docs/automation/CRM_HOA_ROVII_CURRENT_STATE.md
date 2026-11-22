@@ -127,3 +127,10 @@ Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK
 - GitHub Actions run #45039930605 was IN_PROGRESS at handoff; Vercel Preview status was PENDING. Codex review was requested. Do not mark tests or deployment checks PASS until the final run/status is fetched for the current PR head.
 - PR #21 audit: code review on head 7ebb3fb61122a45a3f02dcfc1a28bea104cb5939 returned no major issues after its P2 wording correction; the requested separate security review has not yet returned a result. Keep PR #21 open until that review is resolved or explicitly determined not to be a required gate.
 - No production bucket/data, customer/order data, production deployment, Firebase billing, paid service or migration was used.
+
+
+### PR #23 verification correction — 2026-11-22
+
+- Expanded Storage Emulator coverage to explicitly verify admin create/update/delete success and active-staff create/update/delete denial. Invalid MIME, unsupported extension and exactly 10 MiB rejection are also covered.
+- The earlier Actions run #45039930605 and its follow-up run were cancelled when later commits changed the PR head. Cancellation is not a test result; fetch the new run for the latest branch head before reporting any pass/fail.
+- Current implementation commit containing the expanded role tests: 7e9d3d1b27b4b2c34d5392ad8a75437c10220554. The documentation synchronization commit follows it, so the PR head will differ; use live PR metadata for the current SHA.
