@@ -162,11 +162,11 @@ The audit contains a backward-compatible optional-field candidate and regression
 
 | Field | Value |
 |---|---|
-| Active step | Verify post-merge main CI for PR #22, then begin F-01 customer aggregate Rules hardening; S2 business semantics remain owner-gated |
+| Active step | PR #24 documentation-only handoff synchronization is open for review; verify PR #22 post-merge main CI, then begin F-01 customer aggregate Rules hardening |
 | S0 | COMPLETE |
 | S1 | COMPLETE |
 | S2 technical hardening | COMPLETE through PR #18 |
-| Open PR inventory | None after PR #22 merge; PR #23 closed unmerged |
+| Open PR inventory | PR #24 docs-only handoff sync open; PR #23 closed unmerged |
 | Latest code merge | 3efd04c601b4bffaa976edad38c282e921d82be4 (PR #22) |
 | Latest docs merge | e728de1b8b98f91e976a3336a657720f4020f6b8 (PR #21) |
 | Final PR #16 CI | #44988852658 — PASS |
@@ -174,13 +174,13 @@ The audit contains a backward-compatible optional-field candidate and regression
 | Post-merge main CI | #45008753697 — PASS (PR #18); #45008325128 — PASS (PR #17) |
 | Production data | NOT ACCESSED |
 | Production deployment | NOT PERFORMED |
-| Next action | Verify post-merge main Actions for PR #22; then address F-01 customer scalar aggregate tampering with Emulator negative/positive coverage and a backward-compatible Rules design |
+| Next action | Complete PR #24 documentation review/merge; verify post-merge main Actions for PR #22; then address F-01 customer scalar aggregate tampering with Emulator negative/positive coverage and a backward-compatible Rules design |
 
 PR #17 paginates customer detail history (25-row pages); PR #18 makes actor UIDs mandatory on appended history entries for UID-attributed orders while preserving legacy compatibility. Do not mark S2 fully complete until the remaining owner decisions have been implemented and their end-to-end acceptance criteria pass.
 
 ## 10. Resume instruction
 
-Every new run must re-read this playbook and docs/automation/CRM_HOA_ROVII_CURRENT_STATE.md, fetch the live main ref, inspect open PRs/branches and the latest Actions/review state, and continue from the earliest incomplete step. PRs #8–#22 are merged; PR #23 is closed unmerged. Verify post-merge main CI for PR #22 before claiming it passed. Never infer a successful CI result from a started or cancelled workflow.
+Every new run must re-read this playbook and docs/automation/CRM_HOA_ROVII_CURRENT_STATE.md, fetch the live main ref, inspect open PRs/branches and the latest Actions/review state, and continue from the earliest incomplete step. PRs #8–#22 are merged; PR #23 is closed unmerged; PR #24 is the active docs-only handoff synchronization. Verify post-merge main CI for PR #22 before claiming it passed. Never infer a successful CI result from a started or cancelled workflow.
 
 
 ## 11. Delivery update — PRs #17–#18
@@ -224,3 +224,11 @@ Both Vercel Previews were Ready with zero unresolved feedback. No production dat
 - Codex code review on the exact head completed with no major findings; independent security review found no blocker; zero unresolved inline review threads. Vercel Free daily deployment quota was exhausted; Preview is N/A for this non-runtime Rules/test-infrastructure change.
 - Post-merge main Actions for merge commit 3efd04c601b4bffaa976edad38c282e921d82be4 were not returned by the connector's PR-only workflow query; do not claim post-merge CI PASS until verified separately.
 - F-02 is resolved. Next technical step: F-01 customer aggregate integrity. Preserve Spark architecture and all production safety boundaries.
+
+
+## 19. Delivery update — 2026-11-23 (PR #24 handoff synchronization opened)
+
+- PR #24 opened as a documentation-only follow-up to record PR #22's merge, close F-02, and refresh the handoff/playbook next action.
+- Branch: docs/record-pr22-storage-security-merge-2026-11-23; initial head e36bf7fa119601ab4c5d0722a0d93805b8c6fb83; base merge 3efd04c601b4bffaa976edad38c282e921d82be4.
+- Codex code review was running on the initial head at last inspection. Re-request if the branch changes; merge only after the final-head review completes without findings and the diff remains docs-only.
+- Actions and Preview are not applicable to this Markdown-only change; no CI/Preview result is claimed.
