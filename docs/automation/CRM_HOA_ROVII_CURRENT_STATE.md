@@ -100,7 +100,7 @@ A backward-compatible optional-field candidate and regression matrix are recorde
 
 ## New-chat instruction
 
-Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md. Fetch the live main ref, open PR inventory and latest Actions runs. PRs #17 and #18 are merged; PR #17 CI #45008095660 / main #45008325128 and PR #18 CI #45008498582 / main #45008753697 all passed. Latest docs versions: S2 audit e916bd37c578050127f6ce2814b2cf19e7c3e29c, pagination audit 0350da5476a8351febdd4c3f6ccbc1c3e989c643, playbook `39313a14bd3cdc5be24fc844ca98ef77bf1275a7` (pre-PR #19; see latest playbook revision on main). The next blocker is the business decisions in the S2 audit; do not repeat PRs #8–#18.
+Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md. Fetch the live main ref, open PR inventory and latest Actions runs. PRs #17 and #18 are merged; PR #17 CI #45008095660 / main #45008325128 and PR #18 CI #45008498582 / main #45008753697 all passed. Latest docs files are linked by path; use the live main branch rather than pinning historical blob SHAs. The next blocker is the business decisions in the S2 audit; do not repeat PRs #8–#18.
 
 
 ## Delivery update — 2026-11-22 (PRs #17–#18)
@@ -108,7 +108,7 @@ Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK
 - PR #17: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/17 — customer history now loads 25 newest orders, then uses the existing customer-scoped Firestore snapshot cursor for older pages. Playwright Case verifies 27 synthetic orders, newest-first ordering and load-more retrieval of the final two without skipping. Merge `8ce9930ee181b1fca788e823a53ffac8860d9067`; PR CI #45008095660 PASS; post-merge main #45008325128 PASS.
 - PR #18: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/18 — Firestore Rules now require `actorUid == request.auth.uid` on every appended history entry for orders that already contain `createdByUid`. Emulator verifies missing UID is rejected without partial order/customer writes and valid authenticated UID succeeds. Legacy orders without `createdByUid` remain compatible. Merge `83c354436ff9dfedca180832fcec324c03a36ffa`; PR CI #45008498582 PASS; post-merge main #45008753697 PASS.
 - Vercel Preview for both PRs Ready; zero unresolved feedback. No production data/deployment, migration, billing or paid Firebase service touched.
-- Latest code merge: `83c354436ff9dfedca180832fcec324c03a36ffa`; handoff and audit documentation is synced through PR #18.
+- Latest code merge: `83c354436ff9dfedca180832fcec324c03a36ffa`; documentation synchronization continues independently of code merges.
 
 
 ## Delivery update — 2026-11-22 (PR #19)
@@ -117,3 +117,10 @@ Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK
 - Squash merge: `53698b09cc73acaa56135ac2e62f602f02374aea`.
 - PR #19 Vercel Preview check passed before merge. Post-merge Vercel status was still pending at handoff; no GitHub Actions run was returned for the docs-only merge commit. Do not mark post-merge verification PASS until the status is rechecked.
 - No application code, Firestore schema/Rules, production data, production deployment, migration, billing or Firebase configuration changed.
+
+
+## Delivery update — 2026-11-22 (PR #20)
+
+- PR #20: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/20 — corrected the handoff's historical playbook pin, explicitly identifying the old SHA as pre-PR #19 and directing the next session to the live main copy. Squash-merged at `93da6165ebec95a864c139baf1e4a4955e59fdcd` after Vercel Preview Ready, Codex review completed with no unresolved findings, and the inline P2 thread was resolved.
+- Vercel post-merge status for `93da6165ebec95a864c139baf1e4a4955e59fdcd` was `pending` at the time of this update; docs-only commits are excluded from the GitHub Actions quality workflow by `paths-ignore: '**/*.md'` and `docs/**`. Recheck Vercel status before marking post-merge deployment readiness.
+- PR #20 changed only this handoff document. No application code, rules, production data/deployment, billing, migration or Firebase configuration changed.
