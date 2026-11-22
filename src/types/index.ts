@@ -134,7 +134,8 @@ export interface CreateOrderItemInput {
 }
 
 export interface CreateOrderInput {
-  customerId: string;
+  /** Existing customer ID. Omit for a new customer created atomically with the order. */
+  customerId?: string;
   customerSnapshot: CustomerSnapshot;
   items: CreateOrderItemInput[];
   deliveryFee: number;
