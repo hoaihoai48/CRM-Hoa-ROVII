@@ -1,6 +1,6 @@
 # CRM-Hoa-ROVII — Current Delivery Handoff
 
-**Last updated:** 2026-11-22 11:31 Asia/Ho_Chi_Minh  
+**Last updated:** 2026-11-22 11:42 Asia/Ho_Chi_Minh  
 **Repository:** https://github.com/hoaihoai48/CRM-Hoa-ROVII  
 **Default branch:** `main`  
 **Current main SHA:** read the live `main` ref before resuming (this handoff file is updated on every delivery session).
@@ -180,3 +180,18 @@ Read this handoff and the playbook, then fetch live GitHub state. S0/S1 and PR #
 
 - Audit collection-wide reads and pagination for customers/orders, then propose safe cursor-based pagination that preserves current sorting and filters.
 - Keep purchaser/recipient, delivery-slot, greeting-card, order-code and staff-assignment semantics as explicit business requirements; do not infer irreversible schema or permission policy.
+
+
+### S2 continuation — 2026-11-22 (PR #15 dashboard query optimization)
+
+- PR #15: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/15 — squash-merged at `4ce6d95095141180cb855426bff8c94c722b880b`.
+- Dashboard no longer downloads the full `orders` collection. It queries all orders within the local calendar day and the six newest orders overall, using ISO UTC boundaries derived from local midnight.
+- This also fixes the local-date vs UTC-date-prefix mismatch that could misclassify orders around midnight.
+- Emulator Case P verifies day-window filtering, descending sort and six-order limit. PR CI #44985805872 PASS; post-merge main CI #44986041575 PASS, including lint, TypeScript, Emulator, Playwright and production build.
+- Collection audit: `/orders` and `/customers` still fetch all records because their current substring search/filter semantics operate client-side. See `docs/audits/CRM_HOA_ROVII_COLLECTION_READ_PAGINATION_AUDIT_2026-11-22.md` before changing those semantics.
+
+
+### Next autonomous focus
+
+- Design cursor-based pagination for orders/customers without silently changing global substring search. The audit documents the choices and trade-offs; avoid a behavior change until the search contract is settled.
+- Continue to preserve Firebase Spark compatibility and the no-production-data/no-deployment boundary.

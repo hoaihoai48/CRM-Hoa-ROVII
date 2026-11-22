@@ -98,3 +98,12 @@ Before implementing recipient/delivery/assignment/print UX, obtain explicit requ
 - Firestore Rules enforce the size cap only when the projection is created/changed; profile-only edits on legacy oversized arrays remain allowed. A subsequent order mutation or aggregate repair compacts those arrays.
 - Emulator Case N verifies 65 synthetic orders, exact totals/date, compaction, old order update/edit, latest active cancellation, subsequent create, oversize rejection, legacy profile edit and repair compaction.
 - PR CI #44985057671 PASS and post-merge main CI #44985288167 PASS. No production migration/data access, paid Firebase service, or deployment.
+
+
+## 10. Dashboard collection-read optimization (PR #15)
+
+- PR #15: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/15 — merged at `4ce6d95095141180cb855426bff8c94c722b880b`.
+- Dashboard reads only all orders in the local-day ISO window and the six newest orders overall; no longer calls unbounded `listOrders()`.
+- Local midnight-to-midnight boundaries are converted to UTC ISO timestamps, avoiding the former local-calendar/UTC-prefix mismatch.
+- Emulator Case P validates range inclusion/exclusion, descending order and limit six. PR CI #44985805872 PASS; post-merge main CI #44986041575 PASS.
+- Orders/customers list pagination remains an audit item because their global substring search currently depends on loading the full collection.

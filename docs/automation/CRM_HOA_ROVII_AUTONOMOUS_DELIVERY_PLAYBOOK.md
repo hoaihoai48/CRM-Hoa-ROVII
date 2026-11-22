@@ -287,3 +287,11 @@ Do not mark a step PASS unless all required exit criteria have verifiable eviden
 - Rules cap changed projections but preserve profile-only edits to unchanged legacy oversized arrays.
 - Emulator Case N covers 65 synthetic orders and all bounded-projection edge cases. PR CI #44985057671 and post-merge main CI #44985288167 PASS, including Emulator, Playwright and build.
 - No production data migration, Cloud Functions, paid Firebase service or deployment.
+
+
+## 17. S2 continuation — dashboard bounded reads
+
+- PR #15 merged at `4ce6d95095141180cb855426bff8c94c722b880b`.
+- Dashboard now queries only the local-day order window plus the six newest orders, replacing a full collection download. Local-day boundaries are converted to ISO UTC, fixing the UTC date-prefix mismatch.
+- Emulator Case P validates seven in-day synthetic records across two dates and the six-newest limit. PR CI #44985805872 and post-merge main CI #44986041575 PASS.
+- `/orders` and `/customers` remain unpaginated because current search is a client-side substring search across the full dataset. See the new collection-read pagination audit; do not silently narrow search scope.
