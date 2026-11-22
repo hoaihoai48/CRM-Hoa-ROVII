@@ -85,18 +85,27 @@ A backward-compatible optional-field candidate and regression matrix are recorde
 ## Known technical trade-offs / follow-ups
 
 - Search and non-default status filters still read the full order/customer collection by design; the behavior is documented and must not be silently narrowed.
-- Customer detail order history is still loaded as one customer's full history; independent pagination can be considered later.
+- Customer detail order history now uses 25-row snapshot-cursor pages with explicit load-more (PR #17); the full history remains available without a single unbounded read.
 - Firestore Rules validate document shape, lifecycle, actor identity and matching customer projection, but cannot prove all cross-document aggregate arithmetic. Emulator coverage and transaction code remain essential.
 - syncCustomerAggregates() is a full-scan repair path; do not run it against production without a separately reviewed operational plan and explicit approval.
 - Browser print output uses current stored fields; expanding it depends on the owner choosing receipt/fulfilment content.
 
 ## Next action
 
-1. Post-merge main workflow #44989024153 is verified completed / success.
-2. No further purchaser/recipient, delivery-slot, note, order-code, assignment or print-content implementation until the owner supplies the business decisions above.
-3. Once those decisions are supplied, implement one vertical slice at a time with coordinated types + service + Firestore Rules + Emulator positive/negative tests + Playwright + print verification.
-4. Continue other non-blocked engineering/audit work only if it does not assume these unresolved business semantics.
+1. PR #17 (customer order-history pagination) merged at `8ce9930ee181b1fca788e823a53ffac8860d9067`; PR CI #45008095660 and post-merge main CI #45008325128 PASS.
+2. PR #18 (require authenticated actor UID for appended history on UID-attributed orders) merged at `83c354436ff9dfedca180832fcec324c03a36ffa`; PR CI #45008498582 and post-merge main CI #45008753697 PASS.
+3. Firestore Rules now require `actorUid == request.auth.uid` for every appended status-history entry when the existing order has `createdByUid`; legacy orders without creator UID retain backward-compatible optional actor UIDs.
+4. No further purchaser/recipient, delivery-slot, note, order-code, assignment or print-content implementation until the owner supplies the business decisions above.
+5. Once those decisions are supplied, implement one vertical slice at a time with coordinated types + service + Firestore Rules + Emulator positive/negative tests + Playwright + print verification.
 
 ## New-chat instruction
 
-Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md. Fetch the live main ref, open PR inventory and latest Actions runs. PR #16 is merged; PR CI #44988852658 and post-merge main CI #44989024153 both passed. Latest docs versions: S2 audit ac46aee8b37d947b7d2ec015833b812725a5985d, pagination audit 73720165bde090e950317a2d81a4565a443ebb16, playbook 598a500157d8f52070ae1432d9e9d5e8b294c845. The next blocker is only the business decisions in the S2 audit; do not repeat PRs #8–#16.
+Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md. Fetch the live main ref, open PR inventory and latest Actions runs. PRs #17 and #18 are merged; PR #17 CI #45008095660 / main #45008325128 and PR #18 CI #45008498582 / main #45008753697 all passed. Latest docs versions: S2 audit ac46aee8b37d947b7d2ec015833b812725a5985d, pagination audit 73720165bde090e950317a2d81a4565a443ebb16, playbook 598a500157d8f52070ae1432d9e9d5e8b294c845. The next blocker is the business decisions in the S2 audit; do not repeat PRs #8–#18.
+
+
+## Delivery update — 2026-11-22 (PRs #17–#18)
+
+- PR #17: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/17 — customer history now loads 25 newest orders, then uses the existing customer-scoped Firestore snapshot cursor for older pages. Playwright Case verifies 27 synthetic orders, newest-first ordering and load-more retrieval of the final two without skipping. Merge `8ce9930ee181b1fca788e823a53ffac8860d9067`; PR CI #45008095660 PASS; post-merge main #45008325128 PASS.
+- PR #18: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/18 — Firestore Rules now require `actorUid == request.auth.uid` on every appended history entry for orders that already contain `createdByUid`. Emulator verifies missing UID is rejected without partial order/customer writes and valid authenticated UID succeeds. Legacy orders without `createdByUid` remain compatible. Merge `83c354436ff9dfedca180832fcec324c03a36ffa`; PR CI #45008498582 PASS; post-merge main #45008753697 PASS.
+- Vercel Preview for both PRs Ready; zero unresolved feedback. No production data/deployment, migration, billing or paid Firebase service touched.
+- Latest verified main: `83c354436ff9dfedca180832fcec324c03a36ffa`.
