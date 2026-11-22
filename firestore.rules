@@ -113,7 +113,7 @@ service cloud.firestore {
         && (summaries.size() <= 7 || summaryAtLeastAsRecent(summaries[0], summaries[7]))
         && (summaries.size() <= 8 || summaryAtLeastAsRecent(summaries[0], summaries[8]))
         && (summaries.size() <= 9 || summaryAtLeastAsRecent(summaries[0], summaries[9]))
-        && (summaries.size() <= 10 || summaryAtLeastAsRecent(summaries[0], summaries[10]));
+        ;
     }
 
     function validOldestChunk0(summaries) {
@@ -134,8 +134,7 @@ service cloud.firestore {
         && summaries.size() <= 10
         && validSummaryChunk0(summaries)
         && validLatestChunk0(summaries)
-        && validOldestChunk0(summaries)
-;
+        && validOldestChunk0(summaries);
     }
 
     function isSafeOldestCompaction(oldSummaries, beforeExists, oldOrderSummary, expectedSummary, afterStatus) {
@@ -178,8 +177,7 @@ service cloud.firestore {
     function validPreviousProjectionRetention(oldSummaries, newSummaries, orderId, canDropOldest, oldestSummary) {
       return oldSummaries is list
         && oldSummaries.size() <= 10
-        && previousProjectionChunk0(oldSummaries, newSummaries, orderId, canDropOldest, oldestSummary)
-;
+        && previousProjectionChunk0(oldSummaries, newSummaries, orderId, canDropOldest, oldestSummary);
     }
 
     function validCustomer(data) {
@@ -306,7 +304,7 @@ service cloud.firestore {
               expectedSummary in customerAfter.data.orderSummaries
               || (
                 customerAfter.data.orderSummaries.size() == 10
-                && summaryNoLater(expectedSummary, customerAfter.data.orderSummaries[19])
+                && summaryNoLater(expectedSummary, customerAfter.data.orderSummaries[9])
               )
             )
           )
