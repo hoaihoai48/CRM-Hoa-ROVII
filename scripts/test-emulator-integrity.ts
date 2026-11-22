@@ -1357,7 +1357,7 @@ async function runTestSuite() {
   // Every cached cancellation refills one slot from the canonical active-order query.
   let scaleCache = await getCustomerById(scaleCustomer.id);
   const refillStartCount = scaleCache!.totalOrders;
-  for (let refillIndex = 0; refillIndex < 3; refillIndex++) {
+  for (let refillIndex = 0; refillIndex < 20; refillIndex++) {
     const currentSourceId = scaleCache!.lastOrderDateOrderId!;
     await updateOrderStatus(currentSourceId, { status: 'cancelled', actorName: 'Scale Tester' });
     scaleCache = await getCustomerById(scaleCustomer.id);
@@ -1367,7 +1367,7 @@ async function runTestSuite() {
     assert(scaleCache!.lastOrderRefillOrderId !== null, 'Case N: cancellation records the canonical order used to refill the projection');
     assert(scaleCache!.orderSummaries!.some((summary) => summary.id === scaleCache!.lastOrderRefillOrderId), 'Case N: refill marker points to a summary in the active projection');
   }
-  assert(scaleCache!.totalOrders === refillStartCount - 3, 'Case N: three cache refills preserve exact lifetime order deltas');
+  assert(scaleCache!.totalOrders === refillStartCount - 20, 'Case N: twenty cache refills preserve exact lifetime order deltas');
 
   // A cancellation outside the cache must still invalidate an aggregate repair scan.
   const projectedScaleIds = new Set((scaleCache!.orderSummaries ?? []).map((summary) => summary.id));
@@ -1391,6 +1391,9 @@ async function runTestSuite() {
   const afterConcurrentRepair = await getCustomerById(scaleCustomer.id);
   assert(afterConcurrentRepair!.totalOrders === beforeConcurrentRepair!.totalOrders - 1, 'Case N: aggregate repair cannot overwrite a concurrent outside-cache cancellation');
   assert(afterConcurrentRepair!.lastOrderDateOrderId === afterConcurrentRepair!.orderSummaries![0].id, 'Case N: concurrent repair leaves the latest active source consistent');
+  assert(afterConcurrentRepair!.lastOrderMutationOrderId === outsideActiveOrderId, 'Case N: outside-cache cancellation advances the repair invalidation marker');
+  const outsideOrderAfterRepair = await getOrderById(outsideActiveOrderId!);
+  assert(afterConcurrentRepair!.lastOrderMutationId === outsideOrderAfterRepair!.statusHistory.at(-1)?.id, 'Case N: repair preserves the unique history marker for the outside-cache mutation');
 
   let oversizedProjectionBlocked = false;
   try {
@@ -1412,9 +1415,9 @@ async function runTestSuite() {
     phone: scaleCustomer.phone,
     phoneNormalized: scaleCustomer.phoneNormalized,
     address: scaleCustomer.address,
-    totalOrders: scaleAfterExhaustionRepair!.totalOrders,
-    totalSpent: scaleAfterExhaustionRepair!.totalSpent,
-    lastOrderDate: scaleAfterExhaustionRepair!.lastOrderDate,
+    totalOrders: afterConcurrentRepair!.totalOrders,
+    totalSpent: afterConcurrentRepair!.totalSpent,
+    lastOrderDate: afterConcurrentRepair!.lastOrderDate,
     orderSummaries: Array.from({ length: 22 }, (_, index) => ({
       id: `LEGACY-SUMMARY-${index}`,
       status: 'new',
