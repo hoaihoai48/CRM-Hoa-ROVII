@@ -36,7 +36,7 @@ Firestore Rules already enforce important controls: active membership for busine
 
 **Recommendation:** If product image management is intended to follow product catalog permissions, change Storage write/delete to active admin only. Before implementation, add Storage Emulator tests (staff denied upload/delete, admin allowed valid image upload/delete, invalid type/extension/oversize rejected) and include Storage in the isolated emulator test runner. This audit did not change the rule because the existing CI runs only Auth/Firestore Emulators; changing policy without an equivalent Storage Rules regression suite would reduce assurance.
 
-**Status:** RESOLVED by PR #22 (merged 2026-11-22 as `3efd04c601b4bffaa976edad38c282e921d82be4`). Storage create/update/delete now requires an authenticated active admin; public reads remain unchanged. The final PR-head CI run #45043911114 passed the Auth/Firestore/Storage Emulator suite, Playwright and production build. Codex code review and independent security review found no blocker; no unresolved inline threads remained. Post-merge main Actions are still unverified.
+**Status:** RESOLVED by PR #22 (merged 2026-11-22 as `3efd04c601b4bffaa976edad38c282e921d82be4`). Storage create/update/delete now requires an authenticated active admin; public reads remain unchanged. The final PR-head CI run #45043911114 passed the Auth/Firestore/Storage Emulator suite, Playwright and production build. Codex code review and independent security review found no blocker; no unresolved inline threads remained. Post-merge main Actions #45047810582 completed SUCCESS on exact merge commit 3efd04c601b4bffaa976edad38c282e921d82be4.
 
 ### F-03 — Storage Rules enforce per-object limits but image/document payload limits are not end-to-end bounded
 
@@ -114,4 +114,11 @@ No production data, deployment, billing or paid Firebase service was touched.
 - Storage Emulator tests cover upload, overwrite and delete authorization, intentional public reads, MIME/extension mismatch and object size at/above 10 MiB. The test runner starts Auth/Firestore/Storage Emulators under explicit project demo-crm-hoa-rovii; test scripts fail closed unless all required emulator hosts are loopback.
 - PR CI #45043911114 completed SUCCESS on the exact final head, including lint, typecheck, Auth/Firestore/Storage Emulator tests, six Playwright cases and production build. The earlier Playwright failure on #45043396941 was caused by mismatched fixture project IDs and was corrected before the final run.
 - Codex code review on the exact head reported no major findings; independent security review found no additional blocker; zero unresolved inline review threads. Vercel Preview was not applicable because no runtime/UI or Vercel deployment configuration changed; the Free daily quota limit was not treated as a required gate.
-- Post-merge main Actions for merge commit 3efd04c601b4bffaa976edad38c282e921d82be4 were not returned by the available PR-only workflow query and remain unverified.
+- Post-merge main Actions #45047810582 were independently found by exact merge SHA; the push-triggered main workflow completed SUCCESS, including lint, typecheck, Auth/Firestore/Storage Emulator integration, Playwright and production build.
+
+
+## Post-merge main verification — F-02 (2026-11-23)
+
+- GitHub Actions run [#45047810582](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45047810582) is the push-triggered `main` workflow for exact merge commit `3efd04c601b4bffaa976edad38c282e921d82be4`; status `completed`, conclusion `success`.
+- Inspected job #137286140172: dependency/MCP checks, lint, TypeScript typecheck, Firebase Auth/Firestore/Storage Emulator integration, Playwright E2E and production build all completed successfully.
+- This supersedes the earlier handoff note that post-merge main Actions were unverified. PR #22 F-02 remediation has both PR-head CI and post-merge main CI evidence.
