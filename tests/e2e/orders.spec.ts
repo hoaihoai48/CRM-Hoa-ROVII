@@ -83,6 +83,18 @@ test('staff can create, edit and complete an order with consistent totals and hi
   await expect(page.getByText(productName, { exact: true }).first()).toBeVisible();
   await expect(page.getByText('Giao trước 10 giờ, thiệp chúc mừng').first()).toBeVisible();
 
+  await page.evaluate(() => {
+    window.print = () => {
+      document.documentElement.dataset.printTriggered = 'true';
+    };
+  });
+  await page.getByRole('button', { name: 'In đơn hàng' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-print-triggered', 'true');
+  await page.emulateMedia({ media: 'print' });
+  await expect(page.locator('.printable-order')).toBeVisible();
+  await expect(page.locator('.print-hide').first()).toBeHidden();
+  await page.emulateMedia({ media: 'screen' });
+
   await page.getByRole('button', { name: 'Sửa đơn hàng' }).click();
   await page.locator('#editDeliveryFee').fill('25000');
   await page.locator('#editDiscount').fill('20000');
