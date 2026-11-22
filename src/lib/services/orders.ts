@@ -39,6 +39,27 @@ function mapCustomerOrderSummaries(raw: unknown): CustomerOrderSummary[] {
   }));
 }
 
+function customerOrderStateFingerprint(data: Record<string, unknown>): string {
+  const summaries = mapCustomerOrderSummaries(data.orderSummaries)
+    .map((summary) => ({
+      id: summary.id,
+      status: summary.status,
+      total: summary.total,
+      createdAt: summary.createdAt,
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+
+  return JSON.stringify({
+    summaries,
+    totalOrders: data.totalOrders ?? null,
+    totalSpent: data.totalSpent ?? null,
+    lastOrderDate: data.lastOrderDate ?? null,
+    lastOrderDateOrderId: data.lastOrderDateOrderId ?? null,
+    lastOrderMutationOrderId: data.lastOrderMutationOrderId ?? null,
+    lastOrderMutationId: data.lastOrderMutationId ?? null,
+  });
+}
+
 /**
  * Keep a bounded, active-only projection ordered newest-first. Canonical order documents
  * remain complete; edits to older orders outside this cache do not displace recent rows.
@@ -139,29 +160,12 @@ export async function syncCustomerAggregates(customerId: string): Promise<void> 
   const q = query(ordersColl, where('customerId', '==', customerId));
   const maxAttempts = 5;
 
-  const readProjection = (raw: Record<string, unknown>): CustomerOrderSummary[] => {
-    const summaries = Array.isArray(raw.orderSummaries) ? raw.orderSummaries : [];
-    return summaries.map((s: Record<string, unknown>) => ({
-      id: String(s.id || ''),
-      status: (s.status as Order['status']) || 'new',
-      total: Number(s.total || 0),
-      createdAt: normalizeIsoString(s.createdAt),
-    }));
-  };
-
-  const projectionFingerprint = (summaries: CustomerOrderSummary[]): string =>
-    JSON.stringify(
-      summaries
-        .map((s) => ({ id: s.id, status: s.status, total: s.total, createdAt: s.createdAt }))
-        .sort((a, b) => a.id.localeCompare(b.id))
-    );
-
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     // Capture the projection version before the collection query.
     const beforeQuerySnap = await getDoc(customerRef);
     if (!beforeQuerySnap.exists()) return;
-    const baselineSummaries = readProjection((beforeQuerySnap.data() || {}) as Record<string, unknown>);
-    const baselineFingerprint = projectionFingerprint(baselineSummaries);
+    const baselineData = (beforeQuerySnap.data() || {}) as Record<string, unknown>;
+    const baselineFingerprint = customerOrderStateFingerprint(baselineData);
 
     const ordersSnapshot = await getDocs(q);
     const scannedSummaries: CustomerOrderSummary[] = ordersSnapshot.docs.map((d) => {
@@ -182,11 +186,12 @@ export async function syncCustomerAggregates(customerId: string): Promise<void> 
       await runTransaction(db, async (tx) => {
         const customerSnap = await tx.get(customerRef);
         if (!customerSnap.exists()) return;
-        const currentSummaries = readProjection((customerSnap.data() || {}) as Record<string, unknown>);
+        const currentData = (customerSnap.data() || {}) as Record<string, unknown>;
 
-        // A create/status mutation updates the projection atomically with its order.
-        // If it raced with our query, do not merge guesses: retry the whole repair.
-        if (projectionFingerprint(currentSummaries) !== baselineFingerprint) {
+        // Any order mutation changes its unique customer marker, even when the order is
+        // outside the bounded projection. Include aggregate scalars too so an admin
+        // repair cannot overwrite a concurrent outside-cache cancellation or another repair.
+        if (customerOrderStateFingerprint(currentData) !== baselineFingerprint) {
           throw new Error('SYNC_CUSTOMER_AGGREGATES_RETRY');
         }
 
@@ -202,6 +207,7 @@ export async function syncCustomerAggregates(customerId: string): Promise<void> 
           totalSpent,
           lastOrderDate: latestActive?.createdAt || '',
           lastOrderDateOrderId: latestActive?.id || null,
+          lastOrderRefillOrderId: null,
           orderSummaries: boundedProjection,
         });
       });
