@@ -117,3 +117,13 @@ Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK
 - Squash merge: `53698b09cc73acaa56135ac2e62f602f02374aea`.
 - PR #19 Vercel Preview check passed before merge. Post-merge Vercel status was still pending at handoff; no GitHub Actions run was returned for the docs-only merge commit. Do not mark post-merge verification PASS until the status is rechecked.
 - No application code, Firestore schema/Rules, production data, production deployment, migration, billing or Firebase configuration changed.
+
+
+## Delivery update — 2026-11-22 (PR #23: product image Storage authorization)
+
+- PR #23: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/23 — branch security/storage-emulator-admin-boundary-2026-11-22, current head 4a3548d4ab6a3f04a58f504b414b760caac08c2a.
+- Product image Storage create/update/delete is being aligned to the existing admin-only Firestore product-document boundary. Public reads remain unchanged. Active staff are denied product image upload/delete; active admins retain valid image upload/delete.
+- Added Storage Emulator port 9199 and connected the isolated emulator runner to Auth + Firestore + Storage using the explicit demo-crm-hoa-rovii project. Added Emulator regression cases for staff upload/delete denial, admin valid upload/delete, invalid MIME type, invalid extension and the 10 MiB size limit.
+- GitHub Actions run #45039930605 was IN_PROGRESS at handoff; Vercel Preview status was PENDING. Codex review was requested. Do not mark tests or deployment checks PASS until the final run/status is fetched for the current PR head.
+- PR #21 audit: code review on head 7ebb3fb61122a45a3f02dcfc1a28bea104cb5939 returned no major issues after its P2 wording correction; the requested separate security review has not yet returned a result. Keep PR #21 open until that review is resolved or explicitly determined not to be a required gate.
+- No production bucket/data, customer/order data, production deployment, Firebase billing, paid service or migration was used.
