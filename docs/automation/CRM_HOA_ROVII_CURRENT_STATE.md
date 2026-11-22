@@ -3,7 +3,7 @@
 **Last updated:** 2026-11-22 07:27 Asia/Ho_Chi_Minh  
 **Repository:** https://github.com/hoaihoai48/CRM-Hoa-ROVII  
 **Default branch:** `main`  
-**Current main SHA:** `8ea157041599ca95966a02695e7c1a25ffe3c9a7`
+**Current main SHA:** read the live `main` ref before resuming (this handoff file is updated on every delivery session).
 
 This is the restart point for a new ChatGPT conversation. Read it together with `docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md` and inspect live GitHub state before acting.
 
