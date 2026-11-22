@@ -149,3 +149,11 @@ Read this handoff and the playbook, then fetch live GitHub state. S0/S1 and PR #
 - Firestore Rules require any supplied creator/history UID to match `request.auth.uid`, and keep `createdByUid` immutable. Legacy orders/history without these fields remain valid; no backfill/migration.
 - PR CI run #44982896197 PASS; post-merge main workflow #44983058488 PASS, including lint, typecheck, Emulator, Playwright E2E and production build.
 - Stable audit identity is groundwork only. No staff assignment policy, access scope, or permissions were changed.
+
+
+### S2 continuation — 2026-11-22 (PR #13 printable order slip)
+
+- PR #13: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/13 — squash-merged at `bd3e259082b8f600db4474e39947b0ee0218e4fa`.
+- Added a browser-native `In đơn hàng` action and A4 print stylesheet on order detail. Print output includes order code, creation metadata, current status, customer/delivery snapshot, note, item rows and totals; CRM navigation, editing/status controls and internal timeline are hidden.
+- No order schema, Firestore Rules, data, dependencies, Firebase service, or permissions changed.
+- PR CI #44983725322 PASS; post-merge main workflow #44983907739 PASS, including lint, typecheck, Emulator, Playwright E2E and production build.

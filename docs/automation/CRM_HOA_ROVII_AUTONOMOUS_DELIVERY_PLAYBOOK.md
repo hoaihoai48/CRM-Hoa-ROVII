@@ -269,3 +269,11 @@ Do not mark a step PASS unless all required exit criteria have verifiable eviden
 - New order creator UID (`createdByUid`) and history actor UID (`actorUid`) are populated from the authenticated membership UID. Firestore Rules bind supplied UIDs to `request.auth.uid` and make creator UID immutable.
 - Legacy records remain compatible because both fields are optional; no migration or staff assignment permissions were introduced.
 - PR CI #44982896197 and post-merge main CI #44983058488 both PASS, including Emulator, Playwright and production build.
+
+
+## 15. S2 continuation — printable order slip
+
+- PR #13 merged by squash at `bd3e259082b8f600db4474e39947b0ee0218e4fa`.
+- Order detail now has a browser-native print action and an A4 print-only layout. It prints the available order snapshot and totals while suppressing CRM navigation, action controls and the internal status timeline.
+- Playwright verifies the print action and print-media visibility. PR CI #44983725322 and post-merge main CI #44983907739 PASS, including Emulator, E2E and production build.
+- Presentation-only: no schema/rules/data/dependency or paid-service changes.

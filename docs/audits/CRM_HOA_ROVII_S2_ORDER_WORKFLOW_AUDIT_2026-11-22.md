@@ -79,3 +79,12 @@ Before implementing recipient/delivery/assignment/print UX, obtain explicit requ
 - Emulator verifies a forged creator UID is denied; Playwright verifies all create/edit/status-history entries retain the signed-in staff UID.
 - PR #12 merged at `64c539e423c78bfe0b7089889b40d479afdfa799`; PR CI #44982896197 and post-merge main CI #44983058488 PASS.
 - This does not implement assignment or change staff permissions. Assignment policy remains a separate business decision.
+
+
+## 8. Printable order slip (PR #13)
+
+- Added browser-native print action and A4 print styling to order detail.
+- Output uses only existing order data: order code/creation metadata, status, customer/delivery snapshot, note, products and totals. Internal timeline and interactive controls are excluded.
+- Playwright covers invoking `window.print()` and print-media visibility.
+- PR #13 merged at `bd3e259082b8f600db4474e39947b0ee0218e4fa`; PR CI #44983725322 PASS and post-merge main CI #44983907739 PASS.
+- No schema changes, data migration, production data access, deployment, or paid Firebase services.
