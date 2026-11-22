@@ -343,34 +343,32 @@ service cloud.firestore {
         'total': before.summary.total,
         'createdAt': before.createdAt
       } : {};
-      let wasProjected = oldOrderSummary in oldSummaries;
-      let canDropOldest = oldSummaries.size() == 10
-        && afterStatus != 'cancelled'
-        && summaryAtLeastAsRecent(expectedSummary, oldSummaries[9])
-        && (!beforeExists || !wasProjected);
       let allowedNewSummaries = oldSummaries.toSet().union([expectedSummary].toSet()).union(
         request.resource.data.get('lastOrderRefillOrderId', null) is string
           ? [refillSummary].toSet()
           : [].toSet()
       );
-      let allowedRemovedSummaries = [oldOrderSummary].toSet().union(
-        canDropOldest ? [oldSummaries[9]].toSet() : [].toSet()
-      );
-      let mayOmitChangedSummary = afterStatus != 'cancelled'
-        && !wasProjected
-        && newSummaries.size() == 10
-        && summaryNoLater(expectedSummary, newSummaries[9]);
       return oldSummaries is list
         && oldSummaries.size() <= 10
         && newSummaries is list
         && newSummaries.size() <= 10
-        && newSummaries.toSet().size() == newSummaries.size()
         && newSummaries.toSet().hasOnly(allowedNewSummaries)
-        && oldSummaries.toSet().difference(newSummaries.toSet()).hasOnly(allowedRemovedSummaries)
-        && validCustomerRefill(customerId, orderId, newSummaries, afterStatus, refillSummary)
+        && (
+          oldSummaries.size() != 10
+          || (afterStatus == 'cancelled' && oldOrderSummary.id == oldSummaries[9].id)
+          || summaryAtLeastAsRecent(expectedSummary, oldSummaries[9])
+          || oldSummaries[9] in newSummaries
+        )
         && (
           (afterStatus == 'cancelled' && !(expectedSummary in newSummaries))
-          || (afterStatus != 'cancelled' && (expectedSummary in newSummaries || mayOmitChangedSummary))
+          || (afterStatus != 'cancelled' && (
+            expectedSummary in newSummaries
+            || (newSummaries.size() == 10 && summaryNoLater(expectedSummary, newSummaries[9]))
+          ))
+        )
+        && (
+          request.resource.data.get('lastOrderRefillOrderId', null) == null
+          || validCustomerRefill(customerId, orderId, newSummaries, afterStatus, refillSummary)
         );
     }
 
@@ -385,7 +383,7 @@ service cloud.firestore {
         'total': after.summary.total,
         'createdAt': after.createdAt
       };
-      let refillSummary = customerRefillSummary();
+      let refillSummary = request.resource.data.get('lastOrderRefillOrderId', null) is string ? customerRefillSummary() : {};
       return after.customerId == customerId
         && after.statusHistory.size() == (beforeExists ? before.statusHistory.size() + 1 : 1)
         && after.statusHistory[after.statusHistory.size() - 1].id == request.resource.data.lastOrderMutationId
