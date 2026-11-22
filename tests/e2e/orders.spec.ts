@@ -147,3 +147,124 @@ test('staff can create, edit and complete an order with consistent totals and hi
   expect(customer.fields.totalOrders.integerValue).toBe('1');
   expect(customer.fields.totalSpent.integerValue).toBe('350000');
 });
+
+
+test('customer order history loads additional cursor pages without skipping records', async ({ page }) => {
+  const staffUid = await signInAsActiveAdmin(page);
+  const customerId = `CUST-HISTORY-E2E-${crypto.randomUUID()}`;
+  const customerName = 'Khách hàng lịch sử phân trang E2E';
+  const customerPhone = '0901234567';
+  const customerAddress = 'Địa chỉ kiểm thử phân trang';
+
+  const customerResponse = await page.request.patch(
+    `${firestoreEmulator}/v1/projects/${projectId}/databases/(default)/documents/customers/${customerId}`,
+    {
+      headers: { Authorization: 'Bearer owner' },
+      data: {
+        fields: {
+          name: { stringValue: customerName },
+          phone: { stringValue: customerPhone },
+          phoneNormalized: { stringValue: customerPhone },
+          address: { stringValue: customerAddress },
+          totalOrders: { integerValue: '27' },
+          totalSpent: { integerValue: '2700000' },
+          lastOrderDate: { stringValue: '2026-11-22T00:26:00.000Z' },
+          orderSummaries: { arrayValue: { values: [] } },
+          createdAt: { stringValue: '2026-01-01T00:00:00.000Z' },
+        },
+      },
+    },
+  );
+  expect(customerResponse.ok()).toBeTruthy();
+
+  const fixtureWrites = Array.from({ length: 27 }, (_, index) => {
+    const sequence = String(index).padStart(3, '0');
+    const orderId = `ORDER-HISTORY-E2E-${sequence}`;
+    const createdAt = new Date(Date.UTC(2026, 0, 1, 0, index)).toISOString();
+    return page.request.patch(
+      `${firestoreEmulator}/v1/projects/${projectId}/databases/(default)/documents/orders/${orderId}`,
+      {
+        headers: { Authorization: 'Bearer owner' },
+        data: {
+          fields: {
+            customerId: { stringValue: customerId },
+            customerSnapshot: {
+              mapValue: {
+                fields: {
+                  name: { stringValue: customerName },
+                  phone: { stringValue: customerPhone },
+                  address: { stringValue: customerAddress },
+                },
+              },
+            },
+            items: {
+              arrayValue: {
+                values: [{
+                  mapValue: {
+                    fields: {
+                      id: { stringValue: `ITEM-${sequence}` },
+                      productId: { stringValue: 'PRODUCT-HISTORY-E2E' },
+                      productSnapshot: {
+                        mapValue: {
+                          fields: {
+                            name: { stringValue: `Hoa lịch sử ${sequence}` },
+                            unit: { stringValue: 'bó' },
+                          },
+                        },
+                      },
+                      quantity: { integerValue: '1' },
+                      unitPrice: { integerValue: '100000' },
+                      subtotal: { integerValue: '100000' },
+                    },
+                  },
+                }],
+              },
+            },
+            summary: {
+              mapValue: {
+                fields: {
+                  subtotal: { integerValue: '100000' },
+                  deliveryFee: { integerValue: '0' },
+                  discount: { integerValue: '0' },
+                  total: { integerValue: '100000' },
+                },
+              },
+            },
+            status: { stringValue: 'completed' },
+            statusHistory: {
+              arrayValue: {
+                values: [{
+                  mapValue: {
+                    fields: {
+                      id: { stringValue: `HISTORY-${sequence}` },
+                      status: { stringValue: 'completed' },
+                      timestamp: { stringValue: createdAt },
+                      actorName: { stringValue: 'E2E fixture' },
+                      actorUid: { stringValue: staffUid },
+                    },
+                  },
+                }],
+              },
+            },
+            createdAt: { stringValue: createdAt },
+            createdBy: { stringValue: 'E2E fixture' },
+            createdByUid: { stringValue: staffUid },
+          },
+        },
+      },
+    );
+  });
+  const responses = await Promise.all(fixtureWrites);
+  expect(responses.every((response) => response.ok())).toBeTruthy();
+
+  await page.goto(`/customers/${customerId}`);
+  await expect(page.getByText('Lịch sử đơn hàng')).toBeVisible();
+  await expect(page.getByText('Đã tải 25 đơn')).toBeVisible();
+  await expect(page.getByRole('link', { name: /#ORDER-HISTORY-E2E-026/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /#ORDER-HISTORY-E2E-000/ })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Tải thêm đơn hàng' }).click();
+  await expect(page.getByText('27 đơn').last()).toBeVisible();
+  await expect(page.getByRole('link', { name: /#ORDER-HISTORY-E2E-000/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Tải thêm đơn hàng' })).toHaveCount(0);
+});

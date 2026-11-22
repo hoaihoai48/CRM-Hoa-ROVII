@@ -17,14 +17,18 @@ import { MoneyDisplay } from '@/components/common/MoneyDisplay';
 import { ZaloButton } from '@/components/common/ZaloButton';
 import { Input, Textarea } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
-import { getCustomerById, listOrdersByCustomer, updateCustomer } from '@/lib/services';
+import { getCustomerById, listOrdersPage, updateCustomer } from '@/lib/services';
 import { formatDateShort } from '@/lib/utils/format';
 
 function CustomerDetailContent() {
   const params = useParams();
   const customerId = params?.id as string;
   const [initialCustomer, setInitialCustomer] = useState<Awaited<ReturnType<typeof getCustomerById>>>(null);
-  const [customerOrders, setCustomerOrders] = useState<Awaited<ReturnType<typeof listOrdersByCustomer>>>([]);
+  const [customerOrders, setCustomerOrders] = useState<Awaited<ReturnType<typeof listOrdersPage>>['items']>([]);
+  const [ordersCursor, setOrdersCursor] = useState<Awaited<ReturnType<typeof listOrdersPage>>['nextCursor']>(null);
+  const [hasMoreOrders, setHasMoreOrders] = useState(false);
+  const [isLoadingMoreOrders, setIsLoadingMoreOrders] = useState(false);
+  const [historyLoadError, setHistoryLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -40,11 +44,17 @@ function CustomerDetailContent() {
     if (!customerId) return;
     setIsLoading(true);
     setLoadError(null);
-    Promise.all([getCustomerById(customerId), listOrdersByCustomer(customerId)])
-      .then(([customer, orders]) => {
+    setHistoryLoadError(null);
+    setCustomerOrders([]);
+    setOrdersCursor(null);
+    setHasMoreOrders(false);
+    Promise.all([getCustomerById(customerId), listOrdersPage(null, 25, customerId)])
+      .then(([customer, orderPage]) => {
         if (ignoreRef.current) return;
         setInitialCustomer(customer);
-        setCustomerOrders(orders);
+        setCustomerOrders(orderPage.items);
+        setOrdersCursor(orderPage.nextCursor);
+        setHasMoreOrders(orderPage.hasMore);
         if (!customer) {
           setLoadError('Không tìm thấy khách hàng.');
         } else {
@@ -61,6 +71,25 @@ function CustomerDetailContent() {
           setIsLoading(false);
         }
       });
+  };
+
+  const loadMoreOrders = async () => {
+    if (!customerId || !ordersCursor || !hasMoreOrders || isLoadingMoreOrders) return;
+    setIsLoadingMoreOrders(true);
+    setHistoryLoadError(null);
+    try {
+      const page = await listOrdersPage(ordersCursor, 25, customerId);
+      if (ignoreRef.current) return;
+      setCustomerOrders((current) => [...current, ...page.items]);
+      setOrdersCursor(page.nextCursor);
+      setHasMoreOrders(page.hasMore);
+    } catch (error) {
+      if (!ignoreRef.current) {
+        setHistoryLoadError(error instanceof Error ? error.message : 'Không thể tải thêm lịch sử đơn hàng.');
+      }
+    } finally {
+      if (!ignoreRef.current) setIsLoadingMoreOrders(false);
+    }
   };
 
   useEffect(() => {
@@ -302,7 +331,7 @@ function CustomerDetailContent() {
                 <h3 className="text-sm font-bold text-stone-900">Lịch sử đơn hàng</h3>
                 <p className="text-xs text-stone-500 mt-0.5">Các đơn khách đã từng đặt tại tiệm</p>
               </div>
-              <span className="text-xs text-stone-400 font-medium">{customerOrders.length} đơn</span>
+              <span className="text-xs text-stone-400 font-medium">{hasMoreOrders ? `Đã tải ${customerOrders.length} đơn` : `${customerOrders.length} đơn`}</span>
             </div>
 
             {customerOrders.length === 0 ? (
@@ -336,6 +365,26 @@ function CustomerDetailContent() {
                     </div>
                   </Link>
                 ))}
+              </div>
+            )}
+            {historyLoadError && (
+              <div role="alert" className="p-4 text-xs text-red-600">
+                <p>{historyLoadError}</p>
+                <button type="button" onClick={loadMoreOrders} className="mt-2 font-semibold underline">
+                  Thử tải thêm
+                </button>
+              </div>
+            )}
+            {hasMoreOrders && (
+              <div className="border-t border-stone-100 p-4 flex justify-center">
+                <button
+                  type="button"
+                  onClick={loadMoreOrders}
+                  disabled={isLoadingMoreOrders}
+                  className="rounded-lg border border-stone-200 bg-white px-5 py-2.5 text-xs font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-50"
+                >
+                  {isLoadingMoreOrders ? 'Đang tải thêm...' : 'Tải thêm đơn hàng'}
+                </button>
               </div>
             )}
           </div>
