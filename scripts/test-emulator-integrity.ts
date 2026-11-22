@@ -1354,29 +1354,43 @@ async function runTestSuite() {
   assert((scaleAfterCreate!.orderSummaries ?? []).length <= 20, 'Case N: new order keeps projection bounded to 20');
   assert(scaleAfterCreate!.lastOrderDateOrderId === scaleNewOrder.id, 'Case N: newest created order becomes the latest date source');
 
-  // A bounded cache cannot invent a source once every cached active row is cancelled
-  // while older canonical active orders remain outside the cache. Rules must fail closed;
-  // the existing active-admin aggregate repair then repopulates the projection.
+  // Every cached cancellation refills one slot from the canonical active-order query.
   let scaleCache = await getCustomerById(scaleCustomer.id);
-  while ((scaleCache!.orderSummaries ?? []).length > 1) {
+  const refillStartCount = scaleCache!.totalOrders;
+  for (let refillIndex = 0; refillIndex < 3; refillIndex++) {
     const currentSourceId = scaleCache!.lastOrderDateOrderId!;
     await updateOrderStatus(currentSourceId, { status: 'cancelled', actorName: 'Scale Tester' });
     scaleCache = await getCustomerById(scaleCustomer.id);
+    assert((scaleCache!.orderSummaries ?? []).length === 20, `Case N: cancellation ${refillIndex + 1} refills the active projection to 20 rows`);
+    assert(scaleCache!.lastOrderDateOrderId === scaleCache!.orderSummaries![0].id, 'Case N: refill preserves the latest active date source at the first row');
+    assert(scaleCache!.lastOrderDate === scaleCache!.orderSummaries![0].createdAt, 'Case N: refill preserves the exact latest active date');
+    assert(scaleCache!.lastOrderRefillOrderId !== null, 'Case N: cancellation records the canonical order used to refill the projection');
+    assert(scaleCache!.orderSummaries!.some((summary) => summary.id === scaleCache!.lastOrderRefillOrderId), 'Case N: refill marker points to a summary in the active projection');
   }
-  assert((scaleCache!.orderSummaries ?? []).length === 1, 'Case N: one cached active source remains before exhaustion');
-  assert(scaleCache!.totalOrders > 1, 'Case N: older active orders remain outside the bounded cache');
-  await expectPermissionDenied(
-    'Case N: staff cannot clear the final cached source while older active orders remain outside the cache',
-    () => updateOrderStatus(scaleCache!.lastOrderDateOrderId!, { status: 'cancelled', actorName: 'Scale Tester' }),
-  );
-  const scaleAfterDeniedExhaustion = await getCustomerById(scaleCustomer.id);
-  assert((scaleAfterDeniedExhaustion!.orderSummaries ?? []).length === 1, 'Case N: denied source exhaustion leaves the customer projection unchanged');
-  assert(scaleAfterDeniedExhaustion!.totalOrders > 1, 'Case N: denied source exhaustion preserves active-order count');
-  await withAdminSession(() => syncCustomerAggregates(scaleCustomer.id));
-  const scaleAfterExhaustionRepair = await getCustomerById(scaleCustomer.id);
-  assert((scaleAfterExhaustionRepair!.orderSummaries ?? []).length === 20, 'Case N: active-admin repair restores the latest 20 active summaries');
-  assert(scaleAfterExhaustionRepair!.lastOrderDateOrderId === scaleAfterExhaustionRepair!.orderSummaries![0].id, 'Case N: admin repair restores the latest active date source');
-  assert(scaleAfterExhaustionRepair!.lastOrderDate === scaleAfterExhaustionRepair!.orderSummaries![0].createdAt, 'Case N: admin repair restores the exact latest active date');
+  assert(scaleCache!.totalOrders === refillStartCount - 3, 'Case N: three cache refills preserve exact lifetime order deltas');
+
+  // A cancellation outside the cache must still invalidate an aggregate repair scan.
+  const projectedScaleIds = new Set((scaleCache!.orderSummaries ?? []).map((summary) => summary.id));
+  let outsideActiveOrderId: string | null = null;
+  for (const row of scaleRows) {
+    if (projectedScaleIds.has(row.id)) continue;
+    const outsideOrderSnap = await getDoc(doc(db, 'orders', row.id));
+    if (outsideOrderSnap.exists() && outsideOrderSnap.data().status !== 'cancelled') {
+      outsideActiveOrderId = row.id;
+      break;
+    }
+  }
+  assert(outsideActiveOrderId !== null, 'Case N: an active canonical order exists outside the bounded projection');
+  const beforeConcurrentRepair = await getCustomerById(scaleCustomer.id);
+  await withAdminSession(async () => {
+    await Promise.all([
+      syncCustomerAggregates(scaleCustomer.id),
+      updateOrderStatus(outsideActiveOrderId!, { status: 'cancelled', actorName: 'Scale Tester' }),
+    ]);
+  });
+  const afterConcurrentRepair = await getCustomerById(scaleCustomer.id);
+  assert(afterConcurrentRepair!.totalOrders === beforeConcurrentRepair!.totalOrders - 1, 'Case N: aggregate repair cannot overwrite a concurrent outside-cache cancellation');
+  assert(afterConcurrentRepair!.lastOrderDateOrderId === afterConcurrentRepair!.orderSummaries![0].id, 'Case N: concurrent repair leaves the latest active source consistent');
 
   let oversizedProjectionBlocked = false;
   try {
