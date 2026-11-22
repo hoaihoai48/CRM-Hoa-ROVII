@@ -979,6 +979,21 @@ async function runTestSuite() {
   assert(scaleAfterOldUpdate!.orderSummaries?.some((summary) => summary.id === oldestActiveNew.id && summary.status === 'confirmed'), 'Case M: changed old order is retained in bounded projection');
   assert((scaleAfterOldUpdate!.orderSummaries ?? []).length <= 50, 'Case M: changed old order does not grow projection beyond 50');
 
+  await updateOrder(oldestActiveNew.id, {
+    items: [{ productId: p1.id, quantity: 1 }],
+    deliveryFee: 0,
+    discount: 0,
+    customerName: scaleCustomer.name,
+    customerAddress: scaleCustomer.address,
+    note: 'Scale projection edit',
+    actorName: 'Scale Tester',
+  });
+  const scaleAfterEdit = await getCustomerById(scaleCustomer.id);
+  assert(scaleAfterEdit!.totalOrders === scaleActive.length, 'Case M: editing a projected order preserves lifetime order count');
+  assert(scaleAfterEdit!.totalSpent === scaleCompleted.length * 1000, 'Case M: editing a non-completed order preserves completed spend');
+  assert(scaleAfterEdit!.orderSummaries?.some((summary) => summary.id === oldestActiveNew.id && summary.total === 350000), 'Case M: edit refreshes the changed summary total');
+  assert((scaleAfterEdit!.orderSummaries ?? []).length <= 50, 'Case M: editing an old order keeps the projection bounded');
+
   const latestActiveOrder = scaleLatestActive!;
   const nextLatestActive = [...scaleActive]
     .filter((row) => row.id !== latestActiveOrder.id)
