@@ -270,6 +270,51 @@ async function runTestSuite() {
   assert(legacyInternationalLookup?.id === legacyCustomerId, 'Lookup must find legacy phoneNormalized values');
 
   // ==========================================
+  // TEST: New customer + first order are atomic
+  // ==========================================
+  console.log('--- TEST ATOMICITY: New customer and first order ---');
+  const failedAtomicCustomerId = 'CUST_0901111223';
+  let atomicOrderRejected = false;
+  try {
+    await createOrder({
+      customerSnapshot: { name: 'Atomic Failure', phone: '0901111223', address: 'Atomic Test Address' },
+      items: [{ productId: pInactive.id, quantity: 1 }],
+      deliveryFee: 0,
+      discount: 0,
+      createdBy: 'Tester',
+    });
+  } catch {
+    atomicOrderRejected = true;
+  }
+  assert(atomicOrderRejected, 'Invalid product must reject a first-order transaction');
+  assert((await getCustomerById(failedAtomicCustomerId)) === null, 'Failed first-order transaction must not leave an orphan customer');
+
+  let forgedCustomerBlocked = false;
+  try {
+    const now = new Date().toISOString();
+    await setDoc(doc(db, 'customers', 'CUST_0901111225'), {
+      name: 'Forged Customer', phone: '0901111225', phoneNormalized: '0901111225', address: 'Forged Address',
+      totalOrders: 1, totalSpent: 0, lastOrderDate: now,
+      orderSummaries: [{ id: 'MISSING-ORDER', status: 'new', total: 100, createdAt: now }], createdAt: now,
+    });
+  } catch {
+    forgedCustomerBlocked = true;
+  }
+  assert(forgedCustomerBlocked, 'Rules must reject a non-empty first-customer projection without a matching order');
+
+  const atomicSuccess = await createOrder({
+    customerSnapshot: { name: 'Atomic Success', phone: '0901111224', address: 'Atomic Test Address' },
+    items: [{ productId: p1.id, quantity: 1 }],
+    deliveryFee: 0,
+    discount: 0,
+    createdBy: 'Tester',
+  });
+  const atomicCustomer = await getCustomerById('CUST_0901111224');
+  assert(atomicCustomer !== null, 'Successful first-order transaction must create the customer');
+  assert(atomicCustomer!.totalOrders === 1, 'New customer must receive the first order aggregate atomically');
+  assert(atomicCustomer!.orderSummaries?.some((summary) => summary.id === atomicSuccess.id) ?? false, 'New customer projection must contain the first order');
+
+  // ==========================================
   // TEST: Inactive / Invalid Product Guards
   // ==========================================
   console.log('--- TEST GUARD: Reject Inactive & Non-Existent Products ---');

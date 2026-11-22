@@ -249,3 +249,12 @@ Do not mark a step PASS unless all required exit criteria have verifiable eviden
 
 
 - Final post-merge CI status: workflow #44967174708 completed successfully on `main` commit `6ac8304c8df47fe0c2a94dd444591a59ebb5b2da`.
+
+
+## 13. S2 continuation — 2026-11-22
+
+- PR #11 implements atomic first-time customer + order creation using a single Firestore transaction, with matching Firestore Rules `getAfter()` validation. New-customer form no longer pre-creates the customer.
+- Emulator tests cover failed transaction rollback/no orphan, forged customer projection denial, and successful atomic first-order projection. Existing Playwright order flow exercises the new path.
+- S2 read-only findings and requirements deliberately left open are recorded in `docs/audits/CRM_HOA_ROVII_S2_ORDER_WORKFLOW_AUDIT_2026-11-22.md`.
+- PR #11 replacement CI run #44982298301 was pending at the time of this note; merge only after all checks pass.
+- No production data, deployment, billing changes, or destructive migrations.

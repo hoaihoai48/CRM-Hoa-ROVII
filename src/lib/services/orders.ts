@@ -212,7 +212,6 @@ export async function getOrderById(id: string): Promise<Order | null> {
 }
 
 export async function createOrder(input: CreateOrderInput): Promise<Order> {
-  if (!input.customerId) throw new Error('Khách hàng là bắt buộc.');
   if (
     !input.customerSnapshot.name.trim() ||
     !input.customerSnapshot.phone.trim() ||
@@ -227,7 +226,13 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
     throw new Error('Phí giao hàng và giảm giá phải là số hợp lệ, không âm.');
   }
 
-  const customerRef = doc(db, 'customers', input.customerId);
+  const phoneDigits = input.customerSnapshot.phone.replace(/\D/g, '');
+  const phoneNormalized = /^84[35789]\d{8}$/.test(phoneDigits) ? `0${phoneDigits.slice(2)}` : phoneDigits;
+  if (!/^0[35789]\d{8}$/.test(phoneNormalized)) {
+    throw new Error('Số điện thoại không hợp lệ (10 số, đầu 03/05/07/08/09).');
+  }
+  const customerId = input.customerId || `CUST_${phoneNormalized}`;
+  const customerRef = doc(db, 'customers', customerId);
   const orderId = `DH-${crypto.randomUUID()}`;
   const orderRef = doc(db, 'orders', orderId);
 
@@ -246,9 +251,6 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
   return await runTransaction(db, async (tx) => {
     // 1. ALL READS FIRST (Strict Firestore transaction rule: all tx.get before any writes)
     const customerSnap = await tx.get(customerRef);
-    if (!customerSnap.exists()) {
-      throw new Error(`Không tìm thấy khách hàng với ID: ${input.customerId}`);
-    }
 
     const productSnaps = await Promise.all(productRefs.map((p) => tx.get(p.ref)));
 
@@ -309,7 +311,7 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
     };
 
     const orderData = {
-      customerId: input.customerId,
+      customerId,
       customerSnapshot: {
         name: input.customerSnapshot.name.trim(),
         phone: input.customerSnapshot.phone.trim(),
@@ -332,7 +334,7 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
 
     // Transactionally read customer's existing order summaries from customer document
     // This makes customer aggregate computation 100% concurrency-safe with atomic transaction locks
-    const custRaw = customerSnap.data() || {};
+    const custRaw = customerSnap.exists() ? customerSnap.data() || {} : {};
     const existingSummaries: CustomerOrderSummary[] = Array.isArray(custRaw.orderSummaries)
       ? custRaw.orderSummaries.map((s: Record<string, unknown>) => ({
           id: String(s.id || ''),
@@ -368,7 +370,21 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
 
     // 3. ALL WRITES AFTER READS (Atomic)
     tx.set(orderRef, orderData);
-    tx.update(customerRef, updatedCustomerAggregates);
+    if (customerSnap.exists()) {
+      tx.update(customerRef, updatedCustomerAggregates);
+    } else {
+      // A first-time customer and the first order are committed together. If any
+      // product/order validation fails, neither document is written.
+      tx.set(customerRef, {
+        name: input.customerSnapshot.name.trim(),
+        phone: input.customerSnapshot.phone.trim(),
+        phoneNormalized,
+        address: input.customerSnapshot.address.trim(),
+        ...updatedCustomerAggregates,
+        note: null,
+        createdAt: now,
+      });
+    }
 
     return mapDocToOrder(orderId, orderData);
   });
