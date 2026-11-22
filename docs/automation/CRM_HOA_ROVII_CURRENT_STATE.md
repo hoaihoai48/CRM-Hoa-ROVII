@@ -1,6 +1,6 @@
 # CRM-Hoa-ROVII — Current Delivery Handoff
 
-**Last updated:** 2026-11-22 07:27 Asia/Ho_Chi_Minh  
+**Last updated:** 2026-11-22 07:35 Asia/Ho_Chi_Minh  
 **Repository:** https://github.com/hoaihoai48/CRM-Hoa-ROVII  
 **Default branch:** `main`  
 **Current main SHA:** read the live `main` ref before resuming (this handoff file is updated on every delivery session).
@@ -77,11 +77,11 @@ This is the restart point for a new ChatGPT conversation. Read it together with 
 
 ## Next action
 
-1. Verify completion of post-merge `main` workflow #44966225503.
-2. Verify PR #10 current GitHub Actions run; merge only if the fresh checks pass and no blocking review feedback remains.
-3. Treat Firebase Storage removal as a separate design item. Do not store unbounded image Data URLs in Firestore; add explicit size enforcement or a storage strategy before changing this area.
-4. Start S2 with a read-only audit of existing order-entry and fulfilment flows: recipient/delivery details, scheduling, order code, staff assignment and printable view.
-5. Keep each implementation step isolated and update this handoff after every meaningful session.
+1. S0/S1 and MCP follow-up PR #10 are merged; PR #10 CI and its post-merge `main` workflow #44967174708 both PASS.
+2. Continue S2 audit by inspecting order creation/edit regression tests, service transaction edges and preview print capabilities. Implementation has not started.
+3. Record a backward-compatible candidate order model and test matrix before feature work; ask the owner only for business semantics (purchaser vs recipient, delivery slots, staff assignment rules and print layout).
+4. Keep Firebase Storage/image-size design separate; do not store unbounded Data URLs in Firestore.
+5. Preserve Spark compatibility and update this handoff after every meaningful session.
 
 ## Session log — 2026-11-22
 
@@ -96,7 +96,7 @@ This is the restart point for a new ChatGPT conversation. Read it together with 
 
 ## New-chat instruction
 
-Read this handoff and the playbook, then fetch live GitHub state. S0 and S1 are complete and merged. Verify and merge PR #10 if its fresh checks pass, then proceed to S2 read-only workflow audit. Do not repeat S0/S1 work or reopen PR #5/#6.
+Read this handoff and the playbook, then fetch live GitHub state. S0/S1 and PR #10 are complete and merged. PR #10 CI run #44966591236 and post-merge main run #44967174708 both PASS. Continue S2 read-only audit; do not repeat completed work or reopen PR #5/#6.
 
 
 ### Session continuation — 2026-11-22 (MCP PR cleanup)
@@ -114,7 +114,7 @@ Read this handoff and the playbook, then fetch live GitHub state. S0 and S1 are 
 - Verified PR #10 CI run #44966591236 completed successfully on head `2e745efc26d0e6786cdbb18999f6e822127e4e00`. All job steps passed: dependency audit/report, Functions syntax, MCP syntax and protocol/safety smoke, lint, TypeScript, Firebase Emulator integration, Chromium install, Playwright browser E2E, production build and diagnostics upload.
 - Vercel Preview for PR #10 was Ready; review submissions and inline review threads were empty. Marked PR #10 ready for review and squash-merged.
 - PR #10 merge commit: `6ac8304c8df47fe0c2a94dd444591a59ebb5b2da`; live `main` ref confirmed at this SHA.
-- Main post-merge workflow #44967174708 was still in progress at this handoff; do not mark the post-merge run PASS until completed. Latest inspected state: MCP checks, lint, typecheck passed; Emulator integration step in progress; Playwright/build pending.
+- Main post-merge workflow #44967174708: PASS. All steps passed including Firebase Emulator integration, Playwright Chromium E2E, production build and diagnostics artifact upload. https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44967174708
 - Read-only S2 audit inspected order creation page, order list/detail pages, order/customer/staff services, TypeScript models and Firestore Rules.
 - Current order-entry UI stores customer name/phone/address together in `customerSnapshot`; it does not distinguish purchaser from recipient. Delivery is a single `deliveryDate` datetime-local field, and note combines greeting-card text with instructions. No dedicated recipient phone/address, delivery window, assigned-staff ID or printable order view was found in inspected order UI/model.
 - Orders receive an ID formatted `DH-${crypto.randomUUID()}`; order list/detail routes expose this document ID. It is not a human-friendly sequential code.
@@ -123,3 +123,6 @@ Read this handoff and the playbook, then fetch live GitHub state. S0 and S1 are 
 - Firestore Rules allow order keys only for current schema and would reject additive recipient/assignment fields until rules/types/services are updated together. No migrations or writes performed.
 - No production data accessed, no production deployment, billing/configuration change, or destructive migration.
 - S2 remains AUDIT IN PROGRESS / implementation NOT STARTED. Follow-up: finish reviewing all order detail UI and service update methods, inspect test coverage for order creation/edit, then document candidate data model and explicitly separate business choices requiring owner input (recipient vs purchaser semantics, delivery date/time rules, staff assignment policy, print layout).
+
+
+- Final verification correction: post-merge main run #44967174708 completed `success`; the earlier in-progress observation above is superseded.
