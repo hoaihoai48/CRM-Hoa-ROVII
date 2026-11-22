@@ -1229,7 +1229,10 @@ async function runTestSuite() {
   await uploadBytes(adminStorageObject, new Uint8Array([0xff, 0xd8, 0xff, 0xd9]), {
     contentType: 'image/jpeg',
   });
-  console.log('     ✓ Active admin can upload a valid product image');
+  await uploadBytes(adminStorageObject, new Uint8Array([0xff, 0xd8, 0xff, 0xd9]), {
+    contentType: 'image/jpeg',
+  });
+  console.log('     ✓ Active admin can create and update a product image');
 
   await signInWithEmailAndPassword(auth, testStaffEmail, testStaffPass);
   let staffStorageUploadBlocked = false;
@@ -1242,7 +1245,17 @@ async function runTestSuite() {
   } catch {
     staffStorageUploadBlocked = true;
   }
-  assert(staffStorageUploadBlocked, 'Active staff must not upload product images');
+  assert(staffStorageUploadBlocked, 'Active staff must not create product images');
+
+  let staffStorageUpdateBlocked = false;
+  try {
+    await uploadBytes(adminStorageObject, new Uint8Array([0xff, 0xd8, 0xff, 0xd9]), {
+      contentType: 'image/jpeg',
+    });
+  } catch {
+    staffStorageUpdateBlocked = true;
+  }
+  assert(staffStorageUpdateBlocked, 'Active staff must not replace existing product images');
 
   let staffStorageDeleteBlocked = false;
   try {
