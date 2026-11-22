@@ -3,7 +3,7 @@
 - **Repository:** hoaihoai48/CRM-Hoa-ROVII
 - **Default branch:** main
 - **Operating model:** internal-first, SaaS-ready architecture, Firebase Spark-compatible, sales and CRM first
-- **Current delivery state:** S0/S1 complete; S2 technical hardening delivered through PR #18; S2 business semantics await owner decisions; security hardening PR #22 is active.
+- **Current delivery state:** S0/S1 complete; S2 technical hardening delivered through PR #18; Firebase F-02 Storage authorization is resolved by PR #22; F-01/F-03/F-04/F-05 remain in the security backlog; S2 business semantics await owner decisions.
 
 ## 1. Non-negotiable delivery rules
 
@@ -162,25 +162,25 @@ The audit contains a backward-compatible optional-field candidate and regression
 
 | Field | Value |
 |---|---|
-| Active step | PR #22 — Storage Rules + isolated Emulator hardening; S2 business semantics remain owner-gated |
+| Active step | Verify post-merge main CI for PR #22, then begin F-01 customer aggregate Rules hardening; S2 business semantics remain owner-gated |
 | S0 | COMPLETE |
 | S1 | COMPLETE |
 | S2 technical hardening | COMPLETE through PR #18 |
-| Open PR inventory | PR #22 open; PR #21 merged; PR #23 closed unmerged |
-| Latest code merge | 83c354436ff9dfedca180832fcec324c03a36ffa (PR #18) |
+| Open PR inventory | None after PR #22 merge; PR #23 closed unmerged |
+| Latest code merge | 3efd04c601b4bffaa976edad38c282e921d82be4 (PR #22) |
 | Latest docs merge | e728de1b8b98f91e976a3336a657720f4020f6b8 (PR #21) |
 | Final PR #16 CI | #44988852658 — PASS |
 | PR #16 Preview | Ready; zero unresolved feedback |
 | Post-merge main CI | #45008753697 — PASS (PR #18); #45008325128 — PASS (PR #17) |
 | Production data | NOT ACCESSED |
 | Production deployment | NOT PERFORMED |
-| Next action | Finish PR #22 latest-head CI/review, merge if all gates pass, then close F-02 in the audit; continue non-blocked security hardening without guessing owner-gated business semantics |
+| Next action | Verify post-merge main Actions for PR #22; then address F-01 customer scalar aggregate tampering with Emulator negative/positive coverage and a backward-compatible Rules design |
 
 PR #17 paginates customer detail history (25-row pages); PR #18 makes actor UIDs mandatory on appended history entries for UID-attributed orders while preserving legacy compatibility. Do not mark S2 fully complete until the remaining owner decisions have been implemented and their end-to-end acceptance criteria pass.
 
 ## 10. Resume instruction
 
-Every new run must re-read this playbook and docs/automation/CRM_HOA_ROVII_CURRENT_STATE.md, fetch the live main ref, inspect open PRs and the latest Actions runs, and continue from the earliest incomplete step. PRs #8–#18 and #21 are merged; PR #23 is closed unmerged; PR #22 is active. Never infer a successful CI result from a started or cancelled workflow.
+Every new run must re-read this playbook and docs/automation/CRM_HOA_ROVII_CURRENT_STATE.md, fetch the live main ref, inspect open PRs/branches and the latest Actions/review state, and continue from the earliest incomplete step. PRs #8–#22 are merged; PR #23 is closed unmerged. Verify post-merge main CI for PR #22 before claiming it passed. Never infer a successful CI result from a started or cancelled workflow.
 
 
 ## 11. Delivery update — PRs #17–#18
