@@ -253,8 +253,11 @@ Do not mark a step PASS unless all required exit criteria have verifiable eviden
 
 ## 13. S2 continuation — 2026-11-22
 
-- PR #11 implements atomic first-time customer + order creation using a single Firestore transaction, with matching Firestore Rules `getAfter()` validation. New-customer form no longer pre-creates the customer.
+- PR #11 (https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/11) is merged at `73bb72ca19e5af82027e7f27096e693cb5892497`. It implements atomic first-time customer + order creation using a single Firestore transaction, with matching Firestore Rules `getAfter()` validation. New-customer form no longer pre-creates the customer.
 - Emulator tests cover failed transaction rollback/no orphan, forged customer projection denial, and successful atomic first-order projection. Existing Playwright order flow exercises the new path.
 - S2 read-only findings and requirements deliberately left open are recorded in `docs/audits/CRM_HOA_ROVII_S2_ORDER_WORKFLOW_AUDIT_2026-11-22.md`.
-- PR #11 replacement CI run #44982298301 was pending at the time of this note; merge only after all checks pass.
+- PR CI run #44982355903 PASS. Post-merge main workflow #44982521247 PASS, including Firebase Emulator integration, Playwright E2E and production build.
 - No production data, deployment, billing changes, or destructive migrations.
+
+
+- Confirmed final post-merge main CI #44982521247 completed `success` on commit `73bb72ca19e5af82027e7f27096e693cb5892497`.
