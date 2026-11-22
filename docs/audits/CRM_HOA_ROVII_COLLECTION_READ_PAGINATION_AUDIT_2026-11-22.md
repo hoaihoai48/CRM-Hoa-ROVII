@@ -48,5 +48,7 @@ Cursor-based pagination should use Firestore `orderBy('createdAt', 'desc')`, `li
 - Added `listOrdersPage()` and `listCustomersPage()` using `createdAt desc`, Firestore snapshot cursors, and a default page size of 50 (maximum 100).
 - Normal browsing loads the first 50 records and exposes an explicit “Tải thêm” action. The extra look-ahead document determines `hasMore` without skipping a record between pages.
 - To preserve current global substring search and status-filter behavior, activating search or a non-default order status loads the complete collection and applies the existing client-side filter. Clearing all filters returns to the first cursor page. This intentionally means broad searches still read the full collection.
-- Emulator Case Q seeds eight orders and seven customers, traverses pages of three, and checks ordering, page sizes, no duplicates/skips, and correct final-page behavior.
-- PR #16 and CI status will be recorded after final-head verification and merge.
+- Emulator Case Q traverses eight orders scoped to one synthetic customer and verifies three-row pages, final two-row page, ordering and no duplicates/skips. It also verifies the first seven newest customer fixtures across cursor pages; unrelated older customer records may legitimately remain after those fixtures.
+- PR #16: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/16 — squash-merged at `7e923b5a0a996468a211f76b8d1ff715699e3ce4`.
+- Final PR head: `83e0d6c09978ea163e7b4d0f6280d3dd3b0f2f8c`; final PR CI #44988852658 PASS (lint, typecheck, Emulator, Playwright and production build). Earlier CI attempts exposed two test-fixture assumptions (unscoped orders and unrelated customer rows); the tests were corrected and final head passed.
+- Vercel Preview for final PR head was Ready with zero unresolved feedback. Post-merge main workflow #44989024153 is still pending final verification at this handoff.
