@@ -312,7 +312,7 @@ async function runTestSuite() {
   const atomicCustomer = await getCustomerById('CUST_0901111224');
   assert(atomicCustomer !== null, 'Successful first-order transaction must create the customer');
   assert(atomicCustomer!.totalOrders === 1, 'New customer must receive the first order aggregate atomically');
-  assert(atomicCustomer!.orderSummaries?.some((summary) => summary.id === atomicSuccess.id), 'New customer projection must contain the first order');
+  assert(atomicCustomer!.orderSummaries?.some((summary) => summary.id === atomicSuccess.id) ?? false, 'New customer projection must contain the first order');
 
   // ==========================================
   // TEST: Inactive / Invalid Product Guards
