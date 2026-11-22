@@ -936,7 +936,7 @@ async function runTestSuite() {
   // ==========================================
   // CASE M: Large customer histories stay below the Firestore document-size ceiling.
   // ==========================================
-  console.log('\\n--- CASE M: Bounded customer order projection ---');
+  console.log('\n--- CASE M: Bounded customer order projection ---');
   const scaleCustomer = await createCustomer({
     name: 'Khách hàng Scale',
     phone: '0900888777',
