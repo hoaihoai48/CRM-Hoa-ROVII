@@ -5,11 +5,11 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    function isActiveStaff() {
+    function isActiveAdmin() {
       return isAuthenticated()
         && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
         && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.status == 'active'
-        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'staff'];
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     function isImageFile() {
@@ -18,12 +18,13 @@ service firebase.storage {
         && request.resource.size < 10 * 1024 * 1024;
     }
 
-    // Public read for product images so customers & web views can render them
-    // Writes restricted to active staff/admins (consistent with Firestore policy)
+    // Product images remain publicly readable for storefront and CRM views.
+    // Product catalog writes are admin-only in Firestore, so image writes/deletes
+    // must use the same active-admin boundary.
     match /products/{allPaths=**} {
       allow read: if true;
-      allow write: if isActiveStaff() && isImageFile();
-      allow delete: if isActiveStaff();
+      allow write: if isActiveAdmin() && isImageFile();
+      allow delete: if isActiveAdmin();
     }
   }
 }
