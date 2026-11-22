@@ -84,7 +84,7 @@ Firestore Rules already enforce important controls: active membership for busine
 - New records with creator UID require actor UID equal to the authenticated UID for appended status-history entries. Legacy orders without creator UID remain compatible.
 - Customer phone identity and creation timestamp are immutable through customer updates.
 - The emulator test harness targets the explicit demo project `demo-crm-hoa-rovii` and starts Auth + Firestore + Storage; direct Emulator test scripts fail closed unless the demo project and loopback emulator hosts are configured.
-- Docs-only changes under `docs/**` and Markdown files are excluded from the quality workflow by its `paths-ignore` configuration; no CI PASS should be inferred for docs-only PRs.
+- Docs-only changes under `docs/**` and Markdown files are excluded from the quality workflow by `paths-ignore`; for a PR whose entire diff is documentation, record Actions as NOT RUN (never PASS), state that application build/isolated app tests are not relevant, and mark Preview N/A when runtime/UI and Vercel deployment configuration are unchanged. This docs-only exception does not apply to Rules or emulator/test-infrastructure changes, which require latest-head Actions production build and relevant isolated tests before Preview can be N/A.
 
 ## Verification boundaries
 
