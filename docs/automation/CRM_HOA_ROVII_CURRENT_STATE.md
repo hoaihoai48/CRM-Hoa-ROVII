@@ -24,7 +24,7 @@
 - Firebase security hardening: F-02 Storage authorization mismatch RESOLVED by PR #22; F-01 customer aggregate integrity, F-03 Data URL size bounds, F-04 membership-field hardening and F-05 historical documentation remain open.
 - PR #21 security audit: MERGED.
 - PR #22 active-admin Storage Rules + isolated Storage Emulator coverage: MERGED.
-- Open PR inventory: none at the latest inspection.
+- Open PR inventory: PR #24 documentation-only handoff synchronization is open on branch docs/record-pr22-storage-security-merge-2026-11-23; Codex code review is running. PR #23 remains closed unmerged.
 - PR #22 final head 36ae3bf27c74e55cb674c00209e78df580ebf562; PR CI #45043911114 completed SUCCESS, including Auth/Firestore/Storage Emulator tests, Playwright E2E and production build.
 - Post-merge main Actions result for merge commit 3efd04c601b4bffaa976edad38c282e921d82be4 was not returned by the available commit-workflow query; do not claim post-merge CI PASS until independently observed. Vercel reported the Free daily deployment quota limit; Preview is not an applicable gate for this Rules/test-infrastructure-only PR.
 - No production data, deployment, billing or destructive migration touched.
@@ -103,11 +103,12 @@ A backward-compatible optional-field candidate and regression matrix are recorde
 2. Continue with F-01 customer scalar aggregate tampering: add a negative Emulator case proving an active client can currently forge scalar aggregates, then design a compatible Rules guard that preserves create/edit/status/cancel transactions. Do not weaken valid atomic order workflows.
 3. Keep F-03 Data URL byte-size validation, F-04 membership metadata immutability/self-demotion policy, and F-05 historical source-audit correction as subsequent focused steps.
 4. Do not implement the owner-gated S2 business semantics without decisions.
-5. No production data repair, deployment/release, billing change, paid Firebase service or destructive migration is authorized.
+5. PR #24 is a docs-only follow-up to synchronize the handoff/audit after PR #22; review is pending and Preview/Actions are not applicable under the docs-only path policy.
+6. No production data repair, deployment/release, billing change, paid Firebase service or destructive migration is authorized.
 
 ## New-chat instruction
 
-Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md from main. Fetch the live main ref, open PR inventory, branches and latest Actions/review state. PR #22 is merged as 3efd04c601b4bffaa976edad38c282e921d82be4; its final head was 36ae3bf27c74e55cb674c00209e78df580ebf562, PR CI #45043911114 PASS, Codex code review completed without findings, independent security review found no blocker, and no unresolved review threads remained. Post-merge main Actions were not returned by the current connector query; verify before claiming PASS. PR #23 remains closed unmerged. Next safe work is F-01 customer aggregate integrity; do not repeat PRs #8–#22.
+Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md from main. Fetch the live main ref, open PR inventory, branches and latest Actions/review state. PR #22 is merged as 3efd04c601b4bffaa976edad38c282e921d82be4; its final head was 36ae3bf27c74e55cb674c00209e78df580ebf562, PR CI #45043911114 PASS, Codex code review completed without findings, independent security review found no blocker, and no unresolved review threads remained. Post-merge main Actions were not returned by the current connector query; verify before claiming PASS. PR #24 is open docs-only on branch docs/record-pr22-storage-security-merge-2026-11-23; its Codex code review is pending. PR #23 remains closed unmerged. Next safe work after PR #24 closes is F-01 customer aggregate integrity; do not repeat PRs #8–#22.
 
 
 ## Delivery update — 2026-11-22 (PRs #17–#18)
@@ -150,3 +151,12 @@ Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK
 - Review gates: Codex code review completed on 36ae3bf27c with no major findings; independent security review on the full SHA found no additional source-level blocker; zero unresolved inline threads. Vercel deployment was rate-limited by the Free daily quota; Preview was correctly treated as N/A because the PR changes Rules/test infrastructure, not runtime/UI or Vercel deployment configuration.
 - Post-merge main Actions for 3efd04c601b4bffaa976edad38c282e921d82be4 were not returned by the available commit-workflow query. Combined status showed only a pending Vercel context; do not treat that as GitHub Actions evidence. Verify a push-triggered main run when available.
 - F-02 is resolved. No production data, production deployment, billing, Firebase project settings, paid service or migration was touched.
+
+
+## Delivery update — 2026-11-23 (PR #24 handoff synchronization opened)
+
+- PR #24: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/24 — documentation-only synchronization of this handoff, playbook and Firebase security audit after PR #22 merged.
+- Branch: docs/record-pr22-storage-security-merge-2026-11-23. Initial PR head: e36bf7fa119601ab4c5d0722a0d93805b8c6fb83; base: 3efd04c601b4bffaa976edad38c282e921d82be4.
+- Scope is limited to the three Markdown documents. No application/runtime code, Firebase Rules, project configuration, production data, billing or deployment changes.
+- Codex code review was running on the initial PR head at the latest check; no review result or unresolved finding was yet available. Re-request review if the branch head changes.
+- Actions and Vercel Preview are not applicable for this docs-only change under the repository paths-ignore and delivery policy. Do not claim CI/Preview PASS.
