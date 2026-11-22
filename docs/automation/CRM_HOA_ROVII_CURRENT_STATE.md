@@ -100,7 +100,7 @@ A backward-compatible optional-field candidate and regression matrix are recorde
 
 ## New-chat instruction
 
-Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md. Fetch the live main ref, open PR inventory and latest Actions runs. PRs #17 and #18 are merged; PR #17 CI #45008095660 / main #45008325128 and PR #18 CI #45008498582 / main #45008753697 all passed. Latest docs versions: S2 audit e916bd37c578050127f6ce2814b2cf19e7c3e29c, pagination audit 0350da5476a8351febdd4c3f6ccbc1c3e989c643, playbook 39313a14bd3cdc5be24fc844ca98ef77bf1275a7. The next blocker is the business decisions in the S2 audit; do not repeat PRs #8–#18.
+Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md. Fetch the live main ref, open PR inventory and latest Actions runs. PRs #17 and #18 are merged; PR #17 CI #45008095660 / main #45008325128 and PR #18 CI #45008498582 / main #45008753697 all passed. Latest docs versions: S2 audit e916bd37c578050127f6ce2814b2cf19e7c3e29c, pagination audit 0350da5476a8351febdd4c3f6ccbc1c3e989c643, playbook `39313a14bd3cdc5be24fc844ca98ef77bf1275a7` (pre-PR #19; see latest playbook revision on main). The next blocker is the business decisions in the S2 audit; do not repeat PRs #8–#18.
 
 
 ## Delivery update — 2026-11-22 (PRs #17–#18)
