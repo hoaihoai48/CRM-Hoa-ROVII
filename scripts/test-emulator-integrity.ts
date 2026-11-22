@@ -1004,6 +1004,21 @@ async function runTestSuite() {
   assert(scaleAfterCreate!.orderSummaries?.some((summary) => summary.id === scaleNewOrder.id), 'Case M: new order is present in bounded projection');
   assert((scaleAfterCreate!.orderSummaries ?? []).length <= 50, 'Case M: new order keeps projection bounded to 50');
 
+  let oversizedProjectionBlocked = false;
+  try {
+    await updateDoc(doc(db, 'customers', scaleCustomer.id), {
+      orderSummaries: Array.from({ length: 52 }, (_, index) => ({
+        id: `FORGED-SUMMARY-${index}`,
+        status: 'new',
+        total: 1000,
+        createdAt: new Date(scaleBase + index * 60_000).toISOString(),
+      })),
+    });
+  } catch {
+    oversizedProjectionBlocked = true;
+  }
+  assert(oversizedProjectionBlocked, 'Case M: Firestore Rules reject a customer projection larger than 51 entries');
+
   // ==========================================
   // SECURITY TESTS: Role-based Firestore Authorization
   // ==========================================
