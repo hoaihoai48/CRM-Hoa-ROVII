@@ -52,7 +52,7 @@ export interface Customer {
   lastOrderMutationOrderId?: string;
   /** Unique final status-history entry ID for the current order mutation. */
   lastOrderMutationId?: string;
-  /** Bounded recent-order projection (max 51, including a currently changed cancelled order); not the lifetime source of truth. */
+  /** Bounded active-only recent-order projection (max 51); cancelled orders remain canonical in orders. */
   orderSummaries?: CustomerOrderSummary[];
   note?: string;
   createdAt: string;
