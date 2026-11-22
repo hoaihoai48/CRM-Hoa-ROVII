@@ -23,7 +23,7 @@
 - S2 — Sales/order workflow technical hardening: substantial safe work COMPLETE; business semantics remain blocked on owner decisions listed below.
 - PR #16 cursor pagination: MERGED.
 - Open PR inventory at last inspection: none.
-- Post-merge main workflow #44989024153 for PR #16 merge commit is pending final verification; do not mark it PASS until completed.
+- Post-merge main workflow #44989024153 completed PASS on PR #16 merge commit; all CI steps passed.
 - No production data, deployment, billing or destructive migration touched.
 
 ## Merged delivery inventory
@@ -38,7 +38,7 @@
 | #13 | Browser-native A4 printable order slip | bd3e259082b8f600db4474e39947b0ee0218e4fa | PR CI #44983725322 and post-merge #44983907739 passed |
 | #14 | Bounded customer order projection and delta aggregates | 568083053d7311f6d5abbe608f3a100f0c803444 | PR CI #44985057671 and post-merge #44985288167 passed |
 | #15 | Dashboard bounded reads/local-day query | 4ce6d95095141180cb855426bff8c94c722b880b | PR CI #44985805872 and post-merge #44986041575 passed |
-| #16 | Cursor pagination for orders/customers | 7e923b5a0a996468a211f76b8d1ff715699e3ce4 | Final PR head 83e0d6c09978ea163e7b4d0f6280d3dd3b0f2f8c; PR CI #44988852658 passed; post-merge #44989024153 pending |
+| #16 | Cursor pagination for orders/customers | 7e923b5a0a996468a211f76b8d1ff715699e3ce4 | Final PR head 83e0d6c09978ea163e7b4d0f6280d3dd3b0f2f8c; PR CI #44988852658 and post-merge #44989024153 passed |
 
 Relevant links:
 - [PR #16](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/16)
@@ -92,11 +92,11 @@ A backward-compatible optional-field candidate and regression matrix are recorde
 
 ## Next action
 
-1. Verify post-merge main workflow #44989024153 reaches completed / success.
+1. Post-merge main workflow #44989024153 is verified completed / success.
 2. No further purchaser/recipient, delivery-slot, note, order-code, assignment or print-content implementation until the owner supplies the business decisions above.
 3. Once those decisions are supplied, implement one vertical slice at a time with coordinated types + service + Firestore Rules + Emulator positive/negative tests + Playwright + print verification.
 4. Continue other non-blocked engineering/audit work only if it does not assume these unresolved business semantics.
 
 ## New-chat instruction
 
-Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md. Fetch the live main ref, open PR inventory and latest Actions runs. PR #16 is merged; its PR CI #44988852658 passed. First verify post-merge run #44989024153. Then pause only at the business decisions in the S2 audit; do not repeat PRs #8–#16.
+Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md. Fetch the live main ref, open PR inventory and latest Actions runs. PR #16 is merged; PR CI #44988852658 and post-merge main CI #44989024153 both passed. Latest docs updates: S2 audit 6cc04b72a96d503775125b0f834fb57c83517d6e, pagination audit 34a0aadbabe883d365a841a96a4dfbc8d50aec31, playbook b2330f96d8e73c1ba062101144f7516aa6152f16. The next blocker is only the business decisions in the S2 audit; do not repeat PRs #8–#16.
