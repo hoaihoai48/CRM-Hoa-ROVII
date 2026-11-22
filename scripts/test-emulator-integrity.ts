@@ -10,6 +10,22 @@ import { createCustomer, findCustomerByPhone, getCustomerById, listCustomersPage
 import { createOrder, getDashboardOrders, getOrderById, listOrdersPage, syncCustomerAggregates, updateOrder, updateOrderStatus } from '../src/lib/services/orders';
 import { Product } from '../src/types';
 
+const DEMO_PROJECT_ID = 'demo-crm-hoa-rovii';
+const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? '';
+const authEmulatorHost = process.env.FIREBASE_AUTH_EMULATOR_HOST ?? '';
+const firestoreHost = process.env.FIRESTORE_EMULATOR_HOST ?? '';
+const isLoopbackEmulatorHost = (host: string) => /^(127\\.0\\.0\\.1|localhost):\\d+$/.test(host);
+
+if (
+  projectId !== DEMO_PROJECT_ID ||
+  !isLoopbackEmulatorHost(authEmulatorHost) ||
+  !isLoopbackEmulatorHost(firestoreHost)
+) {
+  throw new Error(
+    'Refusing to run Firestore integrity tests outside the isolated demo-crm-hoa-rovii Auth/Firestore Emulators. Use npm run test:emulator.'
+  );
+}
+
 function assert(condition: boolean, message: string) {
   if (!condition) {
     console.error(`❌ ASSERTION FAILED: ${message}`);
@@ -27,8 +43,8 @@ async function provisionUserMembership(
   uid: string,
   membership: { email: string; role: 'admin' | 'staff'; status: 'active' | 'inactive' }
 ) {
-  const host = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'crm-hoa-rovii';
+  const host = firestoreHost;
+  const projectId = DEMO_PROJECT_ID;
   const url = `http://${host}/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`;
   const res = await fetch(url, {
     method: 'PATCH',
