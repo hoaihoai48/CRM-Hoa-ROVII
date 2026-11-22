@@ -289,6 +289,19 @@ async function runTestSuite() {
   assert(atomicOrderRejected, 'Invalid product must reject a first-order transaction');
   assert((await getCustomerById(failedAtomicCustomerId)) === null, 'Failed first-order transaction must not leave an orphan customer');
 
+  let forgedCustomerBlocked = false;
+  try {
+    const now = new Date().toISOString();
+    await setDoc(doc(db, 'customers', 'CUST_0901111225'), {
+      name: 'Forged Customer', phone: '0901111225', phoneNormalized: '0901111225', address: 'Forged Address',
+      totalOrders: 1, totalSpent: 0, lastOrderDate: now,
+      orderSummaries: [{ id: 'MISSING-ORDER', status: 'new', total: 100, createdAt: now }], createdAt: now,
+    });
+  } catch {
+    forgedCustomerBlocked = true;
+  }
+  assert(forgedCustomerBlocked, 'Rules must reject a non-empty first-customer projection without a matching order');
+
   const atomicSuccess = await createOrder({
     customerSnapshot: { name: 'Atomic Success', phone: '0901111224', address: 'Atomic Test Address' },
     items: [{ productId: p1.id, quantity: 1 }],
