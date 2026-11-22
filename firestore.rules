@@ -225,18 +225,21 @@ service cloud.firestore {
     // and after snapshots are reused for history, projection and scalar-delta checks.
     function validLastOrderDateSource(customerId) {
       let sourceId = request.resource.data.get('lastOrderDateOrderId', null);
+      let source = sourceId is string && sourceId.size() > 0
+        ? getAfter(/databases/$(database)/documents/orders/$(sourceId)).data
+        : {};
       return (request.resource.data.lastOrderDate == '' && sourceId == null)
         || (
           sourceId is string
           && sourceId.size() > 0
-          && getAfter(/databases/$(database)/documents/orders/$(sourceId)).data.customerId == customerId
-          && getAfter(/databases/$(database)/documents/orders/$(sourceId)).data.status != 'cancelled'
-          && getAfter(/databases/$(database)/documents/orders/$(sourceId)).data.createdAt == request.resource.data.lastOrderDate
+          && source.customerId == customerId
+          && source.status != 'cancelled'
+          && source.createdAt == request.resource.data.lastOrderDate
           && {
             'id': sourceId,
-            'status': getAfter(/databases/$(database)/documents/orders/$(sourceId)).data.status,
-            'total': getAfter(/databases/$(database)/documents/orders/$(sourceId)).data.summary.total,
-            'createdAt': getAfter(/databases/$(database)/documents/orders/$(sourceId)).data.createdAt
+            'status': source.status,
+            'total': source.summary.total,
+            'createdAt': source.createdAt
           } in request.resource.data.orderSummaries
         );
     }
