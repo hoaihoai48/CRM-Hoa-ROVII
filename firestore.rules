@@ -345,14 +345,18 @@ service cloud.firestore {
         'createdAt': before.createdAt
       } : {};
       let wasProjected = oldOrderSummary in oldSummaries;
-      let canDropOldest = isSafeOldestCompaction(
-        oldSummaries, beforeExists, oldOrderSummary, expectedSummary, afterStatus
+      let canDropOldest = oldSummaries.size() == 10
+        && afterStatus != 'cancelled'
+        && summaryAtLeastAsRecent(expectedSummary, oldSummaries[9])
+        && (!beforeExists || !wasProjected);
+      let allowedNewSummaries = oldSummaries.toSet().union([expectedSummary].toSet()).union(
+        request.resource.data.get('lastOrderRefillOrderId', null) is string
+          ? [refillSummary].toSet()
+          : [].toSet()
       );
-      let oldestSummary = canDropOldest ? oldSummaries[9] : {};
-      let refillId = request.resource.data.get('lastOrderRefillOrderId', null);
-      let allowedNewSummaries = afterStatus == 'cancelled'
-        ? oldSummaries.toSet().union(refillId is string ? [refillSummary].toSet() : [].toSet())
-        : oldSummaries.toSet().union([expectedSummary].toSet());
+      let allowedRemovedSummaries = [oldOrderSummary].toSet().union(
+        canDropOldest ? [oldSummaries[9]].toSet() : [].toSet()
+      );
       let mayOmitChangedSummary = afterStatus != 'cancelled'
         && !wasProjected
         && newSummaries.size() == 10
@@ -361,16 +365,13 @@ service cloud.firestore {
         && oldSummaries.size() <= 10
         && newSummaries is list
         && newSummaries.size() <= 10
-        && (newSummaries.size() < 10 || validOldestChunk0(newSummaries))
-        && validCustomerRefill(customerId, orderId, newSummaries, afterStatus, refillSummary)
         && newSummaries.toSet().size() == newSummaries.size()
         && newSummaries.toSet().hasOnly(allowedNewSummaries)
+        && oldSummaries.toSet().difference(newSummaries.toSet()).hasOnly(allowedRemovedSummaries)
+        && validCustomerRefill(customerId, orderId, newSummaries, afterStatus, refillSummary)
         && (
           (afterStatus == 'cancelled' && !(expectedSummary in newSummaries))
           || (afterStatus != 'cancelled' && (expectedSummary in newSummaries || mayOmitChangedSummary))
-        )
-        && validPreviousProjectionRetention(
-          oldSummaries, newSummaries, oldOrderSummary, canDropOldest, oldestSummary
         );
     }
 
@@ -379,19 +380,26 @@ service cloud.firestore {
       let beforeExists = exists(orderPath);
       let before = beforeExists ? get(orderPath).data : {};
       let after = getAfter(orderPath).data;
-      let historySize = after.statusHistory.size();
-      let historyEntry = after.statusHistory[historySize - 1];
-      let oldActive = beforeExists && before.status != 'cancelled' ? 1 : 0;
-      let newActive = after.status != 'cancelled' ? 1 : 0;
-      let oldCompletedTotal = beforeExists && before.status == 'completed' ? before.summary.total : 0;
-      let newCompletedTotal = after.status == 'completed' ? after.summary.total : 0;
+      let expectedSummary = {
+        'id': orderId,
+        'status': after.status,
+        'total': after.summary.total,
+        'createdAt': after.createdAt
+      };
+      let refillSummary = customerRefillSummary();
       return after.customerId == customerId
-        && historySize == (beforeExists ? before.statusHistory.size() + 1 : 1)
-        && historyEntry.id == request.resource.data.lastOrderMutationId
+        && after.statusHistory.size() == (beforeExists ? before.statusHistory.size() + 1 : 1)
+        && after.statusHistory[after.statusHistory.size() - 1].id == request.resource.data.lastOrderMutationId
         && request.resource.data.lastOrderMutationOrderId == orderId
         && request.resource.data.lastOrderMutationId != resource.data.get('lastOrderMutationId', null)
-        && request.resource.data.totalOrders == resource.data.totalOrders + newActive - oldActive
-        && request.resource.data.totalSpent == resource.data.totalSpent + newCompletedTotal - oldCompletedTotal
+        && request.resource.data.totalOrders == resource.data.totalOrders
+          + (after.status != 'cancelled' ? 1 : 0)
+          - (beforeExists && before.status != 'cancelled' ? 1 : 0)
+        && request.resource.data.totalSpent == resource.data.totalSpent
+          + (after.status == 'completed' ? after.summary.total : 0)
+          - (beforeExists && before.status == 'completed' ? before.summary.total : 0)
+        && validCustomerOrderProjection(customerId, expectedSummary, orderId, beforeExists, before, after.status, refillSummary)
+        && validLastOrderDateSource(orderId, expectedSummary, after.status, refillSummary)
         && boundedCustomerProjection(request.resource.data);
     }
 
