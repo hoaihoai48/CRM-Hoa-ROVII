@@ -126,7 +126,7 @@ service cloud.firestore {
         && (summaries.size() <= 7 || summaryNoLater(summaries[summaries.size() - 1], summaries[7]))
         && (summaries.size() <= 8 || summaryNoLater(summaries[summaries.size() - 1], summaries[8]))
         && (summaries.size() <= 9 || summaryNoLater(summaries[summaries.size() - 1], summaries[9]))
-        && (summaries.size() <= 10 || summaryNoLater(summaries[summaries.size() - 1], summaries[10]));
+;
     }
 
     function validProjectionBounds(summaries) {
@@ -135,7 +135,7 @@ service cloud.firestore {
         && validSummaryChunk0(summaries)
         && validLatestChunk0(summaries)
         && validOldestChunk0(summaries)
-        && validOldestChunk1(summaries);
+;
     }
 
     function isSafeOldestCompaction(oldSummaries, beforeExists, oldOrderSummary, expectedSummary, afterStatus) {
@@ -435,7 +435,7 @@ service cloud.firestore {
       let canDropOldest = isSafeOldestCompaction(
         oldSummaries, beforeExists, oldOrderSummary, expectedSummary, afterStatus
       );
-      let oldestSummary = canDropOldest ? oldSummaries[19] : {};
+      let oldestSummary = canDropOldest ? oldSummaries[9] : {};
       let refillId = request.resource.data.get('lastOrderRefillOrderId', null);
       let refillSummary = customerRefillSummary();
       let allowedNewSummaries = afterStatus == 'cancelled'
@@ -444,9 +444,9 @@ service cloud.firestore {
       let mayOmitChangedSummary = afterStatus != 'cancelled'
         && !wasProjected
         && newSummaries.size() == 10
-        && summaryNoLater(expectedSummary, newSummaries[19]);
+        && summaryNoLater(expectedSummary, newSummaries[9]);
       return oldSummaries is list
-        && oldSummaries.size() <= 20
+        && oldSummaries.size() <= 10
         && validProjectionBounds(newSummaries)
         && validCustomerRefill(customerId, orderId, newSummaries, afterStatus, refillSummary)
         && newSummaries.toSet().hasOnly(allowedNewSummaries)
