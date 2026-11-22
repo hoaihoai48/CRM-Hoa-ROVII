@@ -17,8 +17,8 @@ function assert(condition: boolean, message: string) {
 
 async function provisionMembership(
   uid: string,
-  role: 'admin' | 'staff',
-  status: 'active' | 'inactive',
+  role: string,
+  status: string,
 ) {
   const url = `http://${firestoreHost}/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`;
   const response = await fetch(url, {
@@ -67,6 +67,22 @@ async function run() {
   const adminEmail = await createMember('admin', 'active');
   const staffEmail = await createMember('staff', 'active');
   const inactiveEmail = await createMember('staff', 'inactive');
+  const orphanCredential = await createUserWithEmailAndPassword(
+    auth,
+    'storage-no-membership@example.test',
+    password,
+  );
+  const orphanEmail = orphanCredential.user.email!;
+  await signOut(auth);
+
+  const malformedCredential = await createUserWithEmailAndPassword(
+    auth,
+    'storage-malformed-membership@example.test',
+    password,
+  );
+  const malformedEmail = malformedCredential.user.email!;
+  await provisionMembership(malformedCredential.user.uid, 'superadmin', 'active');
+  await signOut(auth);
 
   const pngBytes = new Uint8Array(Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l2cAAAAASUVORK5CYII=',
@@ -79,9 +95,25 @@ async function run() {
     () => uploadBytes(ref(storage, 'products/storage-rules-anonymous-test.png'), pngBytes, { contentType: 'image/png' }),
   );
 
+  await signInWithEmailAndPassword(auth, orphanEmail, password);
+  await expectStorageDenied(
+    'Authenticated user without a membership document cannot upload product images',
+    () => uploadBytes(ref(storage, 'products/storage-rules-no-membership.png'), pngBytes, { contentType: 'image/png' }),
+  );
+  await signOut(auth);
+
+  await signInWithEmailAndPassword(auth, malformedEmail, password);
+  await expectStorageDenied(
+    'Authenticated user with a malformed/non-admin membership cannot upload product images',
+    () => uploadBytes(ref(storage, 'products/storage-rules-malformed-membership.png'), pngBytes, { contentType: 'image/png' }),
+  );
+  await signOut(auth);
+
   await signInWithEmailAndPassword(auth, adminEmail, password);
   await uploadBytes(adminImage, pngBytes, { contentType: 'image/png' });
   assert(true, 'Active admin can upload a valid product image');
+  await uploadBytes(adminImage, pngBytes, { contentType: 'image/png' });
+  assert(true, 'Active admin can overwrite an existing product image');
 
   await expectStorageDenied(
     'Active admin cannot upload a PDF or mismatched file type',
