@@ -35,6 +35,7 @@ async function signInAsActiveAdmin(page: Page): Promise<string> {
   await page.getByLabel('Mật khẩu').fill(password);
   await page.getByRole('button', { name: 'Đăng nhập với Email' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
+  return user.localId;
 }
 
 async function seedActiveProduct(page: Page, productId: string, name: string, price: number): Promise<void> {
