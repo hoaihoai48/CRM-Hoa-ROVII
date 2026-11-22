@@ -33,7 +33,7 @@ function CreateOrderPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const prefillCustomerId = searchParams.get('customerId');
-  const { membership: currentUser } = useAuth();
+  const { membership: currentUser, membershipUserId } = useAuth();
 
   // Step 1: Customer flow
   const [customers, setCustomers] = useState<Awaited<ReturnType<typeof listCustomers>>>([]);
@@ -199,6 +199,7 @@ function CreateOrderPageContent() {
         note: orderNote,
         deliveryDate: deliveryDate ? new Date(deliveryDate).toISOString() : undefined,
         createdBy: currentUser.name,
+        createdByUid: membershipUserId ?? undefined,
       });
 
       router.push(`/orders/${order.id}`);
