@@ -10,7 +10,7 @@
 
 The active order workflow is the Spark-compatible client Firestore transaction path in `src/lib/services/orders.ts`. The repository contains a `functions/index.js` file with callable implementations, but the documented architecture decision says routine order/customer workflows must not depend on callable Cloud Functions because the project remains on Firebase Spark. The older 2026-10-16 Source Audit's description of callable Functions as the active browser write boundary is therefore stale and must not be used as a current architecture statement.
 
-Firestore Rules already enforce important controls: active membership for business data; admin-only product writes; immutable order identity fields; initial status/history shape; valid status transitions; append-only history; creator/actor UID matching on attributed orders; and atomic per-order customer projection updates via `getAfter()`. The Rules explicitly cannot prove product-price arithmetic or complete customer aggregate arithmetic. The application transaction computes these values. This remains an acknowledged trusted-internal-team trade-off, not server-enforced financial integrity.
+Firestore Rules already enforce important controls: active membership for business data; admin-only product writes; immutable order identity fields; initial status/history shape; valid status transitions; append-only history; creator/actor UID matching on attributed orders; and atomic per-order customer projection updates via `getAfter()`. The proposed PR #25 additionally separates staff profile-only customer edits from order-linked aggregate/projection writes and validates exact order-count/completed-spend deltas. The Rules still cannot prove product-price arithmetic, and active admins retain a privileged aggregate-repair path. The application transaction computes prices; this remains an acknowledged trusted-internal-team/Spark trade-off, not server-enforced financial integrity.
 
 ## Findings
 
@@ -24,7 +24,7 @@ Firestore Rules already enforce important controls: active membership for busine
 
 **Recommendation:** Keep the limitation explicit while the trusted-staff/Spark decision remains in force. A future Rules hardening should permit profile-only updates separately from atomic order/customer writes, and prove valid aggregate deltas against the matching order's before/after state. Do not add a superficial `hasOnly(profileFields)` rule without preserving create/edit/status/cancel transactions. Add negative Emulator tests for direct scalar-only tampering and positive tests for every supported order transaction before changing this boundary. If the threat model changes to untrusted staff/public customers, move critical writes to a trusted backend after an approved plan/billing decision.
 
-**Status:** Documented limitation; not changed in this audit because a safe, compatible Rules design needs a focused implementation/test cycle.
+**Status at this audit baseline:** Documented limitation. PR #25 now proposes a compatible mitigation; it is not yet merged or verified. See the remediation record at the end of this audit.
 
 ### F-02 — Storage image deletion is broader than Firestore product write permissions
 
@@ -83,6 +83,7 @@ Firestore Rules already enforce important controls: active membership for busine
 - Orders require a valid initial `new` state/history and matching customer projection; updates preserve append-only history and valid transitions.
 - New records with creator UID require actor UID equal to the authenticated UID for appended status-history entries. Legacy orders without creator UID remain compatible.
 - Customer phone identity and creation timestamp are immutable through customer updates.
+- PR #25 proposal (not yet merged): active staff profile updates are limited to name/address/note; aggregate/projection writes require a matching order mutation, one appended history entry, and exact totalOrders/completed-total deltas. Active admins retain a separate aggregate repair path.
 - The emulator test harness targets the explicit demo project `demo-crm-hoa-rovii` and starts Auth + Firestore + Storage; direct Emulator test scripts fail closed unless the demo project and loopback emulator hosts are configured.
 - Docs-only changes under `docs/**` and Markdown files are excluded from the quality workflow by `paths-ignore`; for a PR whose entire diff is documentation, record Actions as NOT RUN (never PASS), state that application build/isolated app tests are not relevant, and mark Preview N/A when runtime/UI and Vercel deployment configuration are unchanged. This docs-only exception does not apply to Rules or emulator/test-infrastructure changes, which require latest-head Actions production build and relevant isolated tests before Preview can be N/A.
 
@@ -92,7 +93,7 @@ This was a source/configuration audit only. No Emulator command was executed by 
 
 ## Recommended next delivery order
 
-1. Add negative Emulator coverage for active-member customer scalar aggregate tampering and design a compatible Rules guard that preserves valid create/edit/status/cancel transactions.
+1. Complete PR #25 F-01 customer aggregate write-boundary hardening: verify direct staff aggregate tampering and staff repair are denied while valid create/edit/status/cancel transactions and active-admin repair continue to pass.
 2. Add deterministic Data URL encoded-byte and aggregate media-payload bounds with Emulator rejection coverage where Rules can enforce them.
 3. Tighten membership field immutability and explicitly decide the self-demotion/self-deactivation behavior.
 4. Correct the historical Source Audit and CRUD permission audit to point to current rules and the Spark write-boundary decision.
@@ -122,3 +123,14 @@ No production data, deployment, billing or paid Firebase service was touched.
 - GitHub Actions run [#45047810582](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45047810582) is the push-triggered `main` workflow for exact merge commit `3efd04c601b4bffaa976edad38c282e921d82be4`; status `completed`, conclusion `success`.
 - Inspected job #137286140172: dependency/MCP checks, lint, TypeScript typecheck, Firebase Auth/Firestore/Storage Emulator integration, Playwright E2E and production build all completed successfully.
 - This supersedes the earlier handoff note that post-merge main Actions were unverified. PR #22 F-02 remediation has both PR-head CI and post-merge main CI evidence.
+
+
+## F-01 remediation proposal — PR #25 (2026-11-23)
+
+- PR: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/25 — draft on branch `security/customer-aggregate-write-boundary-2026-11-23`; implementation commit `7e886508dfa6f1c4315d38a2ad1899ca6e676fb0`. Final PR head must be read live after the handoff/audit commit.
+- Firestore Rules proposal: customer updates by staff are limited to profile fields or order-linked writes. The latter use `lastOrderMutationId` to resolve the order with `get()/getAfter()`, require exactly one appended history entry, require the changed order's summary in the bounded customer projection, and enforce `totalOrders` and completed-`totalSpent` deltas from before/after status and order total.
+- `lastOrderDateOrderId` binds a changed last-order date to a real, non-cancelled order for the same customer and a matching projection summary. Order creation, status changes and editable-order updates set `lastOrderMutationId` atomically with the order write.
+- The full-scan `syncCustomerAggregates()` repair path is retained for active admins only. This is a deliberate trusted-admin exception; it does not protect against a compromised admin. Staff direct aggregate writes and staff repair attempts are covered by new negative Emulator cases.
+- The test runner remains fail-closed on project `demo-crm-hoa-rovii` and loopback Auth/Firestore/Storage Emulators. Existing lifecycle, customer projection, concurrency and legacy-profile tests remain in the same suite.
+- Verification is pending: latest-head GitHub Actions, Playwright, production build, Vercel Preview (required because client order transaction behavior changes), and exact-head code/security review. Do not call F-01 resolved until all gates pass and the PR is merged.
+- Residual limitation remains: Firestore Rules cannot independently verify client-side product prices against the catalog; the Spark-compatible trusted-team write-boundary decision remains in force.

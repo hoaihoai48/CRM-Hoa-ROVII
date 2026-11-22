@@ -4,6 +4,7 @@
 **Repository:** https://github.com/hoaihoai48/CRM-Hoa-ROVII  
 **Default branch:** main  
 **Latest code merge:** 3efd04c601b4bffaa976edad38c282e921d82be4 (PR #22)  
+**Latest docs merge:** 8f2d0d3695429ebdd47733caca1b51b80067f582 (PR #24)  
 **Resume rule:** Always read this file and the playbook, then inspect live GitHub state and latest main ref before acting. This file is updated last in a delivery session.
 
 ## Owner delegation and safety boundaries
@@ -21,10 +22,10 @@
 - S0 — CI/Playwright foundation: COMPLETE.
 - S1 — Order lifecycle integrity: COMPLETE.
 - S2 — technical workflow hardening through PR #18: COMPLETE; purchaser/recipient, scheduling, notes, order code, assignment and print-content semantics remain owner-gated.
-- Firebase security hardening: F-02 Storage authorization mismatch RESOLVED by PR #22; F-01 customer aggregate integrity, F-03 Data URL size bounds, F-04 membership-field hardening and F-05 historical documentation remain open.
+- Firebase security hardening: F-02 Storage authorization mismatch RESOLVED by PR #22; F-01 staff aggregate-write boundary is in implementation PR #25 (not yet merged/verified), with the privileged admin repair path and client-side product-price trust boundary explicitly retained; F-03 Data URL size bounds, F-04 membership-field hardening and F-05 historical documentation remain open.
 - PR #21 security audit: MERGED.
 - PR #22 active-admin Storage Rules + isolated Storage Emulator coverage: MERGED.
-- Open PR inventory: PR #24 documentation-only handoff synchronization is open on branch docs/record-pr22-storage-security-merge-2026-11-23; PR #24 has a newer docs-only head after recording post-merge CI; fresh code and documentation-focused security reviews are required before merge. PR #23 remains closed unmerged.
+- Open PR inventory: PR #25 customer aggregate write-boundary hardening is open as a draft on branch security/customer-aggregate-write-boundary-2026-11-23; implementation commit 7e886508dfa6f1c4315d38a2ad1899ca6e676fb0 is present, with handoff/audit synchronization being added before review. PR #24 merged docs-only as 8f2d0d3695429ebdd47733caca1b51b80067f582; PR #23 remains closed unmerged.
 - PR #22 final head 36ae3bf27c74e55cb674c00209e78df580ebf562; PR CI #45043911114 completed SUCCESS, including Auth/Firestore/Storage Emulator tests, Playwright E2E and production build.
 - Post-merge main Actions #45047810582 completed SUCCESS on exact merge commit 3efd04c601b4bffaa976edad38c282e921d82be4. Its single job completed dependency/MCP checks, lint, TypeScript, Auth/Firestore/Storage Emulator integration, Playwright E2E and production build. PR #22 post-merge verification is PASS. Vercel's Free daily quota failure is not a required gate for this Rules/test-infrastructure-only PR.
 - No production data, deployment, billing or destructive migration touched.
@@ -46,6 +47,7 @@
 | #18 | Require authenticated actor UID on appended history entries | 83c354436ff9dfedca180832fcec324c03a36ffa | PR CI #45008498582 and post-merge #45008753697 passed |
 | #21 | Firebase Security & Access-Control source audit | e728de1b8b98f91e976a3336a657720f4020f6b8 | Documentation-only; Codex code review + independent security review; Actions paths-ignore |
 | #22 | Active-admin product image Storage writes + Storage Emulator regression suite | 3efd04c601b4bffaa976edad38c282e921d82be4 | PR CI #45043911114 PASS on final head; post-merge main #45047810582 PASS |
+| #24 | Record PR #22 merge, close F-02 and synchronize handoff/audit | 8f2d0d3695429ebdd47733caca1b51b80067f582 | Docs-only; Codex code review and independent documentation-focused security review completed on exact head; no unresolved threads; Actions NOT RUN by paths-ignore; Preview N/A as a required gate |
 
 Relevant links:
 - [PR #16](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/16)
@@ -94,21 +96,21 @@ A backward-compatible optional-field candidate and regression matrix are recorde
 - Search and non-default status filters still read the full order/customer collection by design; the behavior is documented and must not be silently narrowed.
 - Customer detail order history now uses 25-row snapshot-cursor pages with explicit load-more (PR #17); the full history remains available without a single unbounded read.
 - Firestore Rules validate document shape, lifecycle, actor identity and matching customer projection, but cannot prove all cross-document aggregate arithmetic. Emulator coverage and transaction code remain essential.
-- syncCustomerAggregates() is a full-scan repair path; do not run it against production without a separately reviewed operational plan and explicit approval.
+- syncCustomerAggregates() is a full-scan repair path; the PR #25 proposal restricts this client repair path to active admins, but it must not run against production without a separately reviewed operational plan and explicit approval.
 - Browser print output uses current stored fields; expanding it depends on the owner choosing receipt/fulfilment content.
 
 ## Next action
 
-1. COMPLETE — post-merge main Actions #45047810582 completed SUCCESS on exact PR #22 merge commit 3efd04c601b4bffaa976edad38c282e921d82be4; all job steps, including Emulator integration, Playwright and production build, completed successfully.
-2. Continue with F-01 customer scalar aggregate tampering: add a negative Emulator case proving an active client can currently forge scalar aggregates, then design a compatible Rules guard that preserves create/edit/status/cancel transactions. Do not weaken valid atomic order workflows.
-3. Keep F-03 Data URL byte-size validation, F-04 membership metadata immutability/self-demotion policy, and F-05 historical source-audit correction as subsequent focused steps.
-4. Do not implement the owner-gated S2 business semantics without decisions.
-5. PR #24 is a docs-only follow-up. Codex code review on head 5fdd2b838dbc68ec28f5fc76d8b1c699fcd417e4 completed with two P2 findings, both corrected in follow-up commits. A subsequent code review on head 05b58f7f147b1c351f5422d3ac933e576285f4ac found a P3 stale New-chat instruction; this follow-up corrects that wording. All earlier review receipts are stale. Require fresh code review and documentation-focused security review on the live PR head, with no unresolved findings or threads, before merge. Actions are NOT RUN because `.github/workflows/ci.yml` excludes `docs/**` and Markdown through `paths-ignore`; no CI PASS is claimed. The explicit docs-only exception is limited to PRs whose entire diff is documentation: no application build or isolated app tests are relevant, and Preview is N/A because runtime/UI and Vercel deployment configuration are unchanged. This exception does not apply to Firebase Rules, emulator/test-infrastructure or other non-runtime code changes, which still require latest-head Actions build and relevant isolated tests before Preview can be marked N/A. The Vercel Free quota failure is not a merge gate.
-6. No production data repair, deployment/release, billing change, paid Firebase service or destructive migration is authorized.
+1. COMPLETE — PR #24 merged by squash as `8f2d0d3695429ebdd47733caca1b51b80067f582` from final head `4cf733f40da3ed8ddc79ffdd20f65645b3b7b84d`. Codex code review reported no major issues on that exact head; independent documentation-focused security review #6014579099 found no additional findings; all inline threads were resolved/outdated. Actions were NOT RUN because the entire diff was Markdown/docs excluded by `paths-ignore`; Preview was N/A as a required gate (Vercel status was success).
+2. IN PROGRESS — PR #25: `security/customer-aggregate-write-boundary-2026-11-23`, implementation commit `7e886508dfa6f1c4315d38a2ad1899ca6e676fb0`. It introduces order-linked customer aggregate updates, exact `totalOrders`/`totalSpent` deltas, last-order source markers, staff tamper/repair-denial Emulator cases, and an admin-only aggregate repair path. CI, final-head code/security review and Vercel Preview are pending; Preview is required because client order transaction behavior changes.
+3. F-01 is not resolved yet. The PR #25 design blocks direct staff aggregate/projection edits and verifies order-linked deltas; active admins retain a privileged repair path, and client-side product-price arithmetic remains a documented Spark trust boundary.
+4. After PR #25 passes all final-head gates, update the audit/handoff with exact CI and Preview evidence. Then proceed to F-03 Data URL byte/payload bounds, followed by F-04 membership metadata hardening and F-05 historical audit corrections.
+5. Do not implement purchaser/recipient, scheduling, notes, order-code, assignment or print-content semantics without the owner's decisions.
+6. No production data repair, deployment/release, billing change, paid Firebase service, Firebase project configuration change or destructive migration is authorized.
 
 ## New-chat instruction
 
-Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md from main. Fetch the live main ref, open PR inventory, branches and latest Actions/review state. PR #22 is merged as 3efd04c601b4bffaa976edad38c282e921d82be4; its final head was 36ae3bf27c74e55cb674c00209e78df580ebf562, PR CI #45043911114 PASS, Codex code review completed without findings, independent security review found no blocker, and no unresolved review threads remained. Post-merge main Actions #45047810582 completed PASS on exact merge commit 3efd04c601b4bffaa976edad38c282e921d82be4. PR #24 is open docs-only on branch docs/record-pr22-storage-security-merge-2026-11-23. Reviews on head 05b58f7f147b1c351f5422d3ac933e576285f4ac found two P2 findings, which were corrected, followed by a P3 stale New-chat instruction. This follow-up corrects the P3 wording. All prior review receipts are stale; fetch the live PR #24 head and require fresh code and documentation-focused security reviews on that exact SHA before merge. Actions are NOT RUN due docs paths-ignore; this docs-only exception is explicit, no CI PASS is claimed, and Preview is N/A because runtime/UI and Vercel deployment configuration are unchanged. PR #23 remains closed unmerged. Next safe work after PR #24 closes is F-01 customer aggregate integrity; do not repeat PRs #8–#22.
+Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md from main. Fetch the live main ref, open PR inventory, branches and latest Actions/review state. PR #22 is merged as 3efd04c601b4bffaa976edad38c282e921d82be4; final PR head 36ae3bf27c74e55cb674c00209e78df580ebf562, PR CI #45043911114 PASS, and post-merge main Actions #45047810582 PASS. PR #24 is merged docs-only as 8f2d0d3695429ebdd47733caca1b51b80067f582 from exact head 4cf733f40da3ed8ddc79ffdd20f65645b3b7b84d; code review and independent documentation-focused security review completed without findings, all threads resolved/outdated, Actions NOT RUN due docs paths-ignore, Preview N/A as a required gate. PR #25 is active on branch security/customer-aggregate-write-boundary-2026-11-23; implementation commit 7e886508dfa6f1c4315d38a2ad1899ca6e676fb0 introduces staff order-linked aggregate writes and admin-only repair. Check its live head, CI, Preview and exact-head reviews before merge. F-01 remains partial until PR #25 is verified and merged. PR #23 remains closed unmerged; do not repeat PRs #8–#24.
 
 
 ## Delivery update — 2026-11-22 (PRs #17–#18)
@@ -185,3 +187,12 @@ Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK
 - Fresh code review and documentation-focused security review are required on the live resulting PR head. Earlier review receipts are stale. Do not merge until both reviews complete without findings and all inline threads are resolved.
 - Actions are NOT RUN because the entire diff is Markdown/docs excluded by `.github/workflows/ci.yml` `paths-ignore`; no CI PASS is claimed and app build/isolated app tests are not relevant. Vercel Preview is N/A for this docs-only diff; the previous-head Vercel status was success but is not required.
 - Playbook follow-up commit: `0feaf758b11fd324ea20cc2575c0607d917cd7cd`. No runtime code, Firebase Rules, emulator/test infrastructure, production data, deployment, billing, Firebase project settings or migration changed. Next code step remains F-01 customer aggregate integrity after PR #24 closes.
+
+
+## Delivery update — 2026-11-23 (PR #24 merged; PR #25 F-01 implementation opened)
+
+- PR #24: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/24 — squash-merged as `8f2d0d3695429ebdd47733caca1b51b80067f582` from final head `4cf733f40da3ed8ddc79ffdd20f65645b3b7b84d`. Codex code review completed on the exact head with no major issues; independent documentation-focused security review #6014579099 found no additional findings; all inline threads were resolved/outdated. Actions were NOT RUN due docs-only `paths-ignore`; Vercel status was success but Preview was not a required gate.
+- PR #25: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/25 — draft implementation on branch `security/customer-aggregate-write-boundary-2026-11-23`. Implementation commit: `7e886508dfa6f1c4315d38a2ad1899ca6e676fb0`; final PR head will include this handoff/audit synchronization and must be re-read live.
+- PR #25 proposes staff profile-only customer edits, order-linked aggregate/projection writes with before/after order validation and exact count/completed-spend deltas, and an active-admin-only full aggregate repair path. It adds `lastOrderMutationId` and `lastOrderDateOrderId` markers and negative Emulator cases for direct staff tampering and staff repair attempts. Existing create/edit/status/cancel, bounded projection and concurrency cases remain in the same isolated suite.
+- CI and Vercel Preview are NOT YET RUN on the final PR head. Preview is required because the client-side order transaction behavior changes. Exact-head code/security reviews are pending. Do not mark F-01 resolved until these gates pass and the PR is merged.
+- No production data, deployment, billing, Firebase project configuration, destructive migration or paid service was touched.

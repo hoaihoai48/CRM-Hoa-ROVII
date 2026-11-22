@@ -3,7 +3,7 @@
 - **Repository:** hoaihoai48/CRM-Hoa-ROVII
 - **Default branch:** main
 - **Operating model:** internal-first, SaaS-ready architecture, Firebase Spark-compatible, sales and CRM first
-- **Current delivery state:** S0/S1 complete; S2 technical hardening delivered through PR #18; Firebase F-02 Storage authorization is resolved by PR #22 with PR-head and post-merge main CI passing; F-01/F-03/F-04/F-05 remain in the security backlog; S2 business semantics await owner decisions.
+- **Current delivery state:** S0/S1 complete; S2 technical hardening delivered through PR #18; F-02 Storage authorization is resolved by PR #22; PR #24 has synchronized the post-merge handoff; F-01 staff aggregate-write hardening is in active PR #25 and awaits final-head CI, Preview and review; F-03/F-04/F-05 remain in the backlog; S2 business semantics await owner decisions.
 
 ## 1. Non-negotiable delivery rules
 
@@ -162,25 +162,25 @@ The audit contains a backward-compatible optional-field candidate and regression
 
 | Field | Value |
 |---|---|
-| Active step | PR #24 docs-only handoff synchronization: correct the P3 stale New-chat instruction found on head 05b58f7f147b1c351f5422d3ac933e576285f4ac after the two P2 corrections, then obtain fresh exact-head code and documentation-focused security reviews; PR #22 post-merge main CI is verified; F-01 follows after PR #24 closes |
+| Active step | PR #25 F-01 customer aggregate write boundary: restrict staff aggregate/projection writes to order-linked transactions, verify exact count/completed-spend deltas, preserve admin-only aggregate repair and run the full isolated Emulator/Playwright/build gates |
 | S0 | COMPLETE |
 | S1 | COMPLETE |
 | S2 technical hardening | COMPLETE through PR #18 |
-| Open PR inventory | PR #24 docs-only handoff sync open; PR #23 closed unmerged |
+| Open PR inventory | PR #25 customer aggregate write-boundary hardening open as draft; PR #24 merged; PR #23 closed unmerged |
 | Latest code merge | 3efd04c601b4bffaa976edad38c282e921d82be4 (PR #22) |
-| Latest docs merge | e728de1b8b98f91e976a3336a657720f4020f6b8 (PR #21) |
+| Latest docs merge | 8f2d0d3695429ebdd47733caca1b51b80067f582 (PR #24; PR #21 was prior docs merge) |
 | Final PR #16 CI | #44988852658 — PASS |
 | PR #16 Preview | Ready; zero unresolved feedback |
 | Post-merge main CI | #45008753697 — PASS (PR #18); #45008325128 — PASS (PR #17) |
 | Production data | NOT ACCESSED |
 | Production deployment | NOT PERFORMED |
-| Next action | Verify PR #24's corrected exact head and complete fresh code/security reviews; merge only with no findings/unresolved threads. Then address F-01 customer scalar aggregate tampering with Emulator negative/positive coverage and a backward-compatible Rules design |
+| Next action | Finish PR #25 handoff/audit synchronization, mark ready, run latest-head CI and required Vercel Preview, complete exact-head code/security reviews, resolve all findings, and merge only after every gate passes; then verify post-merge main Actions |
 
 PR #17 paginates customer detail history (25-row pages); PR #18 makes actor UIDs mandatory on appended history entries for UID-attributed orders while preserving legacy compatibility. Do not mark S2 fully complete until the remaining owner decisions have been implemented and their end-to-end acceptance criteria pass.
 
 ## 10. Resume instruction
 
-Every new run must re-read this playbook and docs/automation/CRM_HOA_ROVII_CURRENT_STATE.md, fetch the live main ref, inspect open PRs/branches and the latest Actions/review state, and continue from the earliest incomplete step. PRs #8–#22 are merged; PR #23 is closed unmerged; PR #24 is the active docs-only handoff synchronization. PR #22 PR-head CI #45043911114 and post-merge main CI #45047810582 both completed SUCCESS. Never infer a successful CI result from a started or cancelled workflow.
+Every new run must re-read this playbook and docs/automation/CRM_HOA_ROVII_CURRENT_STATE.md from main, fetch live refs, inspect open PRs/branches and latest Actions/Preview/review state, and continue from the earliest incomplete step. PRs #8–#24 are merged; PR #23 is closed unmerged; PR #25 is the active F-01 customer aggregate write-boundary PR on branch security/customer-aggregate-write-boundary-2026-11-23. PR #24 merged as 8f2d0d3695429ebdd47733caca1b51b80067f582 from head 4cf733f40da3ed8ddc79ffdd20f65645b3b7b84d; its code and independent documentation-focused security reviews completed without findings. PR #25 implementation commit is 7e886508dfa6f1c4315d38a2ad1899ca6e676fb0; its final head, CI, Preview and reviews must be checked live. Never infer a successful test or workflow result from a started, skipped or cancelled run.
 
 
 ## 11. Delivery update — PRs #17–#18
@@ -251,7 +251,16 @@ Both Vercel Previews were Ready with zero unresolved feedback. No production dat
 
 ## 22. PR #24 follow-up — stale resume instruction correction (2026-11-23)
 
-- The fresh Codex code review on PR #24 head `05b58f7f147b1c351f5422d3ac933e576285f4ac` found one P3 documentation issue: the New-chat instruction still said the two P2 corrections were “being committed” although they were already present. Both P2 issues remain corrected; this follow-up changes the stale wording to a completed state and requires reviewers to inspect the live PR head.
-- PR #24 remains documentation-only (three Markdown files). GitHub Actions are NOT RUN because the workflow excludes `docs/**` and Markdown via `paths-ignore`; no CI PASS is claimed. Vercel status on the previous head was success, but Preview is N/A for this docs-only diff and is not a merge gate.
+- At the time of this historical entry, the fresh Codex code review on PR #24 head `05b58f7f147b1c351f5422d3ac933e576285f4ac` found one P3 documentation issue: the New-chat instruction still said the two P2 corrections were “being committed” although they were already present. Both P2 issues remain corrected; this follow-up changed the stale wording to a completed state and required reviewers to inspect the live PR head.
+- At the time of this historical entry, PR #24 was documentation-only (three Markdown files). GitHub Actions were NOT RUN because the workflow excludes `docs/**` and Markdown via `paths-ignore`; no CI PASS was claimed. Vercel status on the previous head was success, but Preview was N/A for this docs-only diff and was not a merge gate.
 - The two P2 threads are resolved/outdated; the P3 thread is unresolved until the correction is committed. The review receipts on earlier heads are stale. After this commit, request fresh code review and documentation-focused security review on the exact resulting head; do not merge while either review or any thread is unresolved.
-- No application code, Firebase Rules, emulator/test infrastructure, production data, deployment, billing, project configuration or migration changed. F-01 remains the next code-delivery step after PR #24 closes.
+- No application code, Firebase Rules, emulator/test infrastructure, production data, deployment, billing, project configuration or migration changed in PR #24. F-01 became the next code-delivery step after PR #24 merged.
+
+
+## 23. Delivery update — 2026-11-23 (PR #24 merged; PR #25 F-01 in progress)
+
+- PR #24 merged by squash as `8f2d0d3695429ebdd47733caca1b51b80067f582` from final head `4cf733f40da3ed8ddc79ffdd20f65645b3b7b84d`. Codex code review on that exact head reported no major issues; independent documentation-focused security review #6014579099 found no additional findings; all inline threads were resolved/outdated. Actions were NOT RUN because the entire diff was docs/Markdown excluded by `paths-ignore`; Vercel status was success but Preview was not a required gate.
+- PR #25 draft: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/25, branch `security/customer-aggregate-write-boundary-2026-11-23`, implementation commit `7e886508dfa6f1c4315d38a2ad1899ca6e676fb0`. It restricts staff customer updates to profile-only edits or order-linked aggregate/projection writes, checks exact `totalOrders` and completed-`totalSpent` deltas from the order before/after state, validates last-order date source markers, and keeps full aggregate repair admin-only.
+- Emulator Case H now attempts a forged aggregate/projection update from active staff and a staff repair call; both must be denied. The same repair utility remains exercised as an active admin. Case N repair/compaction also runs as admin. Test REST helpers now use the explicit `demo-crm-hoa-rovii` project constant.
+- CI, Playwright, production build, Vercel Preview and exact-head code/security reviews are pending on the final PR #25 head. Preview is required because client-side order transaction behavior changes. Do not mark F-01 resolved until all gates pass and PR #25 merges.
+- Residual trust boundary: active admins retain a privileged aggregate repair path; Firestore Rules still cannot independently prove client-side product-price arithmetic. No production data, deployment, billing, project configuration, migration or paid service touched.
