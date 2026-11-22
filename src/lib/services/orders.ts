@@ -27,7 +27,7 @@ import {
 import { canTransitionOrderStatus } from '@/lib/utils/order-status';
 import { normalizeIsoString } from '@/lib/utils/timestamp';
 
-const MAX_CUSTOMER_ORDER_SUMMARIES = 20;
+const MAX_CUSTOMER_ORDER_SUMMARIES = 10;
 
 function mapCustomerOrderSummaries(raw: unknown): CustomerOrderSummary[] {
   if (!Array.isArray(raw)) return [];
