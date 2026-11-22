@@ -379,27 +379,19 @@ service cloud.firestore {
       let beforeExists = exists(orderPath);
       let before = beforeExists ? get(orderPath).data : {};
       let after = getAfter(orderPath).data;
+      let historySize = after.statusHistory.size();
+      let historyEntry = after.statusHistory[historySize - 1];
       let oldActive = beforeExists && before.status != 'cancelled' ? 1 : 0;
       let newActive = after.status != 'cancelled' ? 1 : 0;
       let oldCompletedTotal = beforeExists && before.status == 'completed' ? before.summary.total : 0;
       let newCompletedTotal = after.status == 'completed' ? after.summary.total : 0;
-      let expectedSummary = {
-        'id': orderId,
-        'status': after.status,
-        'total': after.summary.total,
-        'createdAt': after.createdAt
-      };
-      let refillSummary = customerRefillSummary();
       return after.customerId == customerId
-        && (!beforeExists || before.customerId == customerId)
-        && after.statusHistory is list
-        && after.statusHistory.size() == (beforeExists ? before.statusHistory.size() + 1 : 1)
-        && after.statusHistory[after.statusHistory.size() - 1].id == request.resource.data.lastOrderMutationId
+        && historySize == (beforeExists ? before.statusHistory.size() + 1 : 1)
+        && historyEntry.id == request.resource.data.lastOrderMutationId
+        && request.resource.data.lastOrderMutationOrderId == orderId
         && request.resource.data.lastOrderMutationId != resource.data.get('lastOrderMutationId', null)
-        && validCustomerOrderProjection(customerId, expectedSummary, orderId, beforeExists, before, after.status, refillSummary)
         && request.resource.data.totalOrders == resource.data.totalOrders + newActive - oldActive
         && request.resource.data.totalSpent == resource.data.totalSpent + newCompletedTotal - oldCompletedTotal
-        && validLastOrderDateSource(orderId, expectedSummary, after.status, refillSummary)
         && boundedCustomerProjection(request.resource.data);
     }
 
