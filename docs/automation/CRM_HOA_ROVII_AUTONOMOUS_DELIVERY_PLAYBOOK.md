@@ -131,6 +131,8 @@ Add tests alongside the feature they protect. Prefer accessible selectors and st
 | #16 | Cursor pagination for orders/customers | 7e923b5a0a996468a211f76b8d1ff715699e3ce4 | PR #44988852658 PASS; post-merge main #44989024153 PASS |
 | #17 | Customer order-history cursor pagination (25 rows + load more) | 8ce9930ee181b1fca788e823a53ffac8860d9067 | PR #45008095660 PASS; post-merge main #45008325128 PASS |
 | #18 | Require authenticated actor UID on appended history for UID-attributed orders | 83c354436ff9dfedca180832fcec324c03a36ffa | PR #45008498582 PASS; post-merge main #45008753697 PASS |
+| #21 | Firebase Security & Access-Control source audit | e728de1b8b98f91e976a3336a657720f4020f6b8 | Docs-only; code review + independent security review completed |
+| #22 | Active-admin product image Storage Rules + Storage Emulator suite and demo-only test guards | 3efd04c601b4bffaa976edad38c282e921d82be4 | PR #45043911114 PASS on final head; post-merge main Actions not yet returned |
 
 ### S2 technical invariants and trade-offs
 
@@ -211,3 +213,14 @@ Both Vercel Previews were Ready with zero unresolved feedback. No production dat
 - PR #22 adds active-admin Storage Rules, Storage Emulator tests, fail-closed demo/loopback guards, and Playwright demo-project isolation. CI #45043396941 on head `5562214aa1aaf89300be79dc7cb3a5f4abfa5bea` passed lint/typecheck and all Auth/Firestore/Storage Emulator tests, but 3/6 Playwright tests failed because fixture REST calls still used project `crm-hoa-rovii`; build was skipped. The E2E fixtures were corrected in `df358a63ebfecc62b98c0bb131febbf5eae44c59` and `2f643fd07c85c58d35b2ba37a6a0f1cac3133765`.
 - Re-run the full workflow on the current synchronized PR #22 head and inspect the exact code/security review results before merging. Preview is N/A for this Rules/test-infrastructure-only PR; do not consume Vercel Free quota.
 - PR #23 is closed unmerged and superseded. No production data, deployment, billing, migration or project-level Firebase configuration changed.
+
+
+## 18. Delivery update — 2026-11-23 (PR #22 merged; F-02 resolved)
+
+- PR #22 squash-merged as 3efd04c601b4bffaa976edad38c282e921d82be4 from final head 36ae3bf27c74e55cb674c00209e78df580ebf562.
+- Storage product-image create/update/delete now requires authenticated active-admin membership; public reads remain intentional. The Storage Emulator suite covers anonymous, missing/malformed membership, active/inactive staff, admin upload/overwrite/delete, invalid MIME/extension, public read and the under-10-MiB boundary.
+- Both Firestore and Storage Emulator test scripts fail closed outside project demo-crm-hoa-rovii with loopback Auth/Firestore/Storage hosts. Playwright and fixture REST calls use the same demo project.
+- PR CI #45043911114 completed SUCCESS on the exact final head: lint, typecheck, Auth/Firestore/Storage Emulator, Playwright (6 tests) and production build. Earlier run #45043396941 failed 3/6 Playwright cases due mismatched fixture project IDs; corrected and re-run successfully.
+- Codex code review on the exact head completed with no major findings; independent security review found no blocker; zero unresolved inline review threads. Vercel Free daily deployment quota was exhausted; Preview is N/A for this non-runtime Rules/test-infrastructure change.
+- Post-merge main Actions for merge commit 3efd04c601b4bffaa976edad38c282e921d82be4 were not returned by the connector's PR-only workflow query; do not claim post-merge CI PASS until verified separately.
+- F-02 is resolved. Next technical step: F-01 customer aggregate integrity. Preserve Spark architecture and all production safety boundaries.
