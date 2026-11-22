@@ -196,3 +196,9 @@ Both Vercel Previews were Ready with zero unresolved feedback. No production dat
 - PR #18 strengthened Firestore Rules: every appended status-history entry on an order with `createdByUid` must include `actorUid == request.auth.uid`. Emulator coverage verifies rejection without partial writes and acceptance of a valid authenticated UID; legacy orders without creator UID remain compatible. Merge `83c354436ff9dfedca180832fcec324c03a36ffa`; PR CI #45008498582 PASS; post-merge main #45008753697 PASS.
 - Both Preview deployments were Ready with zero unresolved feedback. No production data/deployment, migration, billing or paid Firebase service was touched.
 - Remaining owner decisions are unchanged: purchaser vs recipient, delivery scheduling/timezone, note visibility and separation, human-readable order code, staff assignment policy, and customer receipt vs fulfilment print content.
+
+
+## 16. Audit review correction — 2026-11-22
+
+- PR #21 security review found one wording issue in F-01: Firestore Rules constrain lifecycle transitions and preserve append-only status history, but same-status edits on `new`/`confirmed` orders can still change item/summary values without server-side price arithmetic validation. The audit impact text was corrected to state this precisely.
+- This was a documentation-only correction; no Firestore/Storage Rules, application code, data, billing or deployment changed. Re-review the latest PR head before merge. Docs-only PRs are excluded from Actions by `paths-ignore`; no CI PASS should be inferred.
