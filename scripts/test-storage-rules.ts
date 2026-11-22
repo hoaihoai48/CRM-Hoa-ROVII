@@ -2,13 +2,28 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } f
 import { getStorage, connectStorageEmulator, ref, uploadBytes, deleteObject, getBytes } from 'firebase/storage';
 import app, { auth } from '../src/lib/firebase/config';
 
-const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'demo-crm-hoa-rovii';
-const firestoreHost = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
+const DEMO_PROJECT_ID = 'demo-crm-hoa-rovii';
+const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? '';
+const authEmulatorHost = process.env.FIREBASE_AUTH_EMULATOR_HOST ?? '';
+const firestoreHost = process.env.FIRESTORE_EMULATOR_HOST ?? '';
+const storageEmulatorHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST ?? '';
+const isLoopbackEmulatorHost = (host: string) => /^(127\\.0\\.0\\.1|localhost):\\d+$/.test(host);
+
+if (
+  projectId !== DEMO_PROJECT_ID ||
+  !isLoopbackEmulatorHost(authEmulatorHost) ||
+  !isLoopbackEmulatorHost(firestoreHost) ||
+  !isLoopbackEmulatorHost(storageEmulatorHost)
+) {
+  throw new Error(
+    'Refusing to run Storage Rules tests outside the isolated demo-crm-hoa-rovii Auth/Firestore/Storage Emulators. Use npm run test:emulator.'
+  );
+}
+
 const password = 'StorageRulesTest123!';
 const storage = getStorage(app, `gs://${projectId}.appspot.com`);
-const storageEmulatorHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST || '127.0.0.1:9199';
 const [storageHost, storagePort] = storageEmulatorHost.split(':');
-connectStorageEmulator(storage, storageHost, Number(storagePort) || 9199);
+connectStorageEmulator(storage, storageHost, Number(storagePort));
 
 function assert(condition: boolean, message: string) {
   if (!condition) throw new Error(`Storage Rules assertion failed: ${message}`);
