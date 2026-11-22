@@ -31,6 +31,12 @@ const moneyClose = (a, b) => Number.isFinite(a) && Number.isFinite(b) && Math.ab
 const asNumber = (value) => typeof value === 'number' && Number.isFinite(value) ? value : NaN;
 const asString = (value) => typeof value === 'string' ? value : '';
 
+function compareSummaryDesc(a, b) {
+  if (a.createdAt !== b.createdAt) return a.createdAt > b.createdAt ? -1 : 1;
+  if (a.id === b.id) return 0;
+  return a.id > b.id ? -1 : 1;
+}
+
 function summarizeCustomer(orders) {
   const summaries = orders.map(({ id, data }) => ({
     id,
@@ -38,13 +44,15 @@ function summarizeCustomer(orders) {
     total: Number.isFinite(asNumber(data.summary?.total)) && asNumber(data.summary.total) >= 0 ? asNumber(data.summary.total) : 0,
     createdAt: asString(data.createdAt),
   }));
-  const active = summaries.filter((order) => order.status !== 'cancelled');
+  const active = summaries.filter((order) => order.status !== 'cancelled').sort(compareSummaryDesc);
   const completed = summaries.filter((order) => order.status === 'completed');
+  const latestActive = active[0] || null;
   return {
     totalOrders: active.length,
     totalSpent: completed.reduce((sum, order) => sum + order.total, 0),
-    lastOrderDate: active.map((order) => order.createdAt).sort().at(-1) || '',
-    orderSummaries: summaries,
+    lastOrderDate: latestActive?.createdAt || '',
+    lastOrderDateOrderId: latestActive?.id || null,
+    orderSummaries: active.slice(0, 51),
   };
 }
 
@@ -67,6 +75,7 @@ async function main() {
     orderTotalMismatch: [],
     duplicateOrderSummaryIds: [],
     customerAggregateMismatch: [],
+    customerDateSourceMismatch: [],
     customerProjectionMismatch: [],
     orphanCustomerSummary: [],
   };
@@ -126,6 +135,12 @@ async function main() {
         !moneyClose(asNumber(customer.totalSpent), expected.totalSpent) ||
         asString(customer.lastOrderDate) !== expected.lastOrderDate) {
       anomalies.customerAggregateMismatch.push(customerId);
+    }
+    const actualDateSourceId = typeof customer.lastOrderDateOrderId === 'string' && customer.lastOrderDateOrderId
+      ? customer.lastOrderDateOrderId
+      : null;
+    if (actualDateSourceId !== expected.lastOrderDateOrderId) {
+      anomalies.customerDateSourceMismatch.push(customerId);
     }
 
     const actualSummaries = Array.isArray(customer.orderSummaries) ? customer.orderSummaries : [];
