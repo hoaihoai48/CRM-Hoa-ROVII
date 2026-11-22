@@ -244,6 +244,18 @@ service cloud.firestore {
         );
     }
 
+    // A client may compact/drop old cached rows, but it cannot introduce or rewrite
+    // unrelated summaries during a legitimate order mutation. The one changed order
+    // summary is the only new map allowed in the bounded projection.
+    function validCustomerOrderProjection(expectedSummary) {
+      let oldSummaries = resource.data.get('orderSummaries', []);
+      let newSummaries = request.resource.data.get('orderSummaries', []);
+      return oldSummaries is list
+        && newSummaries is list
+        && newSummaries.toSet().hasOnly(oldSummaries.toSet().union([expectedSummary].toSet()))
+        && expectedSummary in newSummaries;
+    }
+
     function validCustomerOrderMutation(customerId, orderId) {
       let orderPath = /databases/$(database)/documents/orders/$(orderId);
       let beforeExists = exists(orderPath);
@@ -259,17 +271,20 @@ service cloud.firestore {
         'total': after.summary.total,
         'createdAt': after.createdAt
       };
-      let lastDateChanged = request.resource.data.lastOrderDate != resource.data.lastOrderDate;
       return after.customerId == customerId
         && (!beforeExists || before.customerId == customerId)
         && after.statusHistory is list
         && after.statusHistory.size() == (beforeExists ? before.statusHistory.size() + 1 : 1)
         && after.statusHistory[after.statusHistory.size() - 1].id == request.resource.data.lastOrderMutationId
         && request.resource.data.lastOrderMutationId != resource.data.get('lastOrderMutationId', null)
-        && expectedSummary in request.resource.data.orderSummaries
+        && validCustomerOrderProjection(expectedSummary)
         && request.resource.data.totalOrders == resource.data.totalOrders + newActive - oldActive
         && request.resource.data.totalSpent == resource.data.totalSpent + newCompletedTotal - oldCompletedTotal
-        && (!lastDateChanged || validLastOrderDateSource(customerId))
+        && (
+          !(request.resource.data.lastOrderDate != resource.data.lastOrderDate
+            || request.resource.data.get('lastOrderDateOrderId', null) != resource.data.get('lastOrderDateOrderId', null))
+          || validLastOrderDateSource(customerId)
+        )
         && boundedCustomerProjection(request.resource.data);
     }
 
