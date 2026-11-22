@@ -401,6 +401,29 @@ async function runTestSuite() {
   const unchangedAtomicOrder = await getOrderById(atomicSuccess.id);
   assert(unchangedAtomicOrder?.status === 'new' && unchangedAtomicOrder.statusHistory.length === 1, 'Rejected missing actor UID must not partially change order state');
 
+  let unpairedOrderUpdateBlocked = false;
+  try {
+    await updateDoc(doc(db, 'orders', atomicSuccess.id), {
+      status: 'confirmed',
+      statusHistory: [
+        ...unchangedAtomicOrder!.statusHistory,
+        {
+          id: 'UNPAIRED-ORDER-MUTATION',
+          status: 'confirmed',
+          timestamp: new Date().toISOString(),
+          actorName: 'Unpaired Tester',
+          actorUid: staffUserUid,
+        },
+      ],
+    });
+  } catch (error) {
+    unpairedOrderUpdateBlocked = (error as { code?: string }).code === 'permission-denied';
+    if (!unpairedOrderUpdateBlocked) throw error;
+  }
+  assert(unpairedOrderUpdateBlocked, 'Case A: an order cannot change without the paired customer mutation marker');
+  const unchangedAfterUnpaired = await getOrderById(atomicSuccess.id);
+  assert(unchangedAfterUnpaired?.status === 'new' && unchangedAfterUnpaired.statusHistory.length === 1, 'Case A: unpaired order denial is atomic');
+
   const attributedAtomicOrder = await updateOrderStatus(atomicSuccess.id, {
     status: 'confirmed',
     actorName: 'Authenticated Tester',
