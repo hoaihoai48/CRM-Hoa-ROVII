@@ -69,3 +69,13 @@ Before implementing recipient/delivery/assignment/print UX, obtain explicit requ
 2. Continue S2 architecture audit and draft a backward-compatible order data contract plus Rules/test matrix.
 3. Keep customer identity/profile separate from immutable order snapshots; do not migrate existing order documents without a reviewed migration plan.
 4. Preserve Spark compatibility and avoid introducing paid Firebase services.
+
+
+## 7. Stable audit identity groundwork (PR #12)
+
+- Added optional `createdByUid` to new orders and `actorUid` to status history; UI sources these from the authenticated membership UID.
+- Firestore Rules validate any supplied actor UID against `request.auth.uid` and preserve `createdByUid` after creation.
+- Legacy orders/history remain valid without these fields; no data backfill required.
+- Emulator verifies a forged creator UID is denied; Playwright verifies all create/edit/status-history entries retain the signed-in staff UID.
+- PR #12 merged at `64c539e423c78bfe0b7089889b40d479afdfa799`; PR CI #44982896197 and post-merge main CI #44983058488 PASS.
+- This does not implement assignment or change staff permissions. Assignment policy remains a separate business decision.
