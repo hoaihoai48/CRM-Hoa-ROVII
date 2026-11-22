@@ -166,7 +166,7 @@ The audit contains a backward-compatible optional-field candidate and regression
 | Latest code merge | 7e923b5a0a996468a211f76b8d1ff715699e3ce4 |
 | Final PR #16 CI | #44988852658 — PASS |
 | PR #16 Preview | Ready; zero unresolved feedback |
-| Post-merge main CI | #44989024153 — pending final verification |
+| Post-merge main CI | #44989024153 — PASS |
 | Production data | NOT ACCESSED |
 | Production deployment | NOT PERFORMED |
 | Next action | Verify #44989024153; then wait for the S2 business decisions before changing schema/UX |
