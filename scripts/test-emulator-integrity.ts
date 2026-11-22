@@ -970,7 +970,7 @@ async function runTestSuite() {
   assert(scaleAfterSync!.totalSpent === scaleCompleted.length * 1000, 'Case M: lifetime totalSpent includes all completed orders');
   assert(scaleAfterSync!.lastOrderDate === scaleLatestActive!.createdAt, 'Case M: lastOrderDate remains exact after projection compaction');
   assert((scaleAfterSync!.orderSummaries ?? []).length <= 50, 'Case M: repair compacts large projection to at most 50 recent active orders');
-  assert(scaleAfterSync!.orderSummaries?.some((summary) => summary.id === scaleLatestActive!.id), 'Case M: compact projection retains latest active order');
+  assert(scaleAfterSync!.orderSummaries?.some((summary) => summary.id === scaleLatestActive!.id) ?? false, 'Case M: compact projection retains latest active order');
 
   const oldestActiveNew = scaleRows.find((row) => row.status === 'new')!;
   await updateOrderStatus(oldestActiveNew.id, { status: 'confirmed', actorName: 'Scale Tester' });
