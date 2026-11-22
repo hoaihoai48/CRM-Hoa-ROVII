@@ -6,7 +6,9 @@ const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'demo-crm-hoa-r
 const firestoreHost = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
 const password = 'StorageRulesTest123!';
 const storage = getStorage(app, `gs://${projectId}.appspot.com`);
-connectStorageEmulator(storage, '127.0.0.1', 9199);
+const storageEmulatorHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST || '127.0.0.1:9199';
+const [storageHost, storagePort] = storageEmulatorHost.split(':');
+connectStorageEmulator(storage, storageHost, Number(storagePort) || 9199);
 
 function assert(condition: boolean, message: string) {
   if (!condition) throw new Error(`Storage Rules assertion failed: ${message}`);
@@ -71,6 +73,11 @@ async function run() {
     'base64',
   ));
   const adminImage = ref(storage, 'products/storage-rules-admin-test.png');
+
+  await expectStorageDenied(
+    'Unauthenticated client cannot upload product images',
+    () => uploadBytes(ref(storage, 'products/storage-rules-anonymous-test.png'), pngBytes, { contentType: 'image/png' }),
+  );
 
   await signInWithEmailAndPassword(auth, adminEmail, password);
   await uploadBytes(adminImage, pngBytes, { contentType: 'image/png' });
