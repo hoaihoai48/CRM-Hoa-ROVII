@@ -78,7 +78,7 @@ Firestore Rules already enforce important controls: active membership for busine
 
 - Unauthenticated and inactive memberships do not qualify as active members in Firestore Rules.
 - The login UI exposes email/password and Google sign-in; it does not expose the registration/phone-OTP helper functions. Auth alone does not grant CRM access without an active `users/{uid}` membership.
-- Users cannot create or update their own membership documents through the Firestore client rules; active admins manage membership.
+- Non-admin users cannot create or update membership documents through the Firestore client rules. Active admins can update membership documents, including their own; an admin can therefore demote or deactivate themselves, as noted in F-04.
 - Product document create/update is admin-only; direct product deletion is denied.
 - Orders require a valid initial `new` state/history and matching customer projection; updates preserve append-only history and valid transitions.
 - New records with creator UID require actor UID equal to the authenticated UID for appended status-history entries. Legacy orders without creator UID remain compatible.
