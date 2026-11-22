@@ -3,6 +3,7 @@ import {
   doc, 
   getDocs, 
   getDoc, 
+  increment,
   query, 
   orderBy,
   startAfter,
@@ -481,14 +482,6 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
     };
     const projectedSummaries = projectCustomerOrderSummaries(existingSummaries, newOrderSummary);
     const fallbackActive = existingSummaries.filter((summary) => summary.status !== 'cancelled');
-    const currentTotalOrders = Number.isFinite(Number(custRaw.totalOrders))
-      ? Number(custRaw.totalOrders)
-      : fallbackActive.length;
-    const currentTotalSpent = Number.isFinite(Number(custRaw.totalSpent))
-      ? Number(custRaw.totalSpent)
-      : existingSummaries
-          .filter((summary) => summary.status === 'completed')
-          .reduce((sum, summary) => sum + summary.total, 0);
     const currentLastOrderDate = typeof custRaw.lastOrderDate === 'string' && custRaw.lastOrderDate
       ? normalizeIsoString(custRaw.lastOrderDate)
       : latestDate(fallbackActive);
@@ -498,8 +491,6 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
       : null;
 
     const updatedCustomerAggregates = {
-      totalOrders: currentTotalOrders + 1,
-      totalSpent: currentTotalSpent,
       lastOrderDate: advancesLastOrderDate ? now : currentLastOrderDate,
       lastOrderDateOrderId: advancesLastOrderDate ? orderId : currentLastOrderDateOrderId,
       lastOrderMutationOrderId: orderId,
@@ -510,7 +501,11 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
     // 3. ALL WRITES AFTER READS (Atomic)
     tx.set(orderRef, orderData);
     if (customerSnap.exists()) {
-      tx.update(customerRef, updatedCustomerAggregates);
+      // Atomic increment preserves the counter delta under concurrent order creation.
+      tx.update(customerRef, {
+        totalOrders: increment(1),
+        ...updatedCustomerAggregates,
+      });
     } else {
       // A first-time customer and the first order are committed together. If any
       // product/order validation fails, neither document is written.
@@ -519,6 +514,8 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
         phone: input.customerSnapshot.phone.trim(),
         phoneNormalized,
         address: input.customerSnapshot.address.trim(),
+        totalOrders: 1,
+        totalSpent: 0,
         ...updatedCustomerAggregates,
         note: null,
         createdAt: now,
@@ -585,19 +582,9 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
     const projectedSummaries = projectCustomerOrderSummaries(existingSummaries, changedSummary);
 
     const fallbackActive = existingSummaries.filter((summary) => summary.status !== 'cancelled');
-    const currentTotalOrders = Number.isFinite(Number(custRaw.totalOrders))
-      ? Number(custRaw.totalOrders)
-      : fallbackActive.length;
-    const currentTotalSpent = Number.isFinite(Number(custRaw.totalSpent))
-      ? Number(custRaw.totalSpent)
-      : existingSummaries
-          .filter((summary) => summary.status === 'completed')
-          .reduce((sum, summary) => sum + summary.total, 0);
-    const totalOrders = currentTotalOrders
-      + (input.status === 'cancelled' ? 0 : 1)
+    const totalOrdersDelta = (input.status === 'cancelled' ? 0 : 1)
       - (currentStatus === 'cancelled' ? 0 : 1);
-    const totalSpent = currentTotalSpent
-      + (input.status === 'completed' ? orderTotal : 0)
+    const totalSpentDelta = (input.status === 'completed' ? orderTotal : 0)
       - (currentStatus === 'completed' ? orderTotal : 0);
     const currentLastOrderDate = typeof custRaw.lastOrderDate === 'string' && custRaw.lastOrderDate
       ? normalizeIsoString(custRaw.lastOrderDate)
@@ -618,8 +605,8 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
 
     // 3. WRITES (Atomic)
     tx.update(customerRef, {
-      totalOrders,
-      totalSpent,
+      totalOrders: increment(totalOrdersDelta),
+      totalSpent: increment(totalSpentDelta),
       lastOrderDate,
       lastOrderDateOrderId,
       lastOrderMutationOrderId: id,
