@@ -80,7 +80,7 @@ service cloud.firestore {
         && data.totalSpent >= 0
         && data.lastOrderDate is string
         && data.createdAt is string
-        && (!('orderSummaries' in data.keys()) || data.orderSummaries is list)
+        && (!('orderSummaries' in data.keys()) || (data.orderSummaries is list && data.orderSummaries.size() <= 51))
         && (!('note' in data.keys()) || data.note == null || data.note is string);
     }
 
