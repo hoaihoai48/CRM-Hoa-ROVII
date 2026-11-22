@@ -5,7 +5,8 @@
 
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { db, auth } from '../src/lib/firebase/config';
+import { deleteObject, ref, uploadBytes } from 'firebase/storage';
+import { db, auth, storage } from '../src/lib/firebase/config';
 import { createCustomer, findCustomerByPhone, getCustomerById, listCustomersPage, updateCustomer } from '../src/lib/services/customers';
 import { createOrder, getDashboardOrders, getOrderById, listOrdersPage, syncCustomerAggregates, updateOrder, updateOrderStatus } from '../src/lib/services/orders';
 import { Product } from '../src/types';
@@ -1219,6 +1220,78 @@ async function runTestSuite() {
     status: 'active',
   });
   await signInWithEmailAndPassword(auth, adminEmail, adminPass);
+
+  // ==========================================
+  // STORAGE SECURITY: Product image role boundary
+  // ==========================================
+  console.log('\n--- STORAGE SECURITY: Product image authorization ---');
+  const adminStorageObject = ref(storage, `products/storage-rules-admin-${adminUid}.jpg`);
+  await uploadBytes(adminStorageObject, new Uint8Array([0xff, 0xd8, 0xff, 0xd9]), {
+    contentType: 'image/jpeg',
+  });
+  console.log('     ✓ Active admin can upload a valid product image');
+
+  await signInWithEmailAndPassword(auth, testStaffEmail, testStaffPass);
+  let staffStorageUploadBlocked = false;
+  try {
+    await uploadBytes(
+      ref(storage, `products/storage-rules-staff-${staffUserUid}.jpg`),
+      new Uint8Array([0xff, 0xd8, 0xff, 0xd9]),
+      { contentType: 'image/jpeg' },
+    );
+  } catch {
+    staffStorageUploadBlocked = true;
+  }
+  assert(staffStorageUploadBlocked, 'Active staff must not upload product images');
+
+  let staffStorageDeleteBlocked = false;
+  try {
+    await deleteObject(adminStorageObject);
+  } catch {
+    staffStorageDeleteBlocked = true;
+  }
+  assert(staffStorageDeleteBlocked, 'Active staff must not delete existing product images');
+
+  await signInWithEmailAndPassword(auth, adminEmail, adminPass);
+  let invalidStorageMimeBlocked = false;
+  try {
+    await uploadBytes(
+      ref(storage, `products/storage-rules-invalid-mime-${adminUid}.jpg`),
+      new Uint8Array([1, 2, 3]),
+      { contentType: 'text/plain' },
+    );
+  } catch {
+    invalidStorageMimeBlocked = true;
+  }
+  assert(invalidStorageMimeBlocked, 'Storage Rules must reject non-image content types');
+
+  let invalidStorageExtensionBlocked = false;
+  try {
+    await uploadBytes(
+      ref(storage, `products/storage-rules-invalid-extension-${adminUid}.txt`),
+      new Uint8Array([0xff, 0xd8, 0xff, 0xd9]),
+      { contentType: 'image/jpeg' },
+    );
+  } catch {
+    invalidStorageExtensionBlocked = true;
+  }
+  assert(invalidStorageExtensionBlocked, 'Storage Rules must reject unsupported file extensions');
+
+  let oversizedStorageImageBlocked = false;
+  try {
+    await uploadBytes(
+      ref(storage, `products/storage-rules-oversized-${adminUid}.jpg`),
+      new Uint8Array(10 * 1024 * 1024),
+      { contentType: 'image/jpeg' },
+    );
+  } catch {
+    oversizedStorageImageBlocked = true;
+  }
+  assert(oversizedStorageImageBlocked, 'Storage Rules must reject images at or above the 10 MiB limit');
+
+  await deleteObject(adminStorageObject);
+  console.log('     ✓ Active admin can delete a product image');
+
   await updateDoc(doc(db, 'products', p1.id), { note: 'Admin product-write policy test' });
   console.log('     ✓ Admin product update succeeded as expected');
 
