@@ -213,3 +213,11 @@ Both Vercel Previews were Ready with zero unresolved feedback. No production dat
 - PR #20 corrected the current-state handoff's historical playbook pin, merge `93da6165ebec95a864c139baf1e4a4955e59fdcd`. Codex re-review had no findings; the P2 thread was resolved. Post-merge Vercel status SUCCESS. Docs-only changes are ignored by Actions CI via workflow `paths-ignore`.
 - PR #21 adds the Firebase Security & Access-Control Audit, documentation-only. It records current Rules/service findings and separates confirmed issues from accepted Spark architecture trade-offs. Preview/review pending at time of handoff.
 - Do not mark S2 business semantics complete; purchaser/recipient, delivery windows, note visibility, human-readable code, staff assignment and print format still require owner decisions.
+
+
+## 15. Current audit follow-up — PR #21 (2026-11-22)
+
+- PR #21 adds `docs/audits/CRM_HOA_ROVII_FIREBASE_SECURITY_AUDIT_2026-11-22.md` with source-backed findings covering customer aggregate scalar writes, Storage staff upload/delete permissions, image payload bounds, membership document immutability and stale architecture documentation.
+- The PR also records PR #20 merge and its successful post-merge Vercel status in the Current State handoff, and advances the active S2 technical audit notes here.
+- Vercel Preview for PR #21 is Ready. Codex review is still running on the audit head at last check. No unresolved inline review thread exists at handoff.
+- This PR is documentation-only; it does not change Firestore Rules, Storage Rules, business code, Firebase config or production data. The audit explicitly notes that its source review was not an Emulator execution.
