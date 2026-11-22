@@ -1,7 +1,7 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth, GoogleAuthProvider, connectAuthEmulator } from 'firebase/auth';
 import { getFirestore, Firestore, connectFirestoreEmulator } from 'firebase/firestore';
-import { getStorage, FirebaseStorage } from 'firebase/storage';
+import { getStorage, FirebaseStorage, connectStorageEmulator } from 'firebase/storage';
 
 const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'fake-api-key-for-emulator';
 const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'crm-hoa-rovii';
@@ -59,6 +59,17 @@ if (emulatorHost) {
     connectFirestoreEmulator(db, host, port);
   } catch {
     // connectFirestoreEmulator throws if already connected in test runners
+  }
+}
+
+const storageEmulatorHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_EMULATOR_HOST;
+if (storageEmulatorHost) {
+  const [host, portStr] = storageEmulatorHost.split(':');
+  const port = parseInt(portStr, 10) || 9199;
+  try {
+    connectStorageEmulator(storage, host, port);
+  } catch {
+    // connectStorageEmulator throws if already connected in test runners
   }
 }
 
