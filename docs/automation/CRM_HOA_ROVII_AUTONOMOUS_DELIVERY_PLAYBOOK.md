@@ -74,15 +74,17 @@ Add tests alongside the feature they protect. Do not build a huge speculative te
 
 ### 3.4 CI integration
 
-The pull-request workflow should run, in order:
+The existing pull-request workflow runs, in order:
 
 1. Dependency installation with the lockfile.
-2. Lint and TypeScript checks.
-3. Unit tests.
-4. Firebase Emulator integration/security tests.
-5. Production build.
-6. Playwright browser installation and E2E tests.
-7. Upload Playwright report, trace and failure screenshots as CI artifacts.
+2. Cloud Functions syntax check and dependency audit report.
+3. MCP syntax/safety smoke tests.
+4. Lint and TypeScript checks.
+5. Firebase Emulator integration/security tests.
+6. Install Chromium only with `npx playwright install --with-deps chromium`.
+7. Run `npm run test:e2e` against isolated Auth/Firestore Emulators (login form, anonymous route guard, invalid credentials and active synthetic-member login).
+8. Production build.
+9. Upload Playwright HTML/JUnit report, traces and failure screenshots as CI artifacts (7-day retention).
 
 Use supported project runtime versions from the repository configuration (currently documented as Node.js 24 and Java 21+ for Emulator tests). Keep CI permissions minimal. Avoid printing environment variables or secrets.
 
@@ -159,20 +161,20 @@ A scheduled agent/check-in may:
 
 Scheduling is a trigger to resume work, not a guarantee of uninterrupted execution or an unlimited chain of agents. Every run must re-read repository state and this playbook; do not assume a previous run completed successfully. Avoid overlapping runs and conflicting branches. Never let an automation merge a PR or deploy to production.
 
-## 7. Progress log template
-
-Update this section at the end of each delivery step (or link a dedicated step report from the PR).
+## 7. Progress log
 
 | Field | Value |
 |---|---|
-| Active step | Not started / S0 / S1 / ... |
-| Step status | NOT STARTED / IN PROGRESS / PASS / BLOCKED |
-| Branch / PR | — |
-| Commit SHA(s) | — |
-| CI run | — |
-| Playwright result | NOT RUN |
-| Preview verification | NOT RUN |
-| Known risks / blockers | — |
-| Next permitted step | S0 only after baseline inspection |
+| Active step | S0 — Baseline & delivery infrastructure |
+| Step status | PASS — CI, Emulator integration, authenticated browser smoke test and production build all passed |
+| Branch / PR | `feat/ci-playwright-emulator-e2e` — https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/8 |
+| Commit SHA | `2c24fafa79568f3ff267d125e624fe4c26744986` |
+| CI run | https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44903815116 |
+| Playwright result | 4/4 PASS — login form, anonymous dashboard redirect, invalid credentials, active synthetic member login/dashboard |
+| Emulator integration | PASS — existing Firestore/Auth integrity suite |
+| Static/build gates | PASS — npm ci, Functions lint, MCP checks, ESLint, TypeScript, production build |
+| Preview verification | Vercel PR deployment check PASS; interactive Preview walkthrough not applicable to this test-infrastructure-only change |
+| Production data | NOT ACCESSED |
+| Next permitted step | S1 — Order workflow integrity |
 
 Do not mark a step PASS unless all required exit criteria have verifiable evidence.

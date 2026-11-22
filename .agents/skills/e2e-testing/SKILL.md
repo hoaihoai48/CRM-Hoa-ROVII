@@ -325,3 +325,22 @@ test('trade execution', async ({ page }) => {
   await expect(page.locator('[data-testid="trade-success"]')).toBeVisible()
 })
 ```
+
+
+## ROVII project overrides
+
+These repository-specific rules take precedence over generic examples above:
+
+- Use the repository's pinned `@playwright/test` dependency and the single Chromium project initially. Add other browsers only when a verified need exists.
+- Run `npm run test:e2e`; it starts Firebase Auth and Firestore Emulators before Playwright. The Next.js test server is isolated on port 3100 and explicitly configured to use those emulators.
+- Never point write-capable tests at production Firebase or use production credentials/data. All test identities and records must be synthetic.
+- Prefer `getByRole`, `getByLabel` and user-visible text. Use stable `data-testid` only when no accessible locator is practical.
+- Avoid fixed sleeps and `networkidle` as synchronization. Use web-first assertions and wait for a specific observable condition.
+- CI captures HTML/JUnit reports, traces on first retry, screenshots on failure and video on failure. Artifacts are retained for 7 days.
+- Do not silently skip a failing test. A quarantine requires a linked issue, explicit owner, reason and expiry/revisit condition.
+- Start with authentication and access-control smoke tests, then add feature-specific scenarios with the delivery step they protect.
+
+Reference sources:
+- Playwright official CI guide: https://playwright.dev/docs/ci
+- Playwright best practices: https://playwright.dev/docs/best-practices
+- Reviewed community CI skill: https://github.com/testdino-hq/playwright-skill
