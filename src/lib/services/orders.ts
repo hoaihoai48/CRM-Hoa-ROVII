@@ -57,6 +57,7 @@ function customerOrderStateFingerprint(data: Record<string, unknown>): string {
     lastOrderDateOrderId: data.lastOrderDateOrderId ?? null,
     lastOrderMutationOrderId: data.lastOrderMutationOrderId ?? null,
     lastOrderMutationId: data.lastOrderMutationId ?? null,
+    lastOrderRefillOrderId: data.lastOrderRefillOrderId ?? null,
   });
 }
 
