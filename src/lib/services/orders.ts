@@ -123,8 +123,8 @@ function mapDocToOrder(id: string, data: Record<string, unknown>): Order {
 }
 
 /**
- * Rebuild the customer's materialized order projection from the orders collection and
- * derive aggregate fields from that projection.
+ * Rebuild lifetime aggregates from the complete orders collection and compact the
+ * customer document's bounded recent-order projection.
  *
  * The orders query cannot be included in a Firestore Web SDK transaction. To avoid
  * overwriting a concurrent create/status mutation, snapshot the customer's current
@@ -191,6 +191,7 @@ export async function syncCustomerAggregates(customerId: string): Promise<void> 
           throw new Error('SYNC_CUSTOMER_AGGREGATES_RETRY');
         }
 
+        // Lifetime counters always come from the full order scan, never the bounded cache.
         const activeOrders = scannedSummaries.filter((order) => order.status !== 'cancelled');
         const completedOrders = scannedSummaries.filter((order) => order.status === 'completed');
         const totalOrders = activeOrders.length;
