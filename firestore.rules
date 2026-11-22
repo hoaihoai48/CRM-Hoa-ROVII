@@ -59,6 +59,10 @@ service cloud.firestore {
         && (!('deliveryDate' in data.keys()) || data.deliveryDate == null || data.deliveryDate is string);
     }
 
+    function boundedCustomerProjection(data) {
+      return !('orderSummaries' in data.keys()) || data.orderSummaries.size() <= 51;
+    }
+
     function validCustomer(data) {
       return data.keys().hasOnly([
           'name', 'phone', 'phoneNormalized', 'address',
@@ -80,7 +84,7 @@ service cloud.firestore {
         && data.totalSpent >= 0
         && data.lastOrderDate is string
         && data.createdAt is string
-        && (!('orderSummaries' in data.keys()) || (data.orderSummaries is list && data.orderSummaries.size() <= 51))
+        && (!('orderSummaries' in data.keys()) || data.orderSummaries is list)
         && (!('note' in data.keys()) || data.note == null || data.note is string);
     }
 
@@ -204,6 +208,7 @@ service cloud.firestore {
       allow read: if isActiveMember();
       allow create: if isActiveMember()
         && validCustomer(request.resource.data)
+        && boundedCustomerProjection(request.resource.data)
         && (
           (request.resource.data.totalOrders == 0
             && request.resource.data.totalSpent == 0
@@ -213,6 +218,7 @@ service cloud.firestore {
           || hasMatchingFirstOrderProjection(customerId, request.resource.data)
         );
       allow update: if isActiveMember() && validCustomer(request.resource.data)
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['orderSummaries']) || boundedCustomerProjection(request.resource.data))
         && request.resource.data.phone == resource.data.phone
         && request.resource.data.phoneNormalized == resource.data.phoneNormalized
         && request.resource.data.createdAt == resource.data.createdAt;
