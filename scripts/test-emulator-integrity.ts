@@ -1442,7 +1442,7 @@ async function runTestSuite() {
   // ==========================================
   // CASE Q: Cursor pagination is stable and does not duplicate or skip records.
   // ==========================================
-  console.log('\\n--- CASE Q: Cursor pagination for orders and customers ---');
+  console.log('\n--- CASE Q: Cursor pagination for orders and customers ---');
   const orderPage1 = await listOrdersPage(null, 3);
   const orderPage2 = await listOrdersPage(orderPage1.nextCursor, 3);
   const orderPage3 = await listOrdersPage(orderPage2.nextCursor, 3);
