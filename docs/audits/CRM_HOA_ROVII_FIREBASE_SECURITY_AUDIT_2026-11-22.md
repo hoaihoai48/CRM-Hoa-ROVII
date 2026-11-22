@@ -127,7 +127,7 @@ No production data, deployment, billing or paid Firebase service was touched.
 
 ## F-01 remediation proposal — PR #25 (2026-11-23)
 
-- PR: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/25 — draft on branch `security/customer-aggregate-write-boundary-2026-11-23`; implementation commit `7e886508dfa6f1c4315d38a2ad1899ca6e676fb0`. Final PR head must be read live after the handoff/audit commit.
+- PR: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/25 — draft on branch `security/customer-aggregate-write-boundary-2026-11-23`; implementation commits `7e886508dfa6f1c4315d38a2ad1899ca6e676fb0` and `fb8842e7df3ba0109038fa7509e2b2dc259f87be` (the latter splits Rules helpers to stay within per-function let-binding limits). Final PR head must be read live after the handoff/audit commit.
 - Firestore Rules proposal: customer updates by staff are limited to profile fields or order-linked writes. The latter use `lastOrderMutationId` to resolve the order with `get()/getAfter()`, require exactly one appended history entry, require the changed order's summary in the bounded customer projection, and enforce `totalOrders` and completed-`totalSpent` deltas from before/after status and order total.
 - `lastOrderDateOrderId` binds a changed last-order date to a real, non-cancelled order for the same customer and a matching projection summary. Order creation, status changes and editable-order updates set `lastOrderMutationId` atomically with the order write.
 - The full-scan `syncCustomerAggregates()` repair path is retained for active admins only. This is a deliberate trusted-admin exception; it does not protect against a compromised admin. Staff direct aggregate writes and staff repair attempts are covered by new negative Emulator cases.
