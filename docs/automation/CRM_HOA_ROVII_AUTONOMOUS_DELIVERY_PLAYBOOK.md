@@ -196,3 +196,12 @@ Both Vercel Previews were Ready with zero unresolved feedback. No production dat
 - PR #18 strengthened Firestore Rules: every appended status-history entry on an order with `createdByUid` must include `actorUid == request.auth.uid`. Emulator coverage verifies rejection without partial writes and acceptance of a valid authenticated UID; legacy orders without creator UID remain compatible. Merge `83c354436ff9dfedca180832fcec324c03a36ffa`; PR CI #45008498582 PASS; post-merge main #45008753697 PASS.
 - Both Preview deployments were Ready with zero unresolved feedback. No production data/deployment, migration, billing or paid Firebase service was touched.
 - Remaining owner decisions are unchanged: purchaser vs recipient, delivery scheduling/timezone, note visibility and separation, human-readable order code, staff assignment policy, and customer receipt vs fulfilment print content.
+
+
+## 16. Delivery update — PR #23 Storage Rules hardening (2026-11-22)
+
+- PR #23 aligns /products/** Storage writes/deletes with the existing admin-only Firestore product catalog policy. Active staff cannot create/update/delete product image objects; active admins can upload valid images and delete them; public reads remain unchanged.
+- Storage Emulator is configured at port 9199 and included in the isolated demo-crm-hoa-rovii test runner alongside Auth and Firestore. The suite now covers staff upload/delete denial, admin upload/delete success, invalid MIME/extension and the 10 MiB size boundary.
+- PR: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/23. Head at documentation update: 4a3548d4ab6a3f04a58f504b414b760caac08c2a; Actions run #45039930605 was still in progress and Vercel Preview pending. Codex review requested. Re-fetch all statuses against the latest head before merge.
+- Do not claim Emulator/Playwright success until CI completes. No production bucket, data, deployment, billing or paid Firebase service touched.
+- PR #21's security audit code review is clean after correcting the admin self-membership wording; a separate requested security review remains outstanding at last check.
