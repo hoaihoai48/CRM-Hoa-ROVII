@@ -3,7 +3,7 @@
  * Tests Cases A through Q for Data Invariants & Optimistic Concurrency Control (OCC)
  */
 
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { db, auth } from '../src/lib/firebase/config';
 import { createCustomer, findCustomerByPhone, getCustomerById, listCustomersPage, updateCustomer } from '../src/lib/services/customers';
@@ -32,6 +32,20 @@ function assert(condition: boolean, message: string) {
     throw new Error(`Assertion failed: ${message}`);
   }
   console.log(`  ✓ ${message}`);
+}
+
+async function expectPermissionDenied(label: string, action: () => Promise<unknown>) {
+  let denied = false;
+  try {
+    await action();
+  } catch (error) {
+    const code = error && typeof error === 'object' && 'code' in error
+      ? String((error as { code?: unknown }).code ?? '')
+      : '';
+    if (code !== 'permission-denied') throw error;
+    denied = true;
+  }
+  assert(denied, label);
 }
 
 /**
@@ -882,9 +896,9 @@ async function runTestSuite() {
 
   // An active staff client must not forge customer counters/projection, even when
   // it supplies a marker pointing at a real order without mutating that order.
-  let staffAggregateTamperingBlocked = false;
-  try {
-    await updateDoc(doc(db, 'customers', custTrans.id), {
+  await expectPermissionDenied(
+    'Case H: active staff cannot forge customer aggregates or projection without a matching order mutation',
+    () => updateDoc(doc(db, 'customers', custTrans.id), {
       totalOrders: 99999,
       totalSpent: 88888888,
       lastOrderDate: '2099-01-01T00:00:00.000Z',
@@ -897,22 +911,106 @@ async function runTestSuite() {
         total: 99999999,
         createdAt: oTrans.createdAt,
       }],
-    });
-  } catch {
-    staffAggregateTamperingBlocked = true;
-  }
-  assert(
-    staffAggregateTamperingBlocked,
-    'Case H: active staff cannot forge customer aggregates or projection without a matching order mutation',
+    }),
   );
 
-  let staffRepairBlocked = false;
-  try {
-    await syncCustomerAggregates(custTrans.id);
-  } catch {
-    staffRepairBlocked = true;
-  }
-  assert(staffRepairBlocked, 'Case H: active staff cannot invoke the privileged aggregate repair path');
+  await expectPermissionDenied(
+    'Case H: active staff cannot invoke the privileged aggregate repair path',
+    () => syncCustomerAggregates(custTrans.id),
+  );
+
+  // A real order mutation is not a license to inject unrelated customer summaries
+  // or spoof the last-order source marker while leaving its date unchanged.
+  const projectionGuardCustomer = await createCustomer({
+    name: 'Khách hàng kiểm tra projection guard',
+    phone: '0901111227',
+    address: 'Projection Guard Address',
+  });
+  const projectionGuardOrder = await createOrder({
+    customerId: projectionGuardCustomer.id,
+    customerSnapshot: {
+      name: projectionGuardCustomer.name,
+      phone: projectionGuardCustomer.phone,
+      address: projectionGuardCustomer.address,
+    },
+    items: [{ productId: p1.id, quantity: 1 }],
+    deliveryFee: 0,
+    discount: 0,
+    createdBy: 'Projection Guard Tester',
+    createdByUid: staffUserUid,
+  });
+  const projectionOrderRef = doc(db, 'orders', projectionGuardOrder.id);
+  const projectionCustomerRef = doc(db, 'customers', projectionGuardCustomer.id);
+  const projectionOrderSnap = await getDoc(projectionOrderRef);
+  const projectionCustomerSnap = await getDoc(projectionCustomerRef);
+  const projectionOrderData = projectionOrderSnap.data()!;
+  const projectionCustomerData = projectionCustomerSnap.data()!;
+  const projectionHistory = projectionOrderData.statusHistory as Array<Record<string, unknown>>;
+  const projectionSummaries = projectionCustomerData.orderSummaries as Array<Record<string, unknown>>;
+  const projectionTotal = Number((projectionOrderData.summary as Record<string, unknown>).total);
+  const projectionCreatedAt = String(projectionOrderData.createdAt);
+
+  const forgedProjectionEntry = {
+    id: `${projectionGuardOrder.id}-HIST-FORGED-PROJECTION`,
+    status: 'confirmed',
+    timestamp: new Date().toISOString(),
+    actorName: 'Projection Guard Tester',
+    actorUid: staffUserUid,
+    note: null,
+  };
+  const validChangedSummary = {
+    id: projectionGuardOrder.id,
+    status: 'confirmed',
+    total: projectionTotal,
+    createdAt: projectionCreatedAt,
+  };
+  const forgedProjectionBatch = writeBatch(db);
+  forgedProjectionBatch.update(projectionOrderRef, {
+    status: 'confirmed',
+    statusHistory: [...projectionHistory, forgedProjectionEntry],
+  });
+  forgedProjectionBatch.update(projectionCustomerRef, {
+    lastOrderMutationOrderId: projectionGuardOrder.id,
+    lastOrderMutationId: forgedProjectionEntry.id,
+    orderSummaries: [
+      ...projectionSummaries.filter((summary) => summary.id !== projectionGuardOrder.id),
+      validChangedSummary,
+      { id: 'FORGED-UNRELATED-ORDER', status: 'new', total: 999999, createdAt: projectionCreatedAt },
+    ],
+  });
+  await expectPermissionDenied(
+    'Case H: a legitimate order mutation cannot add an unrelated forged customer summary',
+    () => forgedProjectionBatch.commit(),
+  );
+
+  const forgedDateEntry = {
+    id: `${projectionGuardOrder.id}-HIST-FORGED-DATE-SOURCE`,
+    status: 'confirmed',
+    timestamp: new Date().toISOString(),
+    actorName: 'Projection Guard Tester',
+    actorUid: staffUserUid,
+    note: null,
+  };
+  const forgedDateBatch = writeBatch(db);
+  forgedDateBatch.update(projectionOrderRef, {
+    status: 'confirmed',
+    statusHistory: [...projectionHistory, forgedDateEntry],
+  });
+  forgedDateBatch.update(projectionCustomerRef, {
+    lastOrderMutationOrderId: projectionGuardOrder.id,
+    lastOrderMutationId: forgedDateEntry.id,
+    lastOrderDateOrderId: 'FORGED-LATEST-ORDER-ID',
+    orderSummaries: [
+      ...projectionSummaries.filter((summary) => summary.id !== projectionGuardOrder.id),
+      validChangedSummary,
+    ],
+  });
+  await expectPermissionDenied(
+    'Case H: changing lastOrderDateOrderId alone requires a real active source order',
+    () => forgedDateBatch.commit(),
+  );
+  const projectionOrderAfterAttacks = await getDoc(projectionOrderRef);
+  assert(projectionOrderAfterAttacks.data()?.status === 'new', 'Case H: denied paired attacks leave the real order unchanged');
 
   // The explicit repair utility remains available to an authenticated active admin.
   await withAdminSession(() => syncCustomerAggregates(custTrans.id));
