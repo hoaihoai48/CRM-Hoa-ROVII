@@ -90,7 +90,7 @@ function encodeFirestoreValue(value: unknown): Record<string, unknown> {
 
 async function setDocumentAsAdmin(collectionName: string, documentId: string, data: Record<string, unknown>) {
   const host = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'crm-hoa-rovii';
+  const projectId = DEMO_PROJECT_ID;
   const url = `http://${host}/v1/projects/${projectId}/databases/(default)/documents/${collectionName}/${documentId}`;
   const fields: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data)) {
@@ -106,7 +106,7 @@ async function setDocumentAsAdmin(collectionName: string, documentId: string, da
 
 async function corruptCustomerAggregatesAsAdmin(customerId: string) {
   const host = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'crm-hoa-rovii';
+  const projectId = DEMO_PROJECT_ID;
   const updateMask = [
     'updateMask.fieldPaths=totalOrders',
     'updateMask.fieldPaths=totalSpent',
@@ -170,6 +170,37 @@ async function runTestSuite() {
     status: 'active',
   });
   console.log('🛡️ Provisioned active staff membership via trusted emulator admin path.');
+
+  // Aggregate repair is a privileged admin maintenance path; ordinary order/profile
+  // operations below continue to run as staff.
+  const testAdminEmail = 'admin.tester@cuatiemhoa.vn';
+  const testAdminPass = 'SecureAdminPassword123!';
+  let adminUserUid = '';
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, testAdminEmail, testAdminPass);
+    adminUserUid = cred.user.uid;
+  } catch {
+    const cred = await signInWithEmailAndPassword(auth, testAdminEmail, testAdminPass);
+    adminUserUid = cred.user.uid;
+  }
+  await provisionUserMembership(adminUserUid, {
+    email: testAdminEmail,
+    role: 'admin',
+    status: 'active',
+  });
+  await signOut(auth);
+  await signInWithEmailAndPassword(auth, testStaffEmail, testStaffPass);
+
+  const withAdminSession = async <T>(action: () => Promise<T>): Promise<T> => {
+    await signOut(auth);
+    await signInWithEmailAndPassword(auth, testAdminEmail, testAdminPass);
+    try {
+      return await action();
+    } finally {
+      await signOut(auth);
+      await signInWithEmailAndPassword(auth, testStaffEmail, testStaffPass);
+    }
+  };
 
   // Setup seed products
   const p1: Product = {
@@ -855,8 +886,41 @@ async function runTestSuite() {
     'Corrupted fake order summary injected into projection'
   );
 
-  // Directly exercise the repair utility; it must rebuild projection and aggregates from orders collection.
-  await syncCustomerAggregates(custTrans.id);
+  // An active staff client must not forge customer counters/projection, even when
+  // it supplies a marker pointing at a real order without mutating that order.
+  let staffAggregateTamperingBlocked = false;
+  try {
+    await updateDoc(doc(db, 'customers', custTrans.id), {
+      totalOrders: 99999,
+      totalSpent: 88888888,
+      lastOrderDate: '2099-01-01T00:00:00.000Z',
+      lastOrderDateOrderId: oTrans.id,
+      lastOrderMutationId: oTrans.id,
+      orderSummaries: [{
+        id: oTrans.id,
+        status: 'completed',
+        total: 99999999,
+        createdAt: oTrans.createdAt,
+      }],
+    });
+  } catch {
+    staffAggregateTamperingBlocked = true;
+  }
+  assert(
+    staffAggregateTamperingBlocked,
+    'Case H: active staff cannot forge customer aggregates or projection without a matching order mutation',
+  );
+
+  let staffRepairBlocked = false;
+  try {
+    await syncCustomerAggregates(custTrans.id);
+  } catch {
+    staffRepairBlocked = true;
+  }
+  assert(staffRepairBlocked, 'Case H: active staff cannot invoke the privileged aggregate repair path');
+
+  // The explicit repair utility remains available to an authenticated active admin.
+  await withAdminSession(() => syncCustomerAggregates(custTrans.id));
   const repairedSnap = await getCustomerById(custTrans.id);
   assert(repairedSnap !== null, 'Repaired customer must exist');
 
@@ -997,7 +1061,7 @@ async function runTestSuite() {
     });
   }
 
-  await syncCustomerAggregates(scaleCustomer.id);
+  await withAdminSession(() => syncCustomerAggregates(scaleCustomer.id));
   const scaleAfterSync = await getCustomerById(scaleCustomer.id);
   const scaleActive = scaleRows.filter((row) => row.status !== 'cancelled');
   const scaleCompleted = scaleRows.filter((row) => row.status === 'completed');
@@ -1093,7 +1157,7 @@ async function runTestSuite() {
     note: 'Legacy projection compatibility',
   });
   assert(legacyProfileUpdate.name === 'Khách hàng Scale đã cập nhật', 'Case N: profile edits remain allowed for legacy projections larger than 51');
-  await syncCustomerAggregates(scaleCustomer.id);
+  await withAdminSession(() => syncCustomerAggregates(scaleCustomer.id));
   const compactedLegacyCustomer = await getCustomerById(scaleCustomer.id);
   assert((compactedLegacyCustomer!.orderSummaries ?? []).length <= 50, 'Case N: aggregate repair compacts a legacy oversized projection');
 

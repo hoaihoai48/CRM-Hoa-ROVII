@@ -66,8 +66,8 @@ service cloud.firestore {
     function validCustomer(data) {
       return data.keys().hasOnly([
           'name', 'phone', 'phoneNormalized', 'address',
-          'totalOrders', 'totalSpent', 'lastOrderDate', 'orderSummaries',
-          'note', 'createdAt'
+          'totalOrders', 'totalSpent', 'lastOrderDate', 'lastOrderDateOrderId',
+          'lastOrderMutationId', 'orderSummaries', 'note', 'createdAt'
         ])
         && data.keys().hasAll([
           'name', 'phone', 'phoneNormalized', 'address',
@@ -83,6 +83,11 @@ service cloud.firestore {
         && data.totalSpent is number
         && data.totalSpent >= 0
         && data.lastOrderDate is string
+        && (!('lastOrderDateOrderId' in data.keys())
+          || data.lastOrderDateOrderId == null
+          || (data.lastOrderDateOrderId is string && data.lastOrderDateOrderId.size() > 0))
+        && (!('lastOrderMutationId' in data.keys())
+          || (data.lastOrderMutationId is string && data.lastOrderMutationId.size() > 0))
         && data.createdAt is string
         && (!('orderSummaries' in data.keys()) || data.orderSummaries is list)
         && (!('note' in data.keys()) || data.note == null || data.note is string);
@@ -166,6 +171,7 @@ service cloud.firestore {
         'createdAt': orderData.createdAt
       };
       return customerAfter.data.orderSummaries is list
+        && customerAfter.data.lastOrderMutationId == orderId
         && expectedSummary in customerAfter.data.orderSummaries;
     }
 
@@ -197,6 +203,8 @@ service cloud.firestore {
         && customerData.totalOrders == 1
         && customerData.totalSpent == 0
         && customerData.lastOrderDate == customerData.orderSummaries[0].createdAt
+        && customerData.lastOrderMutationId == customerData.orderSummaries[0].id
+        && customerData.lastOrderDateOrderId == customerData.orderSummaries[0].id
         && getAfter(/databases/$(database)/documents/orders/$(customerData.orderSummaries[0].id)).data.customerId == customerId
         && getAfter(/databases/$(database)/documents/orders/$(customerData.orderSummaries[0].id)).data.status == 'new'
         && getAfter(/databases/$(database)/documents/orders/$(customerData.orderSummaries[0].id)).data.summary.total == customerData.orderSummaries[0].total
@@ -204,6 +212,85 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/orders/$(customerData.orderSummaries[0].id)).data.customerSnapshot.name == customerData.name
         && getAfter(/databases/$(database)/documents/orders/$(customerData.orderSummaries[0].id)).data.customerSnapshot.phone == customerData.phone
         && getAfter(/databases/$(database)/documents/orders/$(customerData.orderSummaries[0].id)).data.customerSnapshot.address == customerData.address;
+    }
+
+
+    // Customer aggregate writes by staff must be tied to a real order write in the
+    // same transaction. The order rules enforce lifecycle/history; these checks bind
+    // the customer counters and projection to that exact before/after order state.
+    function validLastOrderDateSource(customerId) {
+      let sourceId = request.resource.data.get('lastOrderDateOrderId', null);
+      return (request.resource.data.lastOrderDate == '' && sourceId == null)
+        || (
+          sourceId is string
+          && sourceId.size() > 0
+          && existsAfter(/databases/$(database)/documents/orders/$(sourceId))
+          && getAfter(/databases/$(database)/documents/orders/$(sourceId)).data.customerId == customerId
+          && getAfter(/databases/$(database)/documents/orders/$(sourceId)).data.status != 'cancelled'
+          && getAfter(/databases/$(database)/documents/orders/$(sourceId)).data.createdAt == request.resource.data.lastOrderDate
+          && {
+            'id': sourceId,
+            'status': getAfter(/databases/$(database)/documents/orders/$(sourceId)).data.status,
+            'total': getAfter(/databases/$(database)/documents/orders/$(sourceId)).data.summary.total,
+            'createdAt': getAfter(/databases/$(database)/documents/orders/$(sourceId)).data.createdAt
+          } in request.resource.data.orderSummaries
+        );
+    }
+
+    function validCustomerOrderMutation(customerId, orderId) {
+      let orderPath = /databases/$(database)/documents/orders/$(orderId);
+      let orderBeforeExists = exists(orderPath);
+      let orderAfterExists = existsAfter(orderPath);
+      let orderBefore = orderBeforeExists ? get(orderPath).data : {};
+      let orderAfter = orderAfterExists ? getAfter(orderPath).data : {};
+      let oldStatus = orderBeforeExists ? orderBefore.status : 'none';
+      let newStatus = orderAfterExists ? orderAfter.status : 'none';
+      let oldTotal = orderBeforeExists ? orderBefore.summary.total : 0;
+      let newTotal = orderAfterExists ? orderAfter.summary.total : 0;
+      let oldActive = orderBeforeExists && oldStatus != 'cancelled' ? 1 : 0;
+      let newActive = orderAfterExists && newStatus != 'cancelled' ? 1 : 0;
+      let oldCompletedTotal = orderBeforeExists && oldStatus == 'completed' ? oldTotal : 0;
+      let newCompletedTotal = orderAfterExists && newStatus == 'completed' ? newTotal : 0;
+      let oldHistorySize = orderBeforeExists ? orderBefore.statusHistory.size() : 0;
+      let newHistorySize = orderAfterExists ? orderAfter.statusHistory.size() : 0;
+      let expectedSummary = {
+        'id': orderId,
+        'status': orderAfter.status,
+        'total': orderAfter.summary.total,
+        'createdAt': orderAfter.createdAt
+      };
+      let lastDateChanged = request.resource.data.lastOrderDate != resource.data.lastOrderDate;
+      let lastDateSourceChanged = request.resource.data.get('lastOrderDateOrderId', null)
+        != resource.data.get('lastOrderDateOrderId', null);
+      return orderAfterExists
+        && orderAfter.customerId == customerId
+        && (!orderBeforeExists || orderBefore.customerId == customerId)
+        && newHistorySize == oldHistorySize + 1
+        && expectedSummary in request.resource.data.orderSummaries
+        && request.resource.data.totalOrders == resource.data.totalOrders + newActive - oldActive
+        && request.resource.data.totalSpent == resource.data.totalSpent + newCompletedTotal - oldCompletedTotal
+        && ((!lastDateChanged && !lastDateSourceChanged) || validLastOrderDateSource(customerId))
+        && boundedCustomerProjection(request.resource.data);
+    }
+
+    function hasMatchingCustomerOrderMutation(customerId) {
+      let orderId = request.resource.data.get('lastOrderMutationId', '');
+      return orderId is string
+        && orderId.size() > 0
+        && validCustomerOrderMutation(customerId, orderId);
+    }
+
+    function isCustomerProfileOnlyUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'address', 'note']);
+    }
+
+    // Full aggregate rebuild is a privileged admin maintenance path. Staff cannot
+    // invoke it; normal staff writes must use the order-linked transaction above.
+    function isAdminAggregateRepair() {
+      return isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'totalOrders', 'totalSpent', 'lastOrderDate', 'lastOrderDateOrderId', 'orderSummaries'
+        ]);
     }
 
     match /customers/{customerId} {
@@ -223,7 +310,18 @@ service cloud.firestore {
         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['orderSummaries']) || boundedCustomerProjection(request.resource.data))
         && request.resource.data.phone == resource.data.phone
         && request.resource.data.phoneNormalized == resource.data.phoneNormalized
-        && request.resource.data.createdAt == resource.data.createdAt;
+        && request.resource.data.createdAt == resource.data.createdAt
+        && (
+          isCustomerProfileOnlyUpdate()
+          || (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'totalOrders', 'totalSpent', 'lastOrderDate', 'lastOrderDateOrderId',
+              'orderSummaries', 'lastOrderMutationId'
+            ])
+            && hasMatchingCustomerOrderMutation(customerId)
+          )
+          || isAdminAggregateRepair()
+        );
       allow delete: if false;
     }
 

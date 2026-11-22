@@ -71,6 +71,12 @@ function latestDate(summaries: CustomerOrderSummary[]): string {
   );
 }
 
+function latestActiveSummary(summaries: CustomerOrderSummary[]): CustomerOrderSummary | null {
+  return summaries
+    .filter((summary) => summary.status !== 'cancelled')
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))[0] ?? null;
+}
+
 function mapDocToOrder(id: string, data: Record<string, unknown>): Order {
   const rawItems = Array.isArray(data.items) ? data.items : [];
   const items: OrderItem[] = rawItems.map((item: Record<string, unknown>, idx: number) => ({
@@ -198,14 +204,15 @@ export async function syncCustomerAggregates(customerId: string): Promise<void> 
         // Lifetime counters always come from the full order scan, never the bounded cache.
         const activeOrders = scannedSummaries.filter((order) => order.status !== 'cancelled');
         const completedOrders = scannedSummaries.filter((order) => order.status === 'completed');
+        const latestActive = latestActiveSummary(activeOrders);
         const totalOrders = activeOrders.length;
         const totalSpent = completedOrders.reduce((sum, order) => sum + order.total, 0);
-        const sortedDates = activeOrders.map((order) => order.createdAt).sort();
 
         tx.update(customerRef, {
           totalOrders,
           totalSpent,
-          lastOrderDate: sortedDates.at(-1) || '',
+          lastOrderDate: latestActive?.createdAt || '',
+          lastOrderDateOrderId: latestActive?.id || null,
           orderSummaries: boundedProjection,
         });
       });
@@ -485,11 +492,17 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
     const currentLastOrderDate = typeof custRaw.lastOrderDate === 'string' && custRaw.lastOrderDate
       ? normalizeIsoString(custRaw.lastOrderDate)
       : latestDate(fallbackActive);
+    const currentLastOrderDateOrderId = typeof custRaw.lastOrderDateOrderId === 'string' && custRaw.lastOrderDateOrderId
+      ? custRaw.lastOrderDateOrderId
+      : existingSummaries.find((summary) => summary.status !== 'cancelled' && summary.createdAt === currentLastOrderDate)?.id ?? null;
+    const advancesLastOrderDate = now > currentLastOrderDate;
 
     const updatedCustomerAggregates = {
       totalOrders: currentTotalOrders + 1,
       totalSpent: currentTotalSpent,
-      lastOrderDate: now > currentLastOrderDate ? now : currentLastOrderDate,
+      lastOrderDate: advancesLastOrderDate ? now : currentLastOrderDate,
+      lastOrderDateOrderId: advancesLastOrderDate ? orderId : currentLastOrderDateOrderId,
+      lastOrderMutationId: orderId,
       orderSummaries: projectedSummaries,
     };
 
@@ -588,17 +601,27 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
     const currentLastOrderDate = typeof custRaw.lastOrderDate === 'string' && custRaw.lastOrderDate
       ? normalizeIsoString(custRaw.lastOrderDate)
       : latestDate(fallbackActive);
-    const lastOrderDate = input.status === 'cancelled' && orderCreatedAt >= currentLastOrderDate
-      ? latestDate(projectedSummaries.filter((summary) => summary.status !== 'cancelled'))
-      : orderCreatedAt > currentLastOrderDate
-        ? orderCreatedAt
-        : currentLastOrderDate;
+    const currentLastOrderDateOrderId = typeof custRaw.lastOrderDateOrderId === 'string' && custRaw.lastOrderDateOrderId
+      ? custRaw.lastOrderDateOrderId
+      : existingSummaries.find((summary) => summary.status !== 'cancelled' && summary.createdAt === currentLastOrderDate)?.id ?? null;
+    let lastOrderDate = currentLastOrderDate;
+    let lastOrderDateOrderId = currentLastOrderDateOrderId;
+    if (input.status === 'cancelled' && orderCreatedAt >= currentLastOrderDate) {
+      const latestActive = latestActiveSummary(projectedSummaries);
+      lastOrderDate = latestActive?.createdAt || '';
+      lastOrderDateOrderId = latestActive?.id || null;
+    } else if (orderCreatedAt > currentLastOrderDate) {
+      lastOrderDate = orderCreatedAt;
+      lastOrderDateOrderId = id;
+    }
 
     // 3. WRITES (Atomic)
     tx.update(customerRef, {
       totalOrders,
       totalSpent,
       lastOrderDate,
+      lastOrderDateOrderId,
+      lastOrderMutationId: id,
       orderSummaries: projectedSummaries,
     });
 
@@ -738,6 +761,7 @@ export async function updateOrder(id: string, input: UpdateOrderInput): Promise<
     // 4. WRITES (Atomic)
     tx.update(customerRef, {
       orderSummaries: projectedSummaries,
+      lastOrderMutationId: id,
     });
     tx.update(orderRef, {
       customerSnapshot: {
