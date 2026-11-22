@@ -238,7 +238,7 @@ service cloud.firestore {
       return data.keys().hasOnly([
           'name', 'phone', 'phoneNormalized', 'address',
           'totalOrders', 'totalSpent', 'lastOrderDate', 'lastOrderDateOrderId',
-          'lastOrderMutationOrderId', 'lastOrderMutationId', 'orderSummaries', 'note', 'createdAt'
+          'lastOrderMutationOrderId', 'lastOrderMutationId', 'lastOrderRefillOrderId', 'orderSummaries', 'note', 'createdAt'
         ])
         && data.keys().hasAll([
           'name', 'phone', 'phoneNormalized', 'address',
@@ -261,6 +261,9 @@ service cloud.firestore {
           || (data.lastOrderMutationOrderId is string && data.lastOrderMutationOrderId.size() > 0))
         && (!('lastOrderMutationId' in data.keys())
           || (data.lastOrderMutationId is string && data.lastOrderMutationId.size() > 0))
+        && (!('lastOrderRefillOrderId' in data.keys())
+          || data.lastOrderRefillOrderId == null
+          || (data.lastOrderRefillOrderId is string && data.lastOrderRefillOrderId.size() > 0))
         && data.createdAt is string
         && (!('orderSummaries' in data.keys()) || data.orderSummaries is list)
         && (!('note' in data.keys()) || data.note == null || data.note is string);
@@ -439,7 +442,39 @@ service cloud.firestore {
     // Staff may remove cancelled cache rows, replace the summary for the order being
     // mutated, and compact only the oldest row when a full, valid projection receives
     // a new order. No active row can be silently dropped to roll the date source back.
-    function validCustomerOrderProjection(expectedSummary, orderId, beforeExists, before, afterStatus) {
+    function customerRefillSummary() {
+      let refillId = request.resource.data.get('lastOrderRefillOrderId', null);
+      let refillOrder = refillId is string
+        ? getAfter(/databases/$(database)/documents/orders/$(refillId)).data
+        : {};
+      return refillId is string ? {
+        'id': refillId,
+        'status': refillOrder.status,
+        'total': refillOrder.summary.total,
+        'createdAt': refillOrder.createdAt
+      } : {};
+    }
+
+    function validCustomerRefill(customerId, orderId, newSummaries, afterStatus, refillSummary) {
+      let refillId = request.resource.data.get('lastOrderRefillOrderId', null);
+      let refillOrder = refillId is string
+        ? getAfter(/databases/$(database)/documents/orders/$(refillId)).data
+        : {};
+      return refillId == null
+        || (
+          afterStatus == 'cancelled'
+          && refillId is string
+          && refillId.size() > 0
+          && refillId != orderId
+          && refillOrder.customerId == customerId
+          && refillOrder.status in ['new', 'confirmed', 'delivering', 'completed']
+          && validCustomerOrderSummary(refillSummary)
+          && refillSummary in newSummaries
+          && !(refillSummary in resource.data.get('orderSummaries', []))
+        );
+    }
+
+    function validCustomerOrderProjection(customerId, expectedSummary, orderId, beforeExists, before, afterStatus) {
       let oldSummaries = resource.data.get('orderSummaries', []);
       let newSummaries = request.resource.data.get('orderSummaries', []);
       let oldOrderSummary = beforeExists ? {
@@ -453,8 +488,11 @@ service cloud.firestore {
         oldSummaries, beforeExists, oldOrderSummary, expectedSummary, afterStatus
       );
       let oldestSummary = canDropOldest ? oldSummaries[19] : {};
+      let refillId = request.resource.data.get('lastOrderRefillOrderId', null);
+      let refillSummary = customerRefillSummary();
+      let hasRefill = refillId is string;
       let allowedNewSummaries = afterStatus == 'cancelled'
-        ? oldSummaries.toSet()
+        ? oldSummaries.toSet().union(hasRefill ? [refillSummary].toSet() : [].toSet())
         : oldSummaries.toSet().union([expectedSummary].toSet());
       let mayOmitChangedSummary = afterStatus != 'cancelled'
         && !wasProjected
@@ -463,6 +501,7 @@ service cloud.firestore {
       return oldSummaries is list
         && oldSummaries.size() <= 20
         && validProjectionBounds(newSummaries)
+        && validCustomerRefill(customerId, orderId, newSummaries, afterStatus, refillSummary)
         && newSummaries.toSet().hasOnly(allowedNewSummaries)
         && (
           (afterStatus == 'cancelled' && !(expectedSummary in newSummaries))
@@ -494,7 +533,7 @@ service cloud.firestore {
         && after.statusHistory.size() == (beforeExists ? before.statusHistory.size() + 1 : 1)
         && after.statusHistory[after.statusHistory.size() - 1].id == request.resource.data.lastOrderMutationId
         && request.resource.data.lastOrderMutationId != resource.data.get('lastOrderMutationId', null)
-        && validCustomerOrderProjection(expectedSummary, orderId, beforeExists, before, after.status)
+        && validCustomerOrderProjection(customerId, expectedSummary, orderId, beforeExists, before, after.status)
         && request.resource.data.totalOrders == resource.data.totalOrders + newActive - oldActive
         && request.resource.data.totalSpent == resource.data.totalSpent + newCompletedTotal - oldCompletedTotal
         && validLastOrderDateSource(customerId)
@@ -517,7 +556,7 @@ service cloud.firestore {
     function isAdminAggregateRepair() {
       return isAdmin()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'totalOrders', 'totalSpent', 'lastOrderDate', 'lastOrderDateOrderId', 'orderSummaries'
+          'totalOrders', 'totalSpent', 'lastOrderDate', 'lastOrderDateOrderId', 'lastOrderRefillOrderId', 'orderSummaries'
         ]);
     }
 
@@ -544,7 +583,7 @@ service cloud.firestore {
           || (
             request.resource.data.diff(resource.data).affectedKeys().hasOnly([
               'totalOrders', 'totalSpent', 'lastOrderDate', 'lastOrderDateOrderId',
-              'orderSummaries', 'lastOrderMutationOrderId', 'lastOrderMutationId'
+              'orderSummaries', 'lastOrderMutationOrderId', 'lastOrderMutationId', 'lastOrderRefillOrderId'
             ])
             && hasMatchingCustomerOrderMutation(customerId)
           )
