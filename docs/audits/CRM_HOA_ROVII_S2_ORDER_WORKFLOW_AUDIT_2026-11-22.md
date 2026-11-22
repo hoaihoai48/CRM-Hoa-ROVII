@@ -88,3 +88,13 @@ Before implementing recipient/delivery/assignment/print UX, obtain explicit requ
 - Playwright covers invoking `window.print()` and print-media visibility.
 - PR #13 merged at `bd3e259082b8f600db4474e39947b0ee0218e4fa`; PR CI #44983725322 PASS and post-merge main CI #44983907739 PASS.
 - No schema changes, data migration, production data access, deployment, or paid Firebase services.
+
+
+## 9. Customer aggregate scale remediation (PR #14)
+
+- PR #14: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/14 — merged at `568083053d7311f6d5abbe608f3a100f0c803444`.
+- Bounded `orderSummaries` to 50 recent active rows plus at most one currently changed cancelled row (maximum 51). Full historical orders remain in the canonical `orders` collection.
+- Lifetime `totalOrders` and `totalSpent` now update by transaction deltas on create/status changes. Edits to new/confirmed orders only update the projection. `syncCustomerAggregates()` remains the full-scan repair path.
+- Firestore Rules enforce the size cap only when the projection is created/changed; profile-only edits on legacy oversized arrays remain allowed. A subsequent order mutation or aggregate repair compacts those arrays.
+- Emulator Case N verifies 65 synthetic orders, exact totals/date, compaction, old order update/edit, latest active cancellation, subsequent create, oversize rejection, legacy profile edit and repair compaction.
+- PR CI #44985057671 PASS and post-merge main CI #44985288167 PASS. No production migration/data access, paid Firebase service, or deployment.

@@ -46,5 +46,7 @@ Existing smaller-history, transaction rollback, status lifecycle, aggregate repa
 ## 5. Verification status
 
 - Branch: `fix/bounded-customer-order-projection`
-- PR and CI status will be recorded here after the final branch head has completed all checks.
+- PR #14: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/14 — merged at `568083053d7311f6d5abbe608f3a100f0c803444`.
+- Final PR CI #44985057671: PASS. Post-merge main CI #44985288167: PASS, including lint, typecheck, Firebase Emulator Case N, Playwright E2E and production build.
+- Final test case label: Case N (the suite already had a separate Case M for admin staff management).
 - No production data, deployment, billing, or destructive migration touched.

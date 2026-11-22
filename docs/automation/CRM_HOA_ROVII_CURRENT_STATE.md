@@ -1,6 +1,6 @@
 # CRM-Hoa-ROVII — Current Delivery Handoff
 
-**Last updated:** 2026-11-22 11:12 Asia/Ho_Chi_Minh  
+**Last updated:** 2026-11-22 11:31 Asia/Ho_Chi_Minh  
 **Repository:** https://github.com/hoaihoai48/CRM-Hoa-ROVII  
 **Default branch:** `main`  
 **Current main SHA:** read the live `main` ref before resuming (this handoff file is updated on every delivery session).
@@ -164,3 +164,19 @@ Read this handoff and the playbook, then fetch live GitHub state. S0/S1 and PR #
 - Continue the S2 order-scale audit, starting with the embedded `customers.orderSummaries` array and Firestore document-size/transaction contention risks.
 - Produce a backward-compatible scale/remediation proposal and Emulator test matrix before changing aggregate storage. Preserve historical order reads and customer totals; do not run production backfills or introduce paid Firebase services.
 - Keep recipient/purchaser semantics, delivery-window policy, card-message separation, human-facing order-code policy, staff assignment permissions, and print-slip content requirements as explicit product decisions rather than guessing them in schema changes.
+
+
+### S2 continuation — 2026-11-22 (PR #14 bounded customer projection)
+
+- PR #14: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/14 — squash-merged at `568083053d7311f6d5abbe608f3a100f0c803444`.
+- `customers/{customerId}.orderSummaries` is now a bounded projection (50 recent active entries; at most 51 when a currently cancelled order must remain represented for the matching order/customer write). Historical orders remain canonical in `orders` and customer detail continues to query that collection.
+- Create/status transactions update `totalOrders` and `totalSpent` by old/new status deltas. Order edits only refresh the projection because editable orders are new/confirmed. `syncCustomerAggregates()` remains the full canonical-order repair path.
+- Firestore Rules cap new/changed projections at 51 while allowing profile-only edits to legacy oversized projections that remain unchanged; the next order mutation or repair compacts them.
+- Emulator Case N seeds 65 synthetic orders and verifies totals, compaction, old-order status/edit behavior, latest-order cancellation, subsequent create, size rejection, legacy profile update, and repair compaction.
+- PR CI #44985057671 PASS; post-merge main CI #44985288167 PASS (lint, TypeScript, Emulator, Playwright and production build). No production migration or paid Firebase feature.
+
+
+### Next autonomous focus
+
+- Audit collection-wide reads and pagination for customers/orders, then propose safe cursor-based pagination that preserves current sorting and filters.
+- Keep purchaser/recipient, delivery-slot, greeting-card, order-code and staff-assignment semantics as explicit business requirements; do not infer irreversible schema or permission policy.

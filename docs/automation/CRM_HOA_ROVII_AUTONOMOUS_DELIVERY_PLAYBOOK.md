@@ -277,3 +277,13 @@ Do not mark a step PASS unless all required exit criteria have verifiable eviden
 - Order detail now has a browser-native print action and an A4 print-only layout. It prints the available order snapshot and totals while suppressing CRM navigation, action controls and the internal status timeline.
 - Playwright verifies the print action and print-media visibility. PR CI #44983725322 and post-merge main CI #44983907739 PASS, including Emulator, E2E and production build.
 - Presentation-only: no schema/rules/data/dependency or paid-service changes.
+
+
+## 16. S2 continuation — bounded customer aggregate projection
+
+- PR #14 merged at `568083053d7311f6d5abbe608f3a100f0c803444`.
+- `orderSummaries` is bounded to 50 recent active rows plus at most one currently changed cancelled row (51 maximum) for Firestore Rules coherence. Full history stays in the `orders` collection.
+- Create/status transactions use aggregate deltas; edits to new/confirmed orders only update their summary row. `syncCustomerAggregates()` still rebuilds exact totals from canonical orders and compacts legacy oversized arrays.
+- Rules cap changed projections but preserve profile-only edits to unchanged legacy oversized arrays.
+- Emulator Case N covers 65 synthetic orders and all bounded-projection edge cases. PR CI #44985057671 and post-merge main CI #44985288167 PASS, including Emulator, Playwright and build.
+- No production data migration, Cloud Functions, paid Firebase service or deployment.
