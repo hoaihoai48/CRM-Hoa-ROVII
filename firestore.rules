@@ -438,7 +438,16 @@ service cloud.firestore {
         && customerAfter.data.lastOrderMutationId == orderData.statusHistory[historySize - 1].id
         && (
           (orderData.status == 'cancelled' && !(expectedSummary in customerAfter.data.orderSummaries))
-          || (orderData.status != 'cancelled' && expectedSummary in customerAfter.data.orderSummaries)
+          || (
+            orderData.status != 'cancelled'
+            && (
+              expectedSummary in customerAfter.data.orderSummaries
+              || (
+                customerAfter.data.orderSummaries.size() == 51
+                && summaryNoLater(expectedSummary, customerAfter.data.orderSummaries[50])
+              )
+            )
+          )
         );
     }
 
@@ -519,7 +528,7 @@ service cloud.firestore {
     // Staff may remove cancelled cache rows, replace the summary for the order being
     // mutated, and compact only the oldest row when a full, valid projection receives
     // a new order. No active row can be silently dropped to roll the date source back.
-    function validCustomerOrderProjection(expectedSummary, orderId, beforeExists, afterStatus) {
+    function validCustomerOrderProjection(expectedSummary, orderId, beforeExists, before, afterStatus) {
       let oldSummaries = resource.data.get('orderSummaries', []);
       let newSummaries = request.resource.data.get('orderSummaries', []);
       let canDropOldest = isSafeOldestCompaction(oldSummaries, beforeExists);
@@ -527,13 +536,24 @@ service cloud.firestore {
       let allowedNewSummaries = afterStatus == 'cancelled'
         ? oldSummaries.toSet()
         : oldSummaries.toSet().union([expectedSummary].toSet());
+      let oldOrderSummary = beforeExists ? {
+        'id': orderId,
+        'status': before.status,
+        'total': before.summary.total,
+        'createdAt': before.createdAt
+      } : {};
+      let wasProjected = oldOrderSummary in oldSummaries;
+      let mayOmitChangedSummary = afterStatus != 'cancelled'
+        && !wasProjected
+        && newSummaries.size() == 51
+        && summaryNoLater(expectedSummary, newSummaries[50]);
       return oldSummaries is list
         && oldSummaries.size() <= 51
         && validProjectionBounds(newSummaries)
         && newSummaries.toSet().hasOnly(allowedNewSummaries)
         && (
           (afterStatus == 'cancelled' && !(expectedSummary in newSummaries))
-          || (afterStatus != 'cancelled' && expectedSummary in newSummaries)
+          || (afterStatus != 'cancelled' && (expectedSummary in newSummaries || mayOmitChangedSummary))
         )
         && validPreviousProjectionRetention(
           oldSummaries, newSummaries, orderId, canDropOldest, oldestSummary
@@ -561,7 +581,7 @@ service cloud.firestore {
         && after.statusHistory.size() == (beforeExists ? before.statusHistory.size() + 1 : 1)
         && after.statusHistory[after.statusHistory.size() - 1].id == request.resource.data.lastOrderMutationId
         && request.resource.data.lastOrderMutationId != resource.data.get('lastOrderMutationId', null)
-        && validCustomerOrderProjection(expectedSummary, orderId, beforeExists, after.status)
+        && validCustomerOrderProjection(expectedSummary, orderId, beforeExists, before, after.status)
         && request.resource.data.totalOrders == resource.data.totalOrders + newActive - oldActive
         && request.resource.data.totalSpent == resource.data.totalSpent + newCompletedTotal - oldCompletedTotal
         && validLastOrderDateSource(customerId)
