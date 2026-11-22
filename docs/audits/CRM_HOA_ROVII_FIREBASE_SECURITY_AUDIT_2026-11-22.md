@@ -36,7 +36,7 @@ Firestore Rules already enforce important controls: active membership for busine
 
 **Recommendation:** If product image management is intended to follow product catalog permissions, change Storage write/delete to active admin only. Before implementation, add Storage Emulator tests (staff denied upload/delete, admin allowed valid image upload/delete, invalid type/extension/oversize rejected) and include Storage in the isolated emulator test runner. This audit did not change the rule because the existing CI runs only Auth/Firestore Emulators; changing policy without an equivalent Storage Rules regression suite would reduce assurance.
 
-**Status:** Confirmed policy mismatch; remediation queued behind Storage Emulator coverage.
+**Status:** Remediation is implemented in PR #22 but remains pending final latest-head CI/review and merge verification.
 
 ### F-03 — Storage Rules enforce per-object limits but image/document payload limits are not end-to-end bounded
 
@@ -99,3 +99,10 @@ This was a source/configuration audit only. No Emulator command was executed by 
 5. Re-run full lint, typecheck, Auth/Firestore/Storage Emulator tests, Playwright and build on a PR head; merge only after all applicable gates pass.
 
 No production data, deployment, billing or paid Firebase service was touched.
+
+
+## Remediation progress — F-02 (2026-11-22)
+
+- PR #22 changes `/products/{allPaths=**}` Storage writes/deletes to require an authenticated active admin, matching the Firestore product catalog boundary. Public reads remain unchanged by design.
+- PR #22 adds Storage Emulator coverage for anonymous, missing-membership, malformed/non-admin, active staff, inactive staff and active admin; valid upload/overwrite/delete, public read, MIME/extension rejection and the 10 MiB boundary are exercised.
+- CI #45043396941 on pre-fixture-fix head `5562214aa1aaf89300be79dc7cb3a5f4abfa5bea` passed lint/typecheck and Auth/Firestore/Storage Emulator tests, but 3/6 Playwright tests failed because test fixtures used `crm-hoa-rovii` while the app used `demo-crm-hoa-rovii`; production build was skipped. The fixture project IDs were corrected in commits `df358a63ebfecc62b98c0bb131febbf5eae44c59` and `2f643fd07c85c58d35b2ba37a6a0f1cac3133765`. F-02 must remain pending until a completed latest-head CI run and merge are verified.

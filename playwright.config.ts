@@ -31,7 +31,7 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 120_000,
     env: {
-      NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'crm-hoa-rovii',
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'demo-crm-hoa-rovii',
       NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST: '127.0.0.1:9099',
       NEXT_PUBLIC_FIRESTORE_EMULATOR_HOST: '127.0.0.1:8080',
     },

@@ -3,7 +3,7 @@
 **Last updated:** 2026-11-22  
 **Repository:** https://github.com/hoaihoai48/CRM-Hoa-ROVII  
 **Default branch:** main  
-**Latest code merge:** 7e923b5a0a996468a211f76b8d1ff715699e3ce4 (PR #16)  
+**Latest code merge:** 83c354436ff9dfedca180832fcec324c03a36ffa (PR #18; PR #21 was a documentation-only merge)  
 **Resume rule:** Always read this file and the playbook, then inspect live GitHub state and latest main ref before acting. This file is updated last in a delivery session.
 
 ## Owner delegation and safety boundaries
@@ -22,7 +22,7 @@
 - S1 — Order lifecycle integrity: COMPLETE.
 - S2 — Sales/order workflow technical hardening: substantial safe work COMPLETE; business semantics remain blocked on owner decisions listed below.
 - PR #16 cursor pagination: MERGED.
-- Open PR inventory at last inspection: none.
+- Open PR inventory: PR #22 (Storage Rules/test isolation) is open; PR #21 merged; PR #23 closed unmerged and superseded.
 - Post-merge main workflow #44989024153 completed PASS on PR #16 merge commit; all CI steps passed.
 - No production data, deployment, billing or destructive migration touched.
 
@@ -97,10 +97,12 @@ A backward-compatible optional-field candidate and regression matrix are recorde
 3. Firestore Rules now require `actorUid == request.auth.uid` for every appended status-history entry when the existing order has `createdByUid`; legacy orders without creator UID retain backward-compatible optional actor UIDs.
 4. No further purchaser/recipient, delivery-slot, note, order-code, assignment or print-content implementation until the owner supplies the business decisions above.
 5. Once those decisions are supplied, implement one vertical slice at a time with coordinated types + service + Firestore Rules + Emulator positive/negative tests + Playwright + print verification.
+6. PR #21 merged as docs-only commit `e728de1b8b98f91e976a3336a657720f4020f6b8`. Its F-01 impact wording was corrected after independent security review; no Actions run is expected under `paths-ignore`, and the Vercel quota failure is not a gate for docs-only changes.
+7. PR #22 is the active security-hardening step. CI run #45043396941 on pre-fix head `5562214aa1aaf89300be79dc7cb3a5f4abfa5bea` passed lint/typecheck and Auth/Firestore/Storage Emulator tests but failed 3 of 6 Playwright tests because E2E fixtures still seeded project `crm-hoa-rovii` while the app ran under `demo-crm-hoa-rovii`; production build was skipped. The fixture project IDs were corrected in commits `df358a63ebfecc62b98c0bb131febbf5eae44c59` and `2f643fd07c85c58d35b2ba37a6a0f1cac3133765`. Re-run full CI on the synchronized latest head and complete code/security review before merge.
 
 ## New-chat instruction
 
-Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md. Fetch the live main ref, open PR inventory and latest Actions runs. PRs #17 and #18 are merged; PR #17 CI #45008095660 / main #45008325128 and PR #18 CI #45008498582 / main #45008753697 all passed. Latest docs versions: S2 audit e916bd37c578050127f6ce2814b2cf19e7c3e29c, pagination audit 0350da5476a8351febdd4c3f6ccbc1c3e989c643, playbook `39313a14bd3cdc5be24fc844ca98ef77bf1275a7` (pre-PR #19; see latest playbook revision on main). The next blocker is the business decisions in the S2 audit; do not repeat PRs #8–#18.
+Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md. Fetch the live main ref, open PR inventory and latest Actions runs. PRs #8–#18 and #21 are merged; PR #23 is closed unmerged; PR #22 is the active Storage Rules/test-isolation hardening PR. The previous PR #22 run #45043396941 failed only in Playwright because E2E fixtures still used the old project ID; those fixtures were corrected in commits `df358a63ebfecc62b98c0bb131febbf5eae44c59` and `2f643fd07c85c58d35b2ba37a6a0f1cac3133765`. Recheck the latest head and run full CI/reviews before merge; do not repeat PRs #8–#18, #21 or #23.
 
 
 ## Delivery update — 2026-11-22 (PRs #17–#18)
@@ -123,3 +125,13 @@ Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK
 
 - Independent review identified an overstatement in F-01: same-status edits to `new`/`confirmed` orders can change editable items/summary values because Rules validate shape and lifecycle/history, not product-price arithmetic. The impact statement now says this explicitly.
 - No application code or policy changed in this documentation correction. The remaining customer aggregate weakness is unchanged: an active client can directly forge customer scalar aggregates/projection fields within the current schema.
+
+
+## Delivery update — 2026-11-22 (PR #21 merged; PR #22 E2E fixture correction)
+
+- PR #21 merged by squash as `e728de1b8b98f91e976a3336a657720f4020f6b8`. It adds the Firebase Security & Access-Control Audit and the F-01 wording correction. Codex code review completed with no findings on `f9fa49c5`; independent security review found/corrected the editable-order-total qualification. No GitHub Actions run was returned because docs-only changes are excluded by `paths-ignore`; Vercel failed with the Free daily deployment quota, which is not applicable to docs-only work.
+- PR #22 (`feat/storage-rules-emulator-coverage`) implements active-admin-only Storage product image writes/deletes, Storage Emulator regression coverage, fail-closed demo/loopback guards for both Emulator test scripts, and Playwright demo-project isolation.
+- PR #22 run #45043396941 on old head `5562214aa1aaf89300be79dc7cb3a5f4abfa5bea`: lint, typecheck, Auth/Firestore/Storage Emulator tests passed; Playwright had 3 failures and 3 passes because `auth.spec.ts` and `orders.spec.ts` still seeded `crm-hoa-rovii` while the app used `demo-crm-hoa-rovii`; production build was skipped. Fixed the fixtures in `df358a63ebfecc62b98c0bb131febbf5eae44c59` and `2f643fd07c85c58d35b2ba37a6a0f1cac3133765`.
+- PR #22 branch is being synchronized with main after PR #21. The next gate is a completed latest-head Actions run plus current-head code/security review. Vercel Preview is N/A because this PR changes Rules/test infrastructure only, not runtime/UI or Vercel deployment configuration.
+- PR #23 was closed unmerged at `2026-11-22T15:48:14Z`; do not reopen or duplicate it.
+- No production Auth/Firestore/Storage data, deployment, billing, migration or Firebase project settings were accessed or changed.
