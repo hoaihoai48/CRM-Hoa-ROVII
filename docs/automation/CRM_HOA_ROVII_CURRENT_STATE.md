@@ -1,197 +1,102 @@
 # CRM-Hoa-ROVII — Current Delivery Handoff
 
-**Last updated:** 2026-11-22 11:42 Asia/Ho_Chi_Minh  
+**Last updated:** 2026-11-22  
 **Repository:** https://github.com/hoaihoai48/CRM-Hoa-ROVII  
-**Default branch:** `main`  
-**Current main SHA:** read the live `main` ref before resuming (this handoff file is updated on every delivery session).
+**Default branch:** main  
+**Latest code merge:** 7e923b5a0a996468a211f76b8d1ff715699e3ce4 (PR #16)  
+**Resume rule:** Always read this file and the playbook, then inspect live GitHub state and latest main ref before acting. This file is updated last in a delivery session.
 
-This is the restart point for a new ChatGPT conversation. Read it together with `docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md` and inspect live GitHub state before acting.
+## Owner delegation and safety boundaries
 
-## Owner delegation and guardrails
+- The owner has delegated routine engineering decisions: inspect, implement, test, maintain PRs, and merge ordinary low-risk code/docs PRs when all required checks pass and the diff is safe.
+- Do not interrupt with progress reports. Continue autonomously and stop only for a real business decision, missing credentials/permissions, paid-service or billing change, production data repair/migration, production deployment/release, or another irreversible/high-risk action.
+- Preserve Firebase Spark compatibility. Do not introduce paid Firebase services without approval.
+- Use Firebase Auth/Firestore Emulators and synthetic identities only. Never read or mutate production customer/order data for tests.
+- No production deployment, billing/configuration change, destructive migration or production data repair without explicit approval.
+- Work on feature branches; use cohesive commits; inspect final PR head, completed CI evidence, Preview feedback and review threads before merge.
+- Keep this handoff and the playbook current at each meaningful milestone. Never report a workflow as PASS until its completed result is inspected.
 
-- Owner delegated routine engineering decisions: inspect, implement, test, update PRs, and merge normal code/docs PRs when all required checks pass and changes are safe.
-- Ask the owner only for decisions that genuinely require business clarification, credentials, paid-service/billing changes, production data repair/migration, production deployment/release, or other irreversible/high-risk actions.
-- Preserve Firebase Spark compatibility; do not introduce paid services without approval.
-- Never access or mutate production customer/order data for tests. Use Firebase Auth/Firestore Emulators and synthetic identities.
-- Do not deploy production, change billing, or perform destructive migrations without explicit approval.
-- Work on feature branches, group related files into cohesive commits, and update this handoff/playbook during every meaningful delivery session.
-- Never report tests as PASS without inspecting completed workflow evidence.
+## Current status
 
-## Completed delivery
+- S0 — CI/Playwright foundation: COMPLETE.
+- S1 — Order lifecycle integrity: COMPLETE.
+- S2 — Sales/order workflow technical hardening: substantial safe work COMPLETE; business semantics remain blocked on owner decisions listed below.
+- PR #16 cursor pagination: MERGED.
+- Open PR inventory at last inspection: none.
+- Post-merge main workflow #44989024153 for PR #16 merge commit is pending final verification; do not mark it PASS until completed.
+- No production data, deployment, billing or destructive migration touched.
 
-### S0 — Playwright/CI foundation: MERGED
+## Merged delivery inventory
 
-- PR #8: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/8
-- Squash merge commit: `c63f2da0d2250bf8957877ce33e17142a8d6f8d3`
-- Pre-merge CI: https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44904053612 — PASS
-- Vercel check — PASS; Playwright Chromium 4/4 auth/access tests passed.
-- Post-merge `main` workflow: https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44966225503 — IN PROGRESS at this handoff. PR #9's stronger combined workflow passed.
-
-### S1 — Order workflow integrity: MERGED
-
-- PR #9: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/9
-- Branch: `feat/order-workflow-integrity`
-- Final PR head: `53781a838495ac6bcf438dc42214ae4a7faf464e`
-- Squash merge commit on main: `8ea157041599ca95966a02695e7c1a25ffe3c9a7`
-- Final retargeted CI: https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44966311523 — PASS
-- Checks: dependency install/audit, Functions syntax, MCP syntax/protocol/safety smoke, ESLint, TypeScript, Firebase Emulator integration/invariants, Playwright Chromium, production build and diagnostics artifact upload — all PASS.
-- Vercel Preview check: PASS; no unresolved feedback.
-- Emulator tests use synthetic isolated data only. No production data accessed or changed.
-- Preview browser interactive walkthrough was not performed; Vercel's PR check confirms deployment feedback status, not a full human workflow walkthrough.
-
-### Superseded PR
-
-- PR #6 (older Firestore status-transition implementation) was closed without merge: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/6
-- PR #9 is the canonical stronger implementation. Do not reopen PR #6.
-
-## Open PR inventory
-
-| PR | Scope | State | Next action |
+| PR | Scope | Merge commit | Verification |
 |---|---|---|---|
-| #10 | MCP structured tool output schemas | Open, draft | Wait for fresh GitHub Actions; inspect MCP smoke test, then mark ready and merge if all checks pass |
+| #8 | Playwright/CI foundation | c63f2da0d2250bf8957877ce33e17142a8d6f8d3 | PR CI passed |
+| #9 | Order lifecycle, history and customer projection integrity | 8ea157041599ca95966a02695e7c1a25ffe3c9a7 | PR CI #44966311523 and post-merge #44966474046 passed |
+| #10 | MCP structured output schemas and safety smoke tests | 6ac8304c8df47fe0c2a94dd444591a59ebb5b2da | PR CI #44966591236 and post-merge #44967174708 passed |
+| #11 | Atomic first-time customer + first order creation | 73bb72ca19e5af82027e7f27096e693cb5892497 | PR CI #44982355903 and post-merge #44982521247 passed |
+| #12 | Stable creator/history actor UIDs | 64c539e423c78bfe0b7089889b40d479afdfa799 | PR CI #44982896197 and post-merge #44983058488 passed |
+| #13 | Browser-native A4 printable order slip | bd3e259082b8f600db4474e39947b0ee0218e4fa | PR CI #44983725322 and post-merge #44983907739 passed |
+| #14 | Bounded customer order projection and delta aggregates | 568083053d7311f6d5abbe608f3a100f0c803444 | PR CI #44985057671 and post-merge #44985288167 passed |
+| #15 | Dashboard bounded reads/local-day query | 4ce6d95095141180cb855426bff8c94c722b880b | PR CI #44985805872 and post-merge #44986041575 passed |
+| #16 | Cursor pagination for orders/customers | 7e923b5a0a996468a211f76b8d1ff715699e3ce4 | Final PR head 83e0d6c09978ea163e7b4d0f6280d3dd3b0f2f8c; PR CI #44988852658 passed; post-merge #44989024153 pending |
 
-### Closed / superseded PRs
-- PR #5 closed without merge. MCP changes extracted into focused PR #10; Firebase Storage removal intentionally excluded pending Firestore document-size safeguards.
-- PR #6 closed without merge; superseded by merged PR #9.
-- PR #8 merged as S0.
+Relevant links:
+- [PR #16](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/16)
+- [PR #16 CI](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44988852658)
+- [PR #16 post-merge CI](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44989024153)
+- [S2 order workflow audit](https://github.com/hoaihoai48/CRM-Hoa-ROVII/blob/main/docs/audits/CRM_HOA_ROVII_S2_ORDER_WORKFLOW_AUDIT_2026-11-22.md)
+- [Collection read/pagination audit](https://github.com/hoaihoai48/CRM-Hoa-ROVII/blob/main/docs/audits/CRM_HOA_ROVII_COLLECTION_READ_PAGINATION_AUDIT_2026-11-22.md)
 
-## Important S1 implementation details
+## Important invariants to preserve
 
-- New orders must start in `new` with one valid matching history entry.
-- Status transitions: `new → confirmed/cancelled`, `confirmed → delivering/cancelled`, `delivering → completed`.
-- History is append-only: exactly one valid new entry, exact prior sequence retained.
-- Same-status order content edits are allowed only in `new` and `confirmed`.
-- Status transitions can modify only status/history fields.
-- Delivering, completed and cancelled orders cannot be edited.
-- `getAfter()` requires order and customer per-order projection to match atomically in the same transaction/batch.
-- Order service recalculates from current Firestore product prices and recomputes customer aggregates transactionally.
-- Full customer aggregate math is not recomputed in Rules; service transactions and Emulator tests cover it.
+- New orders start in new with exactly one valid initial history entry.
+- Allowed transitions: new → confirmed/cancelled, confirmed → delivering/cancelled, delivering → completed.
+- History is append-only; every status mutation appends exactly one valid entry and preserves the previous sequence.
+- Same-status content edits are allowed only in new and confirmed; lifecycle transitions change only status/history.
+- Order service reads product prices from Firestore and recomputes totals inside a transaction.
+- Order/customer projection updates are atomic and Firestore Rules use getAfter() to require the matching per-order projection.
+- First-time customer and first order are created in one transaction; a failed first order must not leave an orphan customer.
+- New records may store createdByUid and history actorUid; these are optional for legacy compatibility and must match request.auth.uid.
+- Customer orderSummaries is bounded to at most 51 rows; lifetime counters are scalar values updated by transaction deltas. Full order history remains in orders.
+- Dashboard loads the local-day order range and six newest orders, not the full collection.
+- Order/customer list pages browse 50-row snapshot-cursor pages. Global substring search and non-default order status filtering intentionally load the full collection to preserve existing semantics.
+- Keep all changes Spark-compatible; do not move business writes to paid Cloud Functions.
 
-## Known follow-up risks / S2 audit targets
+## S2: completed technical work vs owner decisions
 
-1. `customer.orderSummaries` grows as an embedded array; monitor Firestore 1 MiB document limit and plan a scalable projection before volume becomes large.
-2. Rules enforce a matching per-order customer projection, not the full totalOrders/totalSpent math across an unbounded order set.
-3. New customer creation currently precedes the order transaction; failed order creation can leave an empty customer. Review during S2.
-4. Audit recipient/delivery information, delivery scheduling, order code, staff assignment and printable order view before changing data contracts.
-5. Validate all customer/order changes against Spark constraints and avoid Cloud Functions or paid Firebase services unless separately approved.
+Completed:
+1. Atomic customer/order creation (PR #11).
+2. Stable creator and status-actor UIDs for attribution (PR #12); this is not staff assignment.
+3. Browser-native A4 print action/layout (PR #13); no PDF dependency.
+4. Bounded customer projection and lifetime aggregate delta updates (PR #14).
+5. Dashboard bounded reads (PR #15).
+6. Cursor pagination for order/customer browsing while preserving global search semantics (PR #16).
+
+Still requires owner decisions before schema/UI implementation:
+1. Purchaser/customer vs recipient: may they differ, and are recipient phone/address optional?
+2. Delivery scheduling: exact datetime, defined time slots, or both; timezone and past-date rules.
+3. Separate fields: greeting-card message, delivery instructions and internal note; who can see each?
+4. Human-readable order code: format, uniqueness scope and reset cadence. Existing UUID document IDs should remain canonical route keys.
+5. Staff assignment: single or multiple assignees, who may assign/reassign, and whether visibility/edit permissions change.
+6. Print output: customer receipt, internal fulfilment sheet, or both; required fields/branding.
+
+A backward-compatible optional-field candidate and regression matrix are recorded in the S2 audit. Do not implement these business semantics by guessing.
+
+## Known technical trade-offs / follow-ups
+
+- Search and non-default status filters still read the full order/customer collection by design; the behavior is documented and must not be silently narrowed.
+- Customer detail order history is still loaded as one customer's full history; independent pagination can be considered later.
+- Firestore Rules validate document shape, lifecycle, actor identity and matching customer projection, but cannot prove all cross-document aggregate arithmetic. Emulator coverage and transaction code remain essential.
+- syncCustomerAggregates() is a full-scan repair path; do not run it against production without a separately reviewed operational plan and explicit approval.
+- Browser print output uses current stored fields; expanding it depends on the owner choosing receipt/fulfilment content.
 
 ## Next action
 
-1. S0/S1 and MCP follow-up PR #10 are merged; PR #10 CI and its post-merge `main` workflow #44967174708 both PASS.
-2. Continue S2 audit by inspecting order creation/edit regression tests, service transaction edges and preview print capabilities. Implementation has not started.
-3. Record a backward-compatible candidate order model and test matrix before feature work; ask the owner only for business semantics (purchaser vs recipient, delivery slots, staff assignment rules and print layout).
-4. Keep Firebase Storage/image-size design separate; do not store unbounded Data URLs in Firestore.
-5. Preserve Spark compatibility and update this handoff after every meaningful session.
-
-## Session log — 2026-11-22
-
-- Squash-merged PR #8 (S0) to main: `c63f2da0d2250bf8957877ce33e17142a8d6f8d3`.
-- Closed PR #6 without merge; PR #9 superseded it.
-- Retargeted PR #9 to main and synchronized its branch after the S0 squash merge created Git-history divergence.
-- Updated both delivery docs with the delegated merge policy, current PR/CI status and restart instructions.
-- PR #9 retargeted CI passed on head `53781a838495ac6bcf438dc42214ae4a7faf464e`; marked ready and squash-merged.
-- S1 squash merge commit: `8ea157041599ca95966a02695e7c1a25ffe3c9a7`.
-- Closed stale PR #5 after extracting its MCP structured-output improvement into focused PR #10. Firebase Storage removal remains intentionally excluded.
-- No production deployment, production data access, billing change or destructive migration was performed.
+1. Verify post-merge main workflow #44989024153 reaches completed / success.
+2. No further purchaser/recipient, delivery-slot, note, order-code, assignment or print-content implementation until the owner supplies the business decisions above.
+3. Once those decisions are supplied, implement one vertical slice at a time with coordinated types + service + Firestore Rules + Emulator positive/negative tests + Playwright + print verification.
+4. Continue other non-blocked engineering/audit work only if it does not assume these unresolved business semantics.
 
 ## New-chat instruction
 
-Read this handoff and the playbook, then fetch live GitHub state. S0/S1 and PR #10 are complete and merged. PR #10 CI run #44966591236 and post-merge main run #44967174708 both PASS. Continue S2 read-only audit; do not repeat completed work or reopen PR #5/#6.
-
-
-### Session continuation — 2026-11-22 (MCP PR cleanup)
-
-- Audited stale PR #5. It combined MCP structured output support with unconditional Firebase Storage removal.
-- Closed PR #5 without merge. Its optional Storage removal was excluded because main already defaults to Data URL when Storage is disabled, while the PR's image-size assumptions did not enforce Firestore's 1 MiB document limit.
-- Extracted only the MCP structured output schemas, structuredContent response and stronger smoke test into new branch `feat/mcp-structured-tool-outputs`.
-- Opened PR #10: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/10
-- PR #10 changes only `mcp-server/server.mjs` and `mcp-server/smoke-test.mjs`; fresh GitHub Actions run #44966591236 is pending at handoff. Vercel check is PASS.
-- No production data, deployment, billing or Storage configuration changed.
-
-
-### Session continuation — 2026-11-22 (PR #10 merged; S2 read-only audit)
-
-- Verified PR #10 CI run #44966591236 completed successfully on head `2e745efc26d0e6786cdbb18999f6e822127e4e00`. All job steps passed: dependency audit/report, Functions syntax, MCP syntax and protocol/safety smoke, lint, TypeScript, Firebase Emulator integration, Chromium install, Playwright browser E2E, production build and diagnostics upload.
-- Vercel Preview for PR #10 was Ready; review submissions and inline review threads were empty. Marked PR #10 ready for review and squash-merged.
-- PR #10 merge commit: `6ac8304c8df47fe0c2a94dd444591a59ebb5b2da`; live `main` ref confirmed at this SHA.
-- Main post-merge workflow #44967174708: PASS. All steps passed including Firebase Emulator integration, Playwright Chromium E2E, production build and diagnostics artifact upload. https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44967174708
-- Read-only S2 audit inspected order creation page, order list/detail pages, order/customer/staff services, TypeScript models and Firestore Rules.
-- Current order-entry UI stores customer name/phone/address together in `customerSnapshot`; it does not distinguish purchaser from recipient. Delivery is a single `deliveryDate` datetime-local field, and note combines greeting-card text with instructions. No dedicated recipient phone/address, delivery window, assigned-staff ID or printable order view was found in inspected order UI/model.
-- Orders receive an ID formatted `DH-${crypto.randomUUID()}`; order list/detail routes expose this document ID. It is not a human-friendly sequential code.
-- `createdBy` is the creator's display name only; status history records actorName, not a staff membership UID. Existing staff membership collection can be listed by admin but no order assignment relationship exists in inspected schema.
-- Important architecture issue to address before S2 implementation: the order flow currently creates a customer document before calling the order transaction. If order creation fails, the newly created customer can remain orphaned. Existing transaction then atomically writes order and customer aggregate projection.
-- Firestore Rules allow order keys only for current schema and would reject additive recipient/assignment fields until rules/types/services are updated together. No migrations or writes performed.
-- No production data accessed, no production deployment, billing/configuration change, or destructive migration.
-- S2 remains AUDIT IN PROGRESS / implementation NOT STARTED. Follow-up: finish reviewing all order detail UI and service update methods, inspect test coverage for order creation/edit, then document candidate data model and explicitly separate business choices requiring owner input (recipient vs purchaser semantics, delivery date/time rules, staff assignment policy, print layout).
-
-
-- Final verification correction: post-merge main run #44967174708 completed `success`; the earlier in-progress observation above is superseded.
-
-
-### S2 continuation — 2026-11-22 (PR #11 atomic first-customer/order write)
-
-- PR #11: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/11 — squash-merged to `main` at `73bb72ca19e5af82027e7f27096e693cb5892497`.
-- The new-customer order path now creates the customer and first order in one Firestore transaction; no pre-create call remains in the order form. Existing customer lookup and legacy ID reuse remain intact.
-- Firestore Rules now permit a customer with a non-empty first-order projection only when `getAfter()` sees the matching valid initial order in the same atomic write. Standalone empty customer creation remains supported.
-- Emulator coverage added for: failed first-order leaves no customer; forged customer projection without matching order is denied; successful first order creates customer + aggregate + projection atomically. Existing Playwright create-order flow now exercises this path.
-- Initial CI run #44982205534 exposed a TypeScript optional-boolean issue; corrected with `?? false`. Final PR CI run #44982355903 passed all steps, including Emulator, Playwright and production build.
-- S2 source findings and open business semantics are documented in `docs/audits/CRM_HOA_ROVII_S2_ORDER_WORKFLOW_AUDIT_2026-11-22.md`.
-- No production data/deployment/billing changes. No legacy data migration.
-
-
-- Final post-merge verification: `main` commit `73bb72ca19e5af82027e7f27096e693cb5892497` passed workflow #44982521247, including lint, typecheck, Emulator, Playwright and production build.
-
-
-### S2 continuation — 2026-11-22 (PR #12 stable actor identity)
-
-- PR #12: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/12 — squash-merged at `64c539e423c78bfe0b7089889b40d479afdfa799`.
-- New orders optionally store `createdByUid`; status-history entries optionally store `actorUid`. The order create/detail UI passes the authenticated membership UID from `AuthProvider`.
-- Firestore Rules require any supplied creator/history UID to match `request.auth.uid`, and keep `createdByUid` immutable. Legacy orders/history without these fields remain valid; no backfill/migration.
-- PR CI run #44982896197 PASS; post-merge main workflow #44983058488 PASS, including lint, typecheck, Emulator, Playwright E2E and production build.
-- Stable audit identity is groundwork only. No staff assignment policy, access scope, or permissions were changed.
-
-
-### S2 continuation — 2026-11-22 (PR #13 printable order slip)
-
-- PR #13: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/13 — squash-merged at `bd3e259082b8f600db4474e39947b0ee0218e4fa`.
-- Added a browser-native `In đơn hàng` action and A4 print stylesheet on order detail. Print output includes order code, creation metadata, current status, customer/delivery snapshot, note, item rows and totals; CRM navigation, editing/status controls and internal timeline are hidden.
-- No order schema, Firestore Rules, data, dependencies, Firebase service, or permissions changed.
-- PR CI #44983725322 PASS; post-merge main workflow #44983907739 PASS, including lint, typecheck, Emulator, Playwright E2E and production build.
-
-
-### Next autonomous focus
-
-- Continue the S2 order-scale audit, starting with the embedded `customers.orderSummaries` array and Firestore document-size/transaction contention risks.
-- Produce a backward-compatible scale/remediation proposal and Emulator test matrix before changing aggregate storage. Preserve historical order reads and customer totals; do not run production backfills or introduce paid Firebase services.
-- Keep recipient/purchaser semantics, delivery-window policy, card-message separation, human-facing order-code policy, staff assignment permissions, and print-slip content requirements as explicit product decisions rather than guessing them in schema changes.
-
-
-### S2 continuation — 2026-11-22 (PR #14 bounded customer projection)
-
-- PR #14: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/14 — squash-merged at `568083053d7311f6d5abbe608f3a100f0c803444`.
-- `customers/{customerId}.orderSummaries` is now a bounded projection (50 recent active entries; at most 51 when a currently cancelled order must remain represented for the matching order/customer write). Historical orders remain canonical in `orders` and customer detail continues to query that collection.
-- Create/status transactions update `totalOrders` and `totalSpent` by old/new status deltas. Order edits only refresh the projection because editable orders are new/confirmed. `syncCustomerAggregates()` remains the full canonical-order repair path.
-- Firestore Rules cap new/changed projections at 51 while allowing profile-only edits to legacy oversized projections that remain unchanged; the next order mutation or repair compacts them.
-- Emulator Case N seeds 65 synthetic orders and verifies totals, compaction, old-order status/edit behavior, latest-order cancellation, subsequent create, size rejection, legacy profile update, and repair compaction.
-- PR CI #44985057671 PASS; post-merge main CI #44985288167 PASS (lint, TypeScript, Emulator, Playwright and production build). No production migration or paid Firebase feature.
-
-
-### Next autonomous focus
-
-- Audit collection-wide reads and pagination for customers/orders, then propose safe cursor-based pagination that preserves current sorting and filters.
-- Keep purchaser/recipient, delivery-slot, greeting-card, order-code and staff-assignment semantics as explicit business requirements; do not infer irreversible schema or permission policy.
-
-
-### S2 continuation — 2026-11-22 (PR #15 dashboard query optimization)
-
-- PR #15: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/15 — squash-merged at `4ce6d95095141180cb855426bff8c94c722b880b`.
-- Dashboard no longer downloads the full `orders` collection. It queries all orders within the local calendar day and the six newest orders overall, using ISO UTC boundaries derived from local midnight.
-- This also fixes the local-date vs UTC-date-prefix mismatch that could misclassify orders around midnight.
-- Emulator Case P verifies day-window filtering, descending sort and six-order limit. PR CI #44985805872 PASS; post-merge main CI #44986041575 PASS, including lint, TypeScript, Emulator, Playwright and production build.
-- Collection audit: `/orders` and `/customers` still fetch all records because their current substring search/filter semantics operate client-side. See `docs/audits/CRM_HOA_ROVII_COLLECTION_READ_PAGINATION_AUDIT_2026-11-22.md` before changing those semantics.
-
-
-### Next autonomous focus
-
-- Design cursor-based pagination for orders/customers without silently changing global substring search. The audit documents the choices and trade-offs; avoid a behavior change until the search contract is settled.
-- Continue to preserve Firebase Spark compatibility and the no-production-data/no-deployment boundary.
+Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md. Fetch the live main ref, open PR inventory and latest Actions runs. PR #16 is merged; its PR CI #44988852658 passed. First verify post-merge run #44989024153. Then pause only at the business decisions in the S2 audit; do not repeat PRs #8–#16.
