@@ -20,13 +20,13 @@ The customer detail page already loads its full order history from the canonical
 - Status transactions update `totalOrders` and `totalSpent` using old/new status deltas. If the latest active order is cancelled, `lastOrderDate` is recomputed from the bounded active projection, which retains the next latest active order.
 - Editing is only allowed for `new` / `confirmed` orders, so an edit updates the bounded summary row but does not alter lifetime count or completed spend.
 - `syncCustomerAggregates()` remains the repair path: it scans canonical orders to rebuild exact lifetime totals, and compacts the embedded projection when it exceeds 50 entries.
-- Firestore Rules now reject customer documents with more than 51 projection entries and continue to require the changed order's exact summary in the same atomic write.
+- Firestore Rules reject newly created or changed projections larger than 51 entries and continue to require the changed order's exact summary in the same atomic write. Legacy oversized projections are still allowed through profile-only edits when the projection itself is unchanged; their next order mutation or aggregate repair compacts them.
 
 ## 3. Compatibility and trade-offs
 
 - No schema migration or backfill is required. Existing customer fields remain unchanged; large arrays are compacted lazily by the repair function or the next order mutation.
 - Historical order documents are never deleted or rewritten by this change.
-- Customer order history remains complete because it is queried from `orders`, not from `orderSummaries`.
+- Customer order history remains complete because it is queried from `orders`, not from `orderSummaries`. Profile edits on legacy customers with an oversized array remain compatible until a repair or order mutation compacts that array.
 - The scalar aggregate fields remain transactionally updated on the customer document. This reduces array growth and routine O(n) recomputation, but it does not remove contention on one very active customer's aggregate document.
 - Firestore Rules still cannot independently prove the arithmetic of lifetime aggregates. Trusted client service transactions update them by deltas, Emulator tests exercise the transitions, and `syncCustomerAggregates()` can repair them from canonical orders.
 - No Cloud Functions, paid Firebase products, or server-side triggers are introduced; this remains Firebase Spark-compatible.
