@@ -91,6 +91,8 @@ export interface OrderStatusHistory {
   timestamp: string;
   note?: string | null;
   actorName: string;
+  /** Stable Firebase Auth UID; optional for legacy history entries. */
+  actorUid?: string;
 }
 
 export interface OrderSummary {
@@ -111,6 +113,8 @@ export interface Order {
   note?: string;
   createdAt: string;
   createdBy: string;
+  /** Stable Firebase Auth UID; optional for legacy orders. */
+  createdByUid?: string;
   deliveryDate?: string;
 }
 
@@ -143,11 +147,13 @@ export interface CreateOrderInput {
   note?: string;
   deliveryDate?: string;
   createdBy: string;
+  createdByUid?: string;
 }
 
 export interface UpdateOrderStatusInput {
   status: OrderStatus;
   actorName: string;
+  actorUid?: string;
   note?: string;
 }
 
@@ -161,6 +167,7 @@ export interface UpdateOrderInput {
   note?: string;
   deliveryDate?: string;
   actorName: string;
+  actorUid?: string;
 }
 
 export interface CreateProductInput {
