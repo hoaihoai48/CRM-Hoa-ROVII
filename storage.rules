@@ -23,7 +23,7 @@ service firebase.storage {
     // must use the same active-admin boundary.
     match /products/{allPaths=**} {
       allow read: if true;
-      allow write: if isActiveAdmin() && isImageFile();
+      allow create, update: if isActiveAdmin() && isImageFile();
       allow delete: if isActiveAdmin();
     }
   }
