@@ -18,7 +18,7 @@ const args = [
   '--project',
   projectId,
   '--only',
-  'auth,firestore',
+  'auth,firestore,storage',
   'node functions/audit-legacy-orders.js && npx tsx scripts/test-emulator-integrity.ts',
 ];
 
@@ -30,6 +30,8 @@ const child = spawn(firebaseBin, args, {
     FIREBASE_PROJECT_ID: projectId,
     FIRESTORE_EMULATOR_HOST: process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080',
     FIREBASE_AUTH_EMULATOR_HOST: process.env.FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1:9099',
+    FIREBASE_STORAGE_EMULATOR_HOST: process.env.FIREBASE_STORAGE_EMULATOR_HOST || '127.0.0.1:9199',
+    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || `${projectId}.appspot.com`,
   },
   stdio: 'inherit',
   shell: isWindows,
