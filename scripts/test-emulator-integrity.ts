@@ -1375,7 +1375,7 @@ async function runTestSuite() {
   for (const row of scaleRows) {
     if (projectedScaleIds.has(row.id)) continue;
     const outsideOrderSnap = await getDoc(doc(db, 'orders', row.id));
-    if (outsideOrderSnap.exists() && outsideOrderSnap.data().status !== 'cancelled') {
+    if (outsideOrderSnap.exists() && ['new', 'confirmed'].includes(String(outsideOrderSnap.data().status))) {
       outsideActiveOrderId = row.id;
       break;
     }
