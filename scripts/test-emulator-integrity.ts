@@ -333,6 +333,26 @@ async function runTestSuite() {
   }
   assert(forgedActorUidBlocked, 'Rules must reject a forged creator UID');
   assert((await getCustomerById('CUST_0901111226')) === null, 'Rejected forged actor write must not create a customer');
+  let missingHistoryActorUidBlocked = false;
+  try {
+    await updateOrderStatus(atomicSuccess.id, {
+      status: 'confirmed',
+      actorName: 'Missing UID',
+    });
+  } catch {
+    missingHistoryActorUidBlocked = true;
+  }
+  assert(missingHistoryActorUidBlocked, 'Rules must reject status-history entries without actor UID on UID-attributed orders');
+  const unchangedAtomicOrder = await getOrderById(atomicSuccess.id);
+  assert(unchangedAtomicOrder?.status === 'new' && unchangedAtomicOrder.statusHistory.length === 1, 'Rejected missing actor UID must not partially change order state');
+
+  const attributedAtomicOrder = await updateOrderStatus(atomicSuccess.id, {
+    status: 'confirmed',
+    actorName: 'Authenticated Tester',
+    actorUid: staffUserUid,
+  });
+  assert(attributedAtomicOrder.status === 'confirmed', 'Authenticated actor UID permits a valid status transition');
+  assert(attributedAtomicOrder.statusHistory[1]?.actorUid === staffUserUid, 'Valid transition persists authenticated actor UID');
 
   // ==========================================
   // TEST: Inactive / Invalid Product Guards
