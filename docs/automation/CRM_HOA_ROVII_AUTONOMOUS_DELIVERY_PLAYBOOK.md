@@ -3,7 +3,7 @@
 - **Repository:** hoaihoai48/CRM-Hoa-ROVII
 - **Default branch:** main
 - **Operating model:** internal-first, SaaS-ready architecture, Firebase Spark-compatible, sales and CRM first
-- **Current delivery state:** S0/S1 complete; S2 technical hardening delivered through PR #18; S2 business semantics await owner decisions; security hardening PR #22 is active.
+- **Current delivery state:** S0/S1 complete; S2 technical hardening delivered through PR #18; Firebase F-02 Storage authorization is resolved by PR #22 with PR-head and post-merge main CI passing; F-01/F-03/F-04/F-05 remain in the security backlog; S2 business semantics await owner decisions.
 
 ## 1. Non-negotiable delivery rules
 
@@ -28,7 +28,7 @@ A delivery step is complete only when all applicable gates pass:
 | Integration/security | Firebase Emulator tests pass, including negative Rules cases where applicable |
 | Browser E2E | Playwright tests pass against isolated Auth/Firestore Emulators |
 | Production build | npm run build passes |
-| Preview | Required only for runtime/UI or Vercel deployment-config changes. For Rules, emulator/test infrastructure, docs or other non-runtime changes, mark N/A when latest-head Actions production build and relevant isolated tests pass; avoid consuming Free deployment quota |
+| Preview | Required for runtime/UI or Vercel deployment-config changes. For Firebase Rules, emulator/test infrastructure and other non-runtime code changes, Preview may be N/A only after latest-head Actions production build and relevant isolated tests pass. **Docs-only exception:** when the entire PR diff is limited to `docs/**` and Markdown, Actions may be skipped by `paths-ignore`; record Actions as NOT RUN (never PASS), state that application build/isolated app tests are not relevant, and mark Preview N/A because runtime/UI and Vercel deployment configuration are unchanged. Do not use prior baseline CI as evidence for the docs head; avoid consuming Free deployment quota |
 | Regression | Existing critical flows remain intact; known trade-offs are documented |
 | Git hygiene | Feature branch, cohesive commits, focused PR, final head SHA checked |
 | Handoff | Status, commit SHA, PR/CI links, tests, risks and next action recorded |
@@ -131,6 +131,8 @@ Add tests alongside the feature they protect. Prefer accessible selectors and st
 | #16 | Cursor pagination for orders/customers | 7e923b5a0a996468a211f76b8d1ff715699e3ce4 | PR #44988852658 PASS; post-merge main #44989024153 PASS |
 | #17 | Customer order-history cursor pagination (25 rows + load more) | 8ce9930ee181b1fca788e823a53ffac8860d9067 | PR #45008095660 PASS; post-merge main #45008325128 PASS |
 | #18 | Require authenticated actor UID on appended history for UID-attributed orders | 83c354436ff9dfedca180832fcec324c03a36ffa | PR #45008498582 PASS; post-merge main #45008753697 PASS |
+| #21 | Firebase Security & Access-Control source audit | e728de1b8b98f91e976a3336a657720f4020f6b8 | Docs-only; code review + independent security review completed |
+| #22 | Active-admin product image Storage Rules + Storage Emulator suite and demo-only test guards | 3efd04c601b4bffaa976edad38c282e921d82be4 | PR #45043911114 PASS on final head; post-merge main #45047810582 PASS |
 
 ### S2 technical invariants and trade-offs
 
@@ -160,25 +162,25 @@ The audit contains a backward-compatible optional-field candidate and regression
 
 | Field | Value |
 |---|---|
-| Active step | PR #22 — Storage Rules + isolated Emulator hardening; S2 business semantics remain owner-gated |
+| Active step | PR #24 docs-only handoff synchronization: correct the P3 stale New-chat instruction found on head 05b58f7f147b1c351f5422d3ac933e576285f4ac after the two P2 corrections, then obtain fresh exact-head code and documentation-focused security reviews; PR #22 post-merge main CI is verified; F-01 follows after PR #24 closes |
 | S0 | COMPLETE |
 | S1 | COMPLETE |
 | S2 technical hardening | COMPLETE through PR #18 |
-| Open PR inventory | PR #22 open; PR #21 merged; PR #23 closed unmerged |
-| Latest code merge | 83c354436ff9dfedca180832fcec324c03a36ffa (PR #18) |
+| Open PR inventory | PR #24 docs-only handoff sync open; PR #23 closed unmerged |
+| Latest code merge | 3efd04c601b4bffaa976edad38c282e921d82be4 (PR #22) |
 | Latest docs merge | e728de1b8b98f91e976a3336a657720f4020f6b8 (PR #21) |
 | Final PR #16 CI | #44988852658 — PASS |
 | PR #16 Preview | Ready; zero unresolved feedback |
 | Post-merge main CI | #45008753697 — PASS (PR #18); #45008325128 — PASS (PR #17) |
 | Production data | NOT ACCESSED |
 | Production deployment | NOT PERFORMED |
-| Next action | Finish PR #22 latest-head CI/review, merge if all gates pass, then close F-02 in the audit; continue non-blocked security hardening without guessing owner-gated business semantics |
+| Next action | Verify PR #24's corrected exact head and complete fresh code/security reviews; merge only with no findings/unresolved threads. Then address F-01 customer scalar aggregate tampering with Emulator negative/positive coverage and a backward-compatible Rules design |
 
 PR #17 paginates customer detail history (25-row pages); PR #18 makes actor UIDs mandatory on appended history entries for UID-attributed orders while preserving legacy compatibility. Do not mark S2 fully complete until the remaining owner decisions have been implemented and their end-to-end acceptance criteria pass.
 
 ## 10. Resume instruction
 
-Every new run must re-read this playbook and docs/automation/CRM_HOA_ROVII_CURRENT_STATE.md, fetch the live main ref, inspect open PRs and the latest Actions runs, and continue from the earliest incomplete step. PRs #8–#18 and #21 are merged; PR #23 is closed unmerged; PR #22 is active. Never infer a successful CI result from a started or cancelled workflow.
+Every new run must re-read this playbook and docs/automation/CRM_HOA_ROVII_CURRENT_STATE.md, fetch the live main ref, inspect open PRs/branches and the latest Actions/review state, and continue from the earliest incomplete step. PRs #8–#22 are merged; PR #23 is closed unmerged; PR #24 is the active docs-only handoff synchronization. PR #22 PR-head CI #45043911114 and post-merge main CI #45047810582 both completed SUCCESS. Never infer a successful CI result from a started or cancelled workflow.
 
 
 ## 11. Delivery update — PRs #17–#18
@@ -211,3 +213,45 @@ Both Vercel Previews were Ready with zero unresolved feedback. No production dat
 - PR #22 adds active-admin Storage Rules, Storage Emulator tests, fail-closed demo/loopback guards, and Playwright demo-project isolation. CI #45043396941 on head `5562214aa1aaf89300be79dc7cb3a5f4abfa5bea` passed lint/typecheck and all Auth/Firestore/Storage Emulator tests, but 3/6 Playwright tests failed because fixture REST calls still used project `crm-hoa-rovii`; build was skipped. The E2E fixtures were corrected in `df358a63ebfecc62b98c0bb131febbf5eae44c59` and `2f643fd07c85c58d35b2ba37a6a0f1cac3133765`.
 - Re-run the full workflow on the current synchronized PR #22 head and inspect the exact code/security review results before merging. Preview is N/A for this Rules/test-infrastructure-only PR; do not consume Vercel Free quota.
 - PR #23 is closed unmerged and superseded. No production data, deployment, billing, migration or project-level Firebase configuration changed.
+
+
+## 18. Delivery update — 2026-11-23 (PR #22 merged; F-02 resolved)
+
+- PR #22 squash-merged as 3efd04c601b4bffaa976edad38c282e921d82be4 from final head 36ae3bf27c74e55cb674c00209e78df580ebf562.
+- Storage product-image create/update/delete now requires authenticated active-admin membership; public reads remain intentional. The Storage Emulator suite covers anonymous, missing/malformed membership, active/inactive staff, admin upload/overwrite/delete, invalid MIME/extension, public read and the under-10-MiB boundary.
+- Both Firestore and Storage Emulator test scripts fail closed outside project demo-crm-hoa-rovii with loopback Auth/Firestore/Storage hosts. Playwright and fixture REST calls use the same demo project.
+- PR CI #45043911114 completed SUCCESS on the exact final head: lint, typecheck, Auth/Firestore/Storage Emulator, Playwright (6 tests) and production build. Earlier run #45043396941 failed 3/6 Playwright cases due mismatched fixture project IDs; corrected and re-run successfully.
+- Codex code review on the exact head completed with no major findings; independent security review found no blocker; zero unresolved inline review threads. Vercel Free daily deployment quota was exhausted; Preview is N/A for this non-runtime Rules/test-infrastructure change.
+- Post-merge main Actions for merge commit 3efd04c601b4bffaa976edad38c282e921d82be4 were not returned by the connector's PR-only workflow query; do not claim post-merge CI PASS until verified separately.
+- F-02 is resolved. Next technical step: F-01 customer aggregate integrity. Preserve Spark architecture and all production safety boundaries.
+
+
+## 19. Delivery update — 2026-11-23 (PR #24 handoff synchronization opened)
+
+- PR #24 opened as a documentation-only follow-up to record PR #22's merge, close F-02, and refresh the handoff/playbook next action.
+- Branch: docs/record-pr22-storage-security-merge-2026-11-23; initial head e36bf7fa119601ab4c5d0722a0d93805b8c6fb83; base merge 3efd04c601b4bffaa976edad38c282e921d82be4.
+- Codex code review was running on the initial head at last inspection. Re-request if the branch changes; merge only after the final-head review completes without findings and the diff remains docs-only.
+- Actions and Preview are not applicable to this Markdown-only change; no CI/Preview result is claimed.
+
+
+## 20. Post-merge verification — PR #22 (2026-11-23)
+
+- GitHub Actions push run #45047810582 on exact main merge `3efd04c601b4bffaa976edad38c282e921d82be4` completed SUCCESS; job #137286140172 confirms every step completed, including Auth/Firestore/Storage Emulator tests, Playwright and production build.
+- PR #22 is verified at both final PR head CI #45043911114 and post-merge main CI #45047810582. The previous NOT VERIFIED note is superseded by this evidence.
+- PR #24 remains docs-only: Codex code review on head `5fdd2b838dbc68ec28f5fc76d8b1c699fcd417e4` completed with two P2 findings (stale review-state wording and an ambiguous docs-only CI/Preview exemption). The corrections are being committed; both code and documentation-focused security reviews must complete on the new exact head. Actions are NOT RUN because `paths-ignore` excludes Markdown/docs; no CI PASS is claimed. Under the explicit docs-only exception, app build/isolated tests are not relevant and Preview is N/A; this exception does not cover Rules or emulator/test-infrastructure code.
+- Next delivery step after PR #24 is closed: F-01 customer aggregate integrity, beginning with a focused Rules/Emulator design that preserves all valid create/edit/status/cancel transactions.
+
+
+## 21. PR #24 review correction — 2026-11-23
+
+- Codex code review on `5fdd2b838dbc68ec28f5fc76d8b1c699fcd417e4` completed with two P2 findings: the Next action described stale review state, and the docs-only CI/Preview exemption was ambiguous. Both documentation issues are corrected in the follow-up commit.
+- The PR is strictly docs-only. The workflow `.github/workflows/ci.yml` excludes Markdown and `docs/**` through `paths-ignore`; therefore Actions are NOT RUN and no CI PASS is claimed. The docs-only exception is explicit: no application build or isolated app tests are relevant, and Preview is N/A when runtime/UI and Vercel deployment configuration are untouched. This does not waive latest-head build/test evidence for Rules, emulator/test-infrastructure or other non-runtime code changes.
+- Reviews on older heads are stale. Request fresh code review and documentation-focused security review on the exact new head; merge only after both complete without findings and no unresolved threads remain. Vercel Free quota errors are not a docs-only merge gate.
+
+
+## 22. PR #24 follow-up — stale resume instruction correction (2026-11-23)
+
+- The fresh Codex code review on PR #24 head `05b58f7f147b1c351f5422d3ac933e576285f4ac` found one P3 documentation issue: the New-chat instruction still said the two P2 corrections were “being committed” although they were already present. Both P2 issues remain corrected; this follow-up changes the stale wording to a completed state and requires reviewers to inspect the live PR head.
+- PR #24 remains documentation-only (three Markdown files). GitHub Actions are NOT RUN because the workflow excludes `docs/**` and Markdown via `paths-ignore`; no CI PASS is claimed. Vercel status on the previous head was success, but Preview is N/A for this docs-only diff and is not a merge gate.
+- The two P2 threads are resolved/outdated; the P3 thread is unresolved until the correction is committed. The review receipts on earlier heads are stale. After this commit, request fresh code review and documentation-focused security review on the exact resulting head; do not merge while either review or any thread is unresolved.
+- No application code, Firebase Rules, emulator/test infrastructure, production data, deployment, billing, project configuration or migration changed. F-01 remains the next code-delivery step after PR #24 closes.

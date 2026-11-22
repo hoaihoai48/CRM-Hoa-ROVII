@@ -1,9 +1,9 @@
 # CRM-Hoa-ROVII — Current Delivery Handoff
 
-**Last updated:** 2026-11-22  
+**Last updated:** 2026-11-23  
 **Repository:** https://github.com/hoaihoai48/CRM-Hoa-ROVII  
 **Default branch:** main  
-**Latest code merge:** 83c354436ff9dfedca180832fcec324c03a36ffa (PR #18; PR #21 was a documentation-only merge)  
+**Latest code merge:** 3efd04c601b4bffaa976edad38c282e921d82be4 (PR #22)  
 **Resume rule:** Always read this file and the playbook, then inspect live GitHub state and latest main ref before acting. This file is updated last in a delivery session.
 
 ## Owner delegation and safety boundaries
@@ -20,10 +20,13 @@
 
 - S0 — CI/Playwright foundation: COMPLETE.
 - S1 — Order lifecycle integrity: COMPLETE.
-- S2 — Sales/order workflow technical hardening: substantial safe work COMPLETE; business semantics remain blocked on owner decisions listed below.
-- PR #16 cursor pagination: MERGED.
-- Open PR inventory: PR #22 (Storage Rules/test isolation) is open; PR #21 merged; PR #23 closed unmerged and superseded.
-- Post-merge main workflow #44989024153 completed PASS on PR #16 merge commit; all CI steps passed.
+- S2 — technical workflow hardening through PR #18: COMPLETE; purchaser/recipient, scheduling, notes, order code, assignment and print-content semantics remain owner-gated.
+- Firebase security hardening: F-02 Storage authorization mismatch RESOLVED by PR #22; F-01 customer aggregate integrity, F-03 Data URL size bounds, F-04 membership-field hardening and F-05 historical documentation remain open.
+- PR #21 security audit: MERGED.
+- PR #22 active-admin Storage Rules + isolated Storage Emulator coverage: MERGED.
+- Open PR inventory: PR #24 documentation-only handoff synchronization is open on branch docs/record-pr22-storage-security-merge-2026-11-23; PR #24 has a newer docs-only head after recording post-merge CI; fresh code and documentation-focused security reviews are required before merge. PR #23 remains closed unmerged.
+- PR #22 final head 36ae3bf27c74e55cb674c00209e78df580ebf562; PR CI #45043911114 completed SUCCESS, including Auth/Firestore/Storage Emulator tests, Playwright E2E and production build.
+- Post-merge main Actions #45047810582 completed SUCCESS on exact merge commit 3efd04c601b4bffaa976edad38c282e921d82be4. Its single job completed dependency/MCP checks, lint, TypeScript, Auth/Firestore/Storage Emulator integration, Playwright E2E and production build. PR #22 post-merge verification is PASS. Vercel's Free daily quota failure is not a required gate for this Rules/test-infrastructure-only PR.
 - No production data, deployment, billing or destructive migration touched.
 
 ## Merged delivery inventory
@@ -39,6 +42,10 @@
 | #14 | Bounded customer order projection and delta aggregates | 568083053d7311f6d5abbe608f3a100f0c803444 | PR CI #44985057671 and post-merge #44985288167 passed |
 | #15 | Dashboard bounded reads/local-day query | 4ce6d95095141180cb855426bff8c94c722b880b | PR CI #44985805872 and post-merge #44986041575 passed |
 | #16 | Cursor pagination for orders/customers | 7e923b5a0a996468a211f76b8d1ff715699e3ce4 | Final PR head 83e0d6c09978ea163e7b4d0f6280d3dd3b0f2f8c; PR CI #44988852658 and post-merge #44989024153 passed |
+| #17 | Customer detail order-history cursor pagination | 8ce9930ee181b1fca788e823a53ffac8860d9067 | PR CI #45008095660 and post-merge #45008325128 passed |
+| #18 | Require authenticated actor UID on appended history entries | 83c354436ff9dfedca180832fcec324c03a36ffa | PR CI #45008498582 and post-merge #45008753697 passed |
+| #21 | Firebase Security & Access-Control source audit | e728de1b8b98f91e976a3336a657720f4020f6b8 | Documentation-only; Codex code review + independent security review; Actions paths-ignore |
+| #22 | Active-admin product image Storage writes + Storage Emulator regression suite | 3efd04c601b4bffaa976edad38c282e921d82be4 | PR CI #45043911114 PASS on final head; post-merge main #45047810582 PASS |
 
 Relevant links:
 - [PR #16](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/16)
@@ -92,17 +99,16 @@ A backward-compatible optional-field candidate and regression matrix are recorde
 
 ## Next action
 
-1. PR #17 (customer order-history pagination) merged at `8ce9930ee181b1fca788e823a53ffac8860d9067`; PR CI #45008095660 and post-merge main CI #45008325128 PASS.
-2. PR #18 (require authenticated actor UID for appended history on UID-attributed orders) merged at `83c354436ff9dfedca180832fcec324c03a36ffa`; PR CI #45008498582 and post-merge main CI #45008753697 PASS.
-3. Firestore Rules now require `actorUid == request.auth.uid` for every appended status-history entry when the existing order has `createdByUid`; legacy orders without creator UID retain backward-compatible optional actor UIDs.
-4. No further purchaser/recipient, delivery-slot, note, order-code, assignment or print-content implementation until the owner supplies the business decisions above.
-5. Once those decisions are supplied, implement one vertical slice at a time with coordinated types + service + Firestore Rules + Emulator positive/negative tests + Playwright + print verification.
-6. PR #21 merged as docs-only commit `e728de1b8b98f91e976a3336a657720f4020f6b8`. Its F-01 impact wording was corrected after independent security review; no Actions run is expected under `paths-ignore`, and the Vercel quota failure is not a gate for docs-only changes.
-7. PR #22 is the active security-hardening step. CI run #45043396941 on pre-fix head `5562214aa1aaf89300be79dc7cb3a5f4abfa5bea` passed lint/typecheck and Auth/Firestore/Storage Emulator tests but failed 3 of 6 Playwright tests because E2E fixtures still seeded project `crm-hoa-rovii` while the app ran under `demo-crm-hoa-rovii`; production build was skipped. The fixture project IDs were corrected in commits `df358a63ebfecc62b98c0bb131febbf5eae44c59` and `2f643fd07c85c58d35b2ba37a6a0f1cac3133765`. Re-run full CI on the synchronized latest head and complete code/security review before merge.
+1. COMPLETE — post-merge main Actions #45047810582 completed SUCCESS on exact PR #22 merge commit 3efd04c601b4bffaa976edad38c282e921d82be4; all job steps, including Emulator integration, Playwright and production build, completed successfully.
+2. Continue with F-01 customer scalar aggregate tampering: add a negative Emulator case proving an active client can currently forge scalar aggregates, then design a compatible Rules guard that preserves create/edit/status/cancel transactions. Do not weaken valid atomic order workflows.
+3. Keep F-03 Data URL byte-size validation, F-04 membership metadata immutability/self-demotion policy, and F-05 historical source-audit correction as subsequent focused steps.
+4. Do not implement the owner-gated S2 business semantics without decisions.
+5. PR #24 is a docs-only follow-up. Codex code review on head 5fdd2b838dbc68ec28f5fc76d8b1c699fcd417e4 completed with two P2 findings, both corrected in follow-up commits. A subsequent code review on head 05b58f7f147b1c351f5422d3ac933e576285f4ac found a P3 stale New-chat instruction; this follow-up corrects that wording. All earlier review receipts are stale. Require fresh code review and documentation-focused security review on the live PR head, with no unresolved findings or threads, before merge. Actions are NOT RUN because `.github/workflows/ci.yml` excludes `docs/**` and Markdown through `paths-ignore`; no CI PASS is claimed. The explicit docs-only exception is limited to PRs whose entire diff is documentation: no application build or isolated app tests are relevant, and Preview is N/A because runtime/UI and Vercel deployment configuration are unchanged. This exception does not apply to Firebase Rules, emulator/test-infrastructure or other non-runtime code changes, which still require latest-head Actions build and relevant isolated tests before Preview can be marked N/A. The Vercel Free quota failure is not a merge gate.
+6. No production data repair, deployment/release, billing change, paid Firebase service or destructive migration is authorized.
 
 ## New-chat instruction
 
-Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md. Fetch the live main ref, open PR inventory and latest Actions runs. PRs #8–#18 and #21 are merged; PR #23 is closed unmerged; PR #22 is the active Storage Rules/test-isolation hardening PR. The previous PR #22 run #45043396941 failed only in Playwright because E2E fixtures still used the old project ID; those fixtures were corrected in commits `df358a63ebfecc62b98c0bb131febbf5eae44c59` and `2f643fd07c85c58d35b2ba37a6a0f1cac3133765`. Recheck the latest head and run full CI/reviews before merge; do not repeat PRs #8–#18, #21 or #23.
+Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md from main. Fetch the live main ref, open PR inventory, branches and latest Actions/review state. PR #22 is merged as 3efd04c601b4bffaa976edad38c282e921d82be4; its final head was 36ae3bf27c74e55cb674c00209e78df580ebf562, PR CI #45043911114 PASS, Codex code review completed without findings, independent security review found no blocker, and no unresolved review threads remained. Post-merge main Actions #45047810582 completed PASS on exact merge commit 3efd04c601b4bffaa976edad38c282e921d82be4. PR #24 is open docs-only on branch docs/record-pr22-storage-security-merge-2026-11-23. Reviews on head 05b58f7f147b1c351f5422d3ac933e576285f4ac found two P2 findings, which were corrected, followed by a P3 stale New-chat instruction. This follow-up corrects the P3 wording. All prior review receipts are stale; fetch the live PR #24 head and require fresh code and documentation-focused security reviews on that exact SHA before merge. Actions are NOT RUN due docs paths-ignore; this docs-only exception is explicit, no CI PASS is claimed, and Preview is N/A because runtime/UI and Vercel deployment configuration are unchanged. PR #23 remains closed unmerged. Next safe work after PR #24 closes is F-01 customer aggregate integrity; do not repeat PRs #8–#22.
 
 
 ## Delivery update — 2026-11-22 (PRs #17–#18)
@@ -135,3 +141,47 @@ Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK
 - PR #22 branch is being synchronized with main after PR #21. The next gate is a completed latest-head Actions run plus current-head code/security review. Vercel Preview is N/A because this PR changes Rules/test infrastructure only, not runtime/UI or Vercel deployment configuration.
 - PR #23 was closed unmerged at `2026-11-22T15:48:14Z`; do not reopen or duplicate it.
 - No production Auth/Firestore/Storage data, deployment, billing, migration or Firebase project settings were accessed or changed.
+
+## Delivery update — 2026-11-23 (PR #22 merged)
+
+- PR #22: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/22 — squash-merged as 3efd04c601b4bffaa976edad38c282e921d82be4 from final head 36ae3bf27c74e55cb674c00209e78df580ebf562, based on main e728de1b8b98f91e976a3336a657720f4020f6b8.
+- Storage Rules now require an authenticated active admin for product-image create/update/delete; public reads remain unchanged. Storage Emulator coverage includes anonymous, missing membership, malformed/non-admin membership, active/inactive staff, admin upload/overwrite/delete, public read, MIME/extension rejection and the strict under-10-MiB boundary.
+- Emulator test scripts fail closed unless the explicit demo-crm-hoa-rovii project and loopback Auth/Firestore/Storage hosts are configured. Playwright and fixture REST calls use the same demo project.
+- GitHub Actions PR run #45043911114 completed SUCCESS on the exact final PR head: lint, typecheck, Auth/Firestore/Storage Emulator tests, six Playwright E2E cases and production build. The earlier run #45043396941 failed 3 of 6 Playwright cases because fixtures still targeted crm-hoa-rovii; corrected before the final passing run.
+- Review gates: Codex code review completed on 36ae3bf27c with no major findings; independent security review on the full SHA found no additional source-level blocker; zero unresolved inline threads. Vercel deployment was rate-limited by the Free daily quota; Preview was correctly treated as N/A because the PR changes Rules/test infrastructure, not runtime/UI or Vercel deployment configuration.
+- Post-merge main Actions for 3efd04c601b4bffaa976edad38c282e921d82be4 were not returned by the available commit-workflow query. Combined status showed only a pending Vercel context; do not treat that as GitHub Actions evidence. Verify a push-triggered main run when available.
+- F-02 is resolved. No production data, production deployment, billing, Firebase project settings, paid service or migration was touched.
+
+
+## Delivery update — 2026-11-23 (PR #24 handoff synchronization opened)
+
+- PR #24: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/24 — documentation-only synchronization of this handoff, playbook and Firebase security audit after PR #22 merged.
+- Branch: docs/record-pr22-storage-security-merge-2026-11-23. Initial PR head: e36bf7fa119601ab4c5d0722a0d93805b8c6fb83; base: 3efd04c601b4bffaa976edad38c282e921d82be4.
+- Scope is limited to the three Markdown documents. No application/runtime code, Firebase Rules, project configuration, production data, billing or deployment changes.
+- PR #24 head advanced after this handoff was updated with post-merge CI evidence. The earlier code review on `56e9055936f89d687b8acbd7db6d0d08ccb9a6f9` is stale for the new head; fresh code and documentation-focused security reviews are required before merge.
+- Actions are NOT RUN because the workflow `paths-ignore` excludes this Markdown-only diff; no CI PASS is claimed. The explicit docs-only exception means application build/isolated app tests are not relevant and Preview is N/A when no runtime/UI or Vercel deployment configuration changes. Rules/emulator/test-infrastructure changes remain subject to latest-head Actions build and relevant isolated tests before Preview is N/A.
+
+
+## Post-merge verification — PR #22 (2026-11-23)
+
+- Independently queried GitHub Actions by exact merge `head_sha=3efd04c601b4bffaa976edad38c282e921d82be4` and found push-triggered main run [#45047810582](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45047810582), event `push`, branch `main`, status `completed`, conclusion `success`.
+- Inspected its job #137286140172: dependency/MCP checks, lint, TypeScript typecheck, Firebase Auth/Firestore/Storage Emulator integration, Playwright E2E and production build all completed successfully.
+- PR #22 is now verified at both PR-head CI #45043911114 and post-merge main CI #45047810582. No production deployment/data, billing, project configuration or migration was involved.
+
+
+## Review correction — PR #24 (2026-11-23)
+
+- Exact reviewed head: `5fdd2b838dbc68ec28f5fc76d8b1c699fcd417e4`; base main: `3efd04c601b4bffaa976edad38c282e921d82be4`. Codex code review completed with two P2 findings: the Next action incorrectly described a prior review as current, and the docs-only Actions/Preview exemption was not explicit enough.
+- Corrected the current action and resume instruction to require fresh code and documentation-focused security reviews on the new exact head; reviews on `56e9055936f89d687b8acbd7db6d0d08ccb9a6f9` and `5fdd2b838dbc68ec28f5fc76d8b1c699fcd417e4` must not be treated as approvals for the new commit.
+- Clarified verification honestly: Actions are NOT RUN because `.github/workflows/ci.yml` applies `paths-ignore` to `docs/**` and Markdown; no CI PASS is claimed. For a diff consisting only of docs/Markdown, application build and isolated app tests are not relevant and Preview is N/A. This exception does not cover Rules or emulator/test-infrastructure code, which still require latest-head build and relevant isolated tests.
+- The Vercel quota failure is informational, not a gate for this docs-only PR. No runtime, Firebase Rules, project configuration, production data, billing or deployment changed.
+- Next: verify the new branch head, request code and documentation-focused security review on that exact SHA, resolve the two old threads after confirming the fixes, and merge only when both reviews are complete without findings.
+
+
+## PR #24 follow-up — P3 resume-instruction correction (2026-11-23)
+
+- PR #24 remains open on branch `docs/record-pr22-storage-security-merge-2026-11-23`, based on main merge `3efd04c601b4bffaa976edad38c282e921d82be4`. The diff remains limited to the three Markdown documents.
+- Codex code review on prior head `05b58f7f147b1c351f5422d3ac933e576285f4ac` identified a P3 stale New-chat instruction after the two P2 corrections. The P3 wording is corrected in this follow-up; the P2 threads are resolved/outdated. Resolve the P3 thread only after verifying the updated wording on the live head.
+- Fresh code review and documentation-focused security review are required on the live resulting PR head. Earlier review receipts are stale. Do not merge until both reviews complete without findings and all inline threads are resolved.
+- Actions are NOT RUN because the entire diff is Markdown/docs excluded by `.github/workflows/ci.yml` `paths-ignore`; no CI PASS is claimed and app build/isolated app tests are not relevant. Vercel Preview is N/A for this docs-only diff; the previous-head Vercel status was success but is not required.
+- Playbook follow-up commit: `0feaf758b11fd324ea20cc2575c0607d917cd7cd`. No runtime code, Firebase Rules, emulator/test infrastructure, production data, deployment, billing, Firebase project settings or migration changed. Next code step remains F-01 customer aggregate integrity after PR #24 closes.

@@ -30,13 +30,13 @@ Firestore Rules already enforce important controls: active membership for busine
 
 **Severity:** Medium.
 
-**Evidence:** `storage.rules` allows `allow delete: if isActiveStaff()` on `/products/{allPaths=**}`. Active staff and admins can therefore delete product image objects. In contrast, `firestore.rules` allows product document create/update only to admins. The Storage rule also allows any active staff member to upload an image, which is wider than the admin-only catalog write policy. The Storage rule itself validates image MIME/extension and a per-object size under 10 MiB, but does not require admin role.
+**Evidence at the audit baseline (before PR #22):** `storage.rules` allowed `allow delete: if isActiveStaff()` on `/products/{allPaths=**}`. Active staff and admins can therefore delete product image objects. In contrast, `firestore.rules` allows product document create/update only to admins. The Storage rule also allows any active staff member to upload an image, which is wider than the admin-only catalog write policy. The Storage rule itself validates image MIME/extension and a per-object size under 10 MiB, but does not require admin role.
 
 **Impact:** Staff who cannot edit product records can still replace or delete image objects, potentially breaking catalog images or changing product media outside the catalog's admin-only workflow.
 
 **Recommendation:** If product image management is intended to follow product catalog permissions, change Storage write/delete to active admin only. Before implementation, add Storage Emulator tests (staff denied upload/delete, admin allowed valid image upload/delete, invalid type/extension/oversize rejected) and include Storage in the isolated emulator test runner. This audit did not change the rule because the existing CI runs only Auth/Firestore Emulators; changing policy without an equivalent Storage Rules regression suite would reduce assurance.
 
-**Status:** Remediation is implemented in PR #22 but remains pending final latest-head CI/review and merge verification.
+**Status:** RESOLVED by PR #22 (merged 2026-11-22 as `3efd04c601b4bffaa976edad38c282e921d82be4`). Storage create/update/delete now requires an authenticated active admin; public reads remain unchanged. The final PR-head CI run #45043911114 passed the Auth/Firestore/Storage Emulator suite, Playwright and production build. Codex code review and independent security review found no blocker; no unresolved inline threads remained. Post-merge main Actions #45047810582 completed SUCCESS on exact merge commit 3efd04c601b4bffaa976edad38c282e921d82be4.
 
 ### F-03 — Storage Rules enforce per-object limits but image/document payload limits are not end-to-end bounded
 
@@ -83,26 +83,42 @@ Firestore Rules already enforce important controls: active membership for busine
 - Orders require a valid initial `new` state/history and matching customer projection; updates preserve append-only history and valid transitions.
 - New records with creator UID require actor UID equal to the authenticated UID for appended status-history entries. Legacy orders without creator UID remain compatible.
 - Customer phone identity and creation timestamp are immutable through customer updates.
-- The emulator test harness targets the explicit demo project `demo-crm-hoa-rovii` and starts Auth + Firestore only.
-- Docs-only changes under `docs/**` and Markdown files are excluded from the quality workflow by its `paths-ignore` configuration; no CI PASS should be inferred for docs-only PRs.
+- The emulator test harness targets the explicit demo project `demo-crm-hoa-rovii` and starts Auth + Firestore + Storage; direct Emulator test scripts fail closed unless the demo project and loopback emulator hosts are configured.
+- Docs-only changes under `docs/**` and Markdown files are excluded from the quality workflow by `paths-ignore`; for a PR whose entire diff is documentation, record Actions as NOT RUN (never PASS), state that application build/isolated app tests are not relevant, and mark Preview N/A when runtime/UI and Vercel deployment configuration are unchanged. This docs-only exception does not apply to Rules or emulator/test-infrastructure changes, which require latest-head Actions production build and relevant isolated tests before Preview can be N/A.
 
 ## Verification boundaries
 
-This was a source/configuration audit only. No Emulator command was executed by this GitHub-only review. Existing CI evidence from PRs #17/#18 remains the last inspected executable evidence: PR #45008095660 / main #45008325128 and PR #45008498582 / main #45008753697 all completed successfully. No Storage Emulator tests currently exist in the configured emulator runner.
+This was a source/configuration audit only. No Emulator command was executed by this GitHub-only review. Existing CI evidence from PRs #17/#18 remains the last inspected executable evidence: PR #45008095660 / main #45008325128 and PR #45008498582 / main #45008753697 all completed successfully. Storage Emulator coverage was added in PR #22 and passed in PR CI #45043911114 on final head `36ae3bf27c74e55cb674c00209e78df580ebf562`. The initial audit itself was source-only; later CI provides the executable evidence for the remediation.
 
 ## Recommended next delivery order
 
-1. Add Storage Emulator coverage and align product image Storage write/delete permissions with the intended admin-only product catalog boundary.
-2. Add negative Emulator coverage for customer scalar aggregate tampering and model a compatible Rules guard that preserves all valid order transactions.
+1. Add negative Emulator coverage for active-member customer scalar aggregate tampering and design a compatible Rules guard that preserves valid create/edit/status/cancel transactions.
+2. Add deterministic Data URL encoded-byte and aggregate media-payload bounds with Emulator rejection coverage where Rules can enforce them.
 3. Tighten membership field immutability and explicitly decide the self-demotion/self-deactivation behavior.
 4. Correct the historical Source Audit and CRUD permission audit to point to current rules and the Spark write-boundary decision.
-5. Re-run full lint, typecheck, Auth/Firestore/Storage Emulator tests, Playwright and build on a PR head; merge only after all applicable gates pass.
 
 No production data, deployment, billing or paid Firebase service was touched.
 
 
-## Remediation progress — F-02 (2026-11-22)
+## Initial remediation plan and pre-merge verification — F-02 (2026-11-22)
 
 - PR #22 changes `/products/{allPaths=**}` Storage writes/deletes to require an authenticated active admin, matching the Firestore product catalog boundary. Public reads remain unchanged by design.
 - PR #22 adds Storage Emulator coverage for anonymous, missing-membership, malformed/non-admin, active staff, inactive staff and active admin; valid upload/overwrite/delete, public read, MIME/extension rejection and the 10 MiB boundary are exercised.
-- CI #45043396941 on pre-fixture-fix head `5562214aa1aaf89300be79dc7cb3a5f4abfa5bea` passed lint/typecheck and Auth/Firestore/Storage Emulator tests, but 3/6 Playwright tests failed because test fixtures used `crm-hoa-rovii` while the app used `demo-crm-hoa-rovii`; production build was skipped. The fixture project IDs were corrected in commits `df358a63ebfecc62b98c0bb131febbf5eae44c59` and `2f643fd07c85c58d35b2ba37a6a0f1cac3133765`. F-02 must remain pending until a completed latest-head CI run and merge are verified.
+- CI #45043396941 on pre-fixture-fix head `5562214aa1aaf89300be79dc7cb3a5f4abfa5bea` passed lint/typecheck and Auth/Firestore/Storage Emulator tests, but 3/6 Playwright tests failed because test fixtures used `crm-hoa-rovii` while the app used `demo-crm-hoa-rovii`; production build was skipped. The fixture project IDs were corrected in commits `df358a63ebfecc62b98c0bb131febbf5eae44c59` and `2f643fd07c85c58d35b2ba37a6a0f1cac3133765`. This was the pre-merge state; it is superseded by the remediation completion record below.
+
+
+## Remediation completion — F-02 (2026-11-23)
+
+- PR #22 merged by squash as 3efd04c601b4bffaa976edad38c282e921d82be4; final PR head 36ae3bf27c74e55cb674c00209e78df580ebf562.
+- /products/{allPaths=**} now allows public reads, active-admin create/update of valid image objects, and active-admin deletes. Missing membership, malformed/non-admin membership, inactive staff and active staff are denied.
+- Storage Emulator tests cover upload, overwrite and delete authorization, intentional public reads, MIME/extension mismatch and object size at/above 10 MiB. The test runner starts Auth/Firestore/Storage Emulators under explicit project demo-crm-hoa-rovii; test scripts fail closed unless all required emulator hosts are loopback.
+- PR CI #45043911114 completed SUCCESS on the exact final head, including lint, typecheck, Auth/Firestore/Storage Emulator tests, six Playwright cases and production build. The earlier Playwright failure on #45043396941 was caused by mismatched fixture project IDs and was corrected before the final run.
+- Codex code review on the exact head reported no major findings; independent security review found no additional blocker; zero unresolved inline review threads. Vercel Preview was not applicable because no runtime/UI or Vercel deployment configuration changed; the Free daily quota limit was not treated as a required gate.
+- Post-merge main Actions #45047810582 were independently found by exact merge SHA; the push-triggered main workflow completed SUCCESS, including lint, typecheck, Auth/Firestore/Storage Emulator integration, Playwright and production build.
+
+
+## Post-merge main verification — F-02 (2026-11-23)
+
+- GitHub Actions run [#45047810582](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45047810582) is the push-triggered `main` workflow for exact merge commit `3efd04c601b4bffaa976edad38c282e921d82be4`; status `completed`, conclusion `success`.
+- Inspected job #137286140172: dependency/MCP checks, lint, TypeScript typecheck, Firebase Auth/Firestore/Storage Emulator integration, Playwright E2E and production build all completed successfully.
+- This supersedes the earlier handoff note that post-merge main Actions were unverified. PR #22 F-02 remediation has both PR-head CI and post-merge main CI evidence.
