@@ -205,3 +205,10 @@ Both Vercel Previews were Ready with zero unresolved feedback. No production dat
 - PR: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/23. Head at documentation update: 4a3548d4ab6a3f04a58f504b414b760caac08c2a; Actions run #45039930605 was still in progress and Vercel Preview pending. Codex review requested. Re-fetch all statuses against the latest head before merge.
 - Do not claim Emulator/Playwright success until CI completes. No production bucket, data, deployment, billing or paid Firebase service touched.
 - PR #21's security audit code review is clean after correcting the admin self-membership wording; a separate requested security review remains outstanding at last check.
+
+
+### PR #23 verification correction — 2026-11-22
+
+- Expanded Storage Emulator coverage to explicitly verify admin create/update/delete success and active-staff create/update/delete denial. Invalid MIME, unsupported extension and exactly 10 MiB rejection are also covered.
+- The earlier Actions run #45039930605 and its follow-up run were cancelled when later commits changed the PR head. Cancellation is not a test result; fetch the new run for the latest branch head before reporting any pass/fail.
+- Current implementation commit containing the expanded role tests: 7e9d3d1b27b4b2c34d5392ad8a75437c10220554. The documentation synchronization commit follows it, so the PR head will differ; use live PR metadata for the current SHA.
