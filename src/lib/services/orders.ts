@@ -517,86 +517,208 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
 export async function updateOrderStatus(id: string, input: UpdateOrderStatusInput): Promise<Order> {
   if (!id) throw new Error('Mã đơn hàng không hợp lệ.');
   const orderRef = doc(db, 'orders', id);
+  const maxRefillAttempts = 3;
 
-  return await runTransaction(db, async (tx) => {
-    // 1. ALL READS FIRST (Strict Firestore transaction rule)
-    // Read order inside the transaction so customerId is always consistent.
-    const orderSnap = await tx.get(orderRef);
-    if (!orderSnap.exists()) {
-      throw new Error(`Không tìm thấy đơn hàng: ${id}`);
+  for (let attempt = 1; attempt <= maxRefillAttempts; attempt++) {
+    let refillContext: {
+      customerId: string;
+      summary: CustomerOrderSummary;
+      baselineFingerprint: string;
+    } | null = null;
+
+    // The Web SDK cannot query a collection inside a transaction. When cancelling a
+    // cached active order would leave a hole in a non-full projection, prefetch the
+    // latest canonical active order outside the cache and guard the read with the
+    // customer's order-mutation fingerprint inside the transaction.
+    if (input.status === 'cancelled') {
+      const beforeOrderSnap = await getDoc(orderRef);
+      if (!beforeOrderSnap.exists()) {
+        throw new Error(`Không tìm thấy đơn hàng: ${id}`);
+      }
+      const beforeOrderData = beforeOrderSnap.data();
+      const beforeStatus = beforeOrderData.status as Order['status'];
+      const customerId = String(beforeOrderData.customerId || '');
+      if (!customerId) {
+        throw new Error(`Đơn hàng không có mã khách hàng: ${id}`);
+      }
+
+      if (beforeStatus !== 'cancelled' && canTransitionOrderStatus(beforeStatus, input.status)) {
+        const customerRef = doc(db, 'customers', customerId);
+        const beforeCustomerSnap = await getDoc(customerRef);
+        if (!beforeCustomerSnap.exists()) {
+          throw new Error(`Không tìm thấy khách hàng của đơn hàng: ${customerId}`);
+        }
+        const beforeCustomerData = beforeCustomerSnap.data() as Record<string, unknown>;
+        const existingSummaries = mapCustomerOrderSummaries(beforeCustomerData.orderSummaries);
+        const remainingSummaries = existingSummaries.filter(
+          (summary) => summary.status !== 'cancelled' && summary.id !== id
+        );
+        const postActiveCount = Math.max(0, Number(beforeCustomerData.totalOrders || 0) - 1);
+
+        if (postActiveCount > remainingSummaries.length && remainingSummaries.length < MAX_CUSTOMER_ORDER_SUMMARIES) {
+          const ordersSnapshot = await getDocs(query(
+            collection(db, 'orders'),
+            where('customerId', '==', customerId)
+          ));
+          const remainingIds = new Set(remainingSummaries.map((summary) => summary.id));
+          const refillCandidates = ordersSnapshot.docs
+            .filter((orderSnap) => orderSnap.id !== id && !remainingIds.has(orderSnap.id))
+            .map((orderSnap): CustomerOrderSummary | null => {
+              const raw = orderSnap.data();
+              if (!['new', 'confirmed', 'delivering', 'completed'].includes(String(raw.status))) {
+                return null;
+              }
+              const order = mapDocToOrder(orderSnap.id, raw);
+              if (!order.createdAt || !Number.isFinite(order.summary.total) || order.summary.total < 0) {
+                return null;
+              }
+              return {
+                id: order.id,
+                status: order.status,
+                total: order.summary.total,
+                createdAt: order.createdAt,
+              };
+            })
+            .filter((summary): summary is CustomerOrderSummary => summary !== null)
+            .sort(compareCustomerOrderSummaryDesc);
+          const refillSummary = refillCandidates[0] ?? null;
+
+          if (!refillSummary) {
+            throw new Error(
+              `Không thể bổ sung lịch sử đơn hàng cho khách ${customerId}; cần quản trị viên đồng bộ lại dữ liệu khách hàng.`
+            );
+          }
+
+          refillContext = {
+            customerId,
+            summary: refillSummary,
+            baselineFingerprint: customerOrderStateFingerprint(beforeCustomerData),
+          };
+        }
+      }
     }
 
-    const orderData = orderSnap.data();
-    const currentStatus = orderData.status as Order['status'];
-    const customerId = String(orderData.customerId || '');
-    if (!customerId) {
-      throw new Error(`Đơn hàng không có mã khách hàng: ${id}`);
+    try {
+      return await runTransaction(db, async (tx) => {
+        // 1. ALL READS FIRST (Strict Firestore transaction rule)
+        const orderSnap = await tx.get(orderRef);
+        if (!orderSnap.exists()) {
+          throw new Error(`Không tìm thấy đơn hàng: ${id}`);
+        }
+
+        const orderData = orderSnap.data();
+        const currentStatus = orderData.status as Order['status'];
+        const customerId = String(orderData.customerId || '');
+        if (!customerId) {
+          throw new Error(`Đơn hàng không có mã khách hàng: ${id}`);
+        }
+        const customerRef = doc(db, 'customers', customerId);
+
+        if (!canTransitionOrderStatus(currentStatus, input.status)) {
+          throw new Error(`Không thể chuyển trạng thái từ "${currentStatus}" sang "${input.status}".`);
+        }
+
+        const customerSnap = await tx.get(customerRef);
+        if (!customerSnap.exists()) {
+          throw new Error(`Không tìm thấy khách hàng của đơn hàng: ${customerId}`);
+        }
+        const custRaw = customerSnap.data() || {};
+
+        if (refillContext) {
+          if (
+            customerId !== refillContext.customerId
+            || customerOrderStateFingerprint(custRaw as Record<string, unknown>) !== refillContext.baselineFingerprint
+          ) {
+            throw new Error('ORDER_STATUS_REFILL_RETRY');
+          }
+
+          const refillOrderRef = doc(db, 'orders', refillContext.summary.id);
+          const refillOrderSnap = await tx.get(refillOrderRef);
+          if (!refillOrderSnap.exists()) {
+            throw new Error('ORDER_STATUS_REFILL_RETRY');
+          }
+          const refillOrderData = refillOrderSnap.data();
+          const refillSummaryTotal = Number((refillOrderData.summary as Record<string, unknown> | undefined)?.total);
+          if (
+            refillOrderData.customerId !== customerId
+            || !['new', 'confirmed', 'delivering', 'completed'].includes(String(refillOrderData.status))
+            || normalizeIsoString(refillOrderData.createdAt) !== refillContext.summary.createdAt
+            || refillSummaryTotal !== refillContext.summary.total
+          ) {
+            throw new Error('ORDER_STATUS_REFILL_RETRY');
+          }
+        }
+
+        // 2. COMPUTE UPDATES
+        const now = new Date().toISOString();
+        const historyEntry: OrderStatusHistory = {
+          id: `${id}-HIST-${crypto.randomUUID()}`,
+          status: input.status,
+          timestamp: now,
+          actorName: input.actorName || 'Nhân viên',
+          ...(input.actorUid ? { actorUid: input.actorUid } : {}),
+          note: input.note?.trim() || null,
+        };
+
+        const existingHistory = Array.isArray(orderData.statusHistory) ? orderData.statusHistory : [];
+        const updatedHistory = [...existingHistory, historyEntry];
+
+        const existingSummaries = mapCustomerOrderSummaries(custRaw.orderSummaries);
+        const orderTotal = Number((orderData.summary as Record<string, unknown>)?.total || 0);
+        const orderCreatedAt = normalizeIsoString(orderData.createdAt);
+        const changedSummary: CustomerOrderSummary = {
+          id,
+          status: input.status,
+          total: orderTotal,
+          createdAt: orderCreatedAt,
+        };
+        const baseProjection = projectCustomerOrderSummaries(existingSummaries, changedSummary);
+        const projectedSummaries = refillContext
+          ? [...baseProjection, refillContext.summary]
+            .sort(compareCustomerOrderSummaryDesc)
+            .slice(0, MAX_CUSTOMER_ORDER_SUMMARIES)
+          : baseProjection;
+
+        const totalOrdersDelta = (input.status === 'cancelled' ? 0 : 1)
+          - (currentStatus === 'cancelled' ? 0 : 1);
+        const totalSpentDelta = (input.status === 'completed' ? orderTotal : 0)
+          - (currentStatus === 'completed' ? orderTotal : 0);
+        const latestActive = latestActiveSummary(projectedSummaries);
+
+        // 3. WRITES (Atomic)
+        tx.update(customerRef, {
+          totalOrders: increment(totalOrdersDelta),
+          totalSpent: increment(totalSpentDelta),
+          lastOrderDate: latestActive?.createdAt || '',
+          lastOrderDateOrderId: latestActive?.id || null,
+          lastOrderRefillOrderId: refillContext?.summary.id || null,
+          lastOrderMutationOrderId: id,
+          lastOrderMutationId: updatedHistory[updatedHistory.length - 1].id,
+          orderSummaries: projectedSummaries,
+        });
+
+        tx.update(orderRef, {
+          status: input.status,
+          statusHistory: updatedHistory,
+        });
+
+        return mapDocToOrder(id, {
+          ...orderData,
+          status: input.status,
+          statusHistory: updatedHistory,
+        });
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'ORDER_STATUS_REFILL_RETRY' && attempt < maxRefillAttempts) {
+        continue;
+      }
+      throw error;
     }
-    const customerRef = doc(db, 'customers', customerId);
+  }
 
-    if (!canTransitionOrderStatus(currentStatus, input.status)) {
-      throw new Error(`Không thể chuyển trạng thái từ "${currentStatus}" sang "${input.status}".`);
-    }
-
-    const customerSnap = await tx.get(customerRef);
-    if (!customerSnap.exists()) {
-      throw new Error(`Không tìm thấy khách hàng của đơn hàng: ${customerId}`);
-    }
-
-    // 2. COMPUTE UPDATES
-    const now = new Date().toISOString();
-    const historyEntry: OrderStatusHistory = {
-      id: `${id}-HIST-${crypto.randomUUID()}`,
-      status: input.status,
-      timestamp: now,
-      actorName: input.actorName || 'Nhân viên',
-      ...(input.actorUid ? { actorUid: input.actorUid } : {}),
-      note: input.note?.trim() || null,
-    };
-
-    const existingHistory = Array.isArray(orderData.statusHistory) ? orderData.statusHistory : [];
-    const updatedHistory = [...existingHistory, historyEntry];
-
-    const custRaw = customerSnap.data() || {};
-    const existingSummaries = mapCustomerOrderSummaries(custRaw.orderSummaries);
-    const orderTotal = Number((orderData.summary as Record<string, unknown>)?.total || 0);
-    const orderCreatedAt = normalizeIsoString(orderData.createdAt);
-    const changedSummary: CustomerOrderSummary = {
-      id,
-      status: input.status,
-      total: orderTotal,
-      createdAt: orderCreatedAt,
-    };
-    const projectedSummaries = projectCustomerOrderSummaries(existingSummaries, changedSummary);
-
-    const totalOrdersDelta = (input.status === 'cancelled' ? 0 : 1)
-      - (currentStatus === 'cancelled' ? 0 : 1);
-    const totalSpentDelta = (input.status === 'completed' ? orderTotal : 0)
-      - (currentStatus === 'completed' ? orderTotal : 0);
-    const latestActive = latestActiveSummary(projectedSummaries);
-
-    // 3. WRITES (Atomic)
-    tx.update(customerRef, {
-      totalOrders: increment(totalOrdersDelta),
-      totalSpent: increment(totalSpentDelta),
-      lastOrderDate: latestActive?.createdAt || '',
-      lastOrderDateOrderId: latestActive?.id || null,
-      lastOrderMutationOrderId: id,
-      lastOrderMutationId: updatedHistory[updatedHistory.length - 1].id,
-      orderSummaries: projectedSummaries,
-    });
-
-    tx.update(orderRef, {
-      status: input.status,
-      statusHistory: updatedHistory,
-    });
-
-    return mapDocToOrder(id, {
-      ...orderData,
-      status: input.status,
-      statusHistory: updatedHistory,
-    });
-  });
+  throw new Error(
+    `Không thể cập nhật đơn hàng ${id}: dữ liệu khách hàng thay đổi liên tục trong ${maxRefillAttempts} lần thử.`
+  );
 }
 
 /**
