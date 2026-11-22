@@ -150,3 +150,13 @@ Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK
 - PR #23 overlaps the same Storage policy change. Keep PR #22 as the canonical implementation because its Storage suite is isolated in a dedicated test file. Do not merge both. Close PR #23 as superseded after PR #22 passes final CI and review.
 - PR #22 remains unmerged until latest-head Actions, Vercel, code review/security review and diff checks complete.
 - No production bucket/data, customer/order data, production deployment, billing, paid Firebase service or migration was used.
+
+
+## Delivery update — 2026-11-22 (PR #22 fail-closed test isolation)
+
+- PR #23 was closed unmerged at `2026-11-22T15:48:14Z`; it is superseded by PR #22. It is not an open PR and must not be merged.
+- Independent security review found that invoking the Emulator test scripts directly without the wrapper could initialize Auth/Firestore against a non-demo Firebase project. PR #22 now makes both Firestore and Storage test scripts fail closed unless `NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-crm-hoa-rovii` and the required Auth/Firestore (plus Storage) emulator hosts are loopback addresses.
+- Playwright E2E now uses the same explicit `demo-crm-hoa-rovii` project in both the Firebase Emulator command and Next.js web-server configuration. The wrapper continues to set demo project + local Auth/Firestore/Storage hosts.
+- New PR #22 head: `2a43093786378db8cf68b1a8dcbf1cb4e5f0e7f9`. Earlier Actions #45040260709 and the earlier code-review receipt apply to head `948920b7ac57051bd01c0119a190e14e2839006f` only; they do not verify this updated head. Latest-head Actions and review are pending.
+- Vercel Preview is not an applicable gate: the PR changes Firebase Rules and isolated test infrastructure only, with no Next.js runtime/UI or Vercel deployment configuration. The earlier Vercel quota failure is not a required gate under the delivery policy.
+- No production Auth/Firestore/Storage data, production deployment, Firebase project settings, billing, migration or paid service was accessed or changed.
