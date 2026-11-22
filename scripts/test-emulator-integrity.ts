@@ -1,13 +1,13 @@
 /**
  * Firebase Firestore Emulator Automated Integration & Concurrency Test Suite
- * Tests Cases A through N for Data Invariants & Optimistic Concurrency Control (OCC)
+ * Tests Cases A through P for Data Invariants & Optimistic Concurrency Control (OCC)
  */
 
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { db, auth } from '../src/lib/firebase/config';
 import { createCustomer, findCustomerByPhone, getCustomerById, updateCustomer } from '../src/lib/services/customers';
-import { createOrder, getOrderById, syncCustomerAggregates, updateOrder, updateOrderStatus } from '../src/lib/services/orders';
+import { createOrder, getDashboardOrders, getOrderById, syncCustomerAggregates, updateOrder, updateOrderStatus } from '../src/lib/services/orders';
 import { Product } from '../src/types';
 
 function assert(condition: boolean, message: string) {
@@ -1403,6 +1403,41 @@ async function runTestSuite() {
   assert(editCompletedBlocked, 'Case L: completed orders must be immutable');
   const custLFinal = await getCustomerById(custL.id);
   assert(custLFinal!.totalSpent === 680000, `Case L: totalSpent follows edited total (got ${custLFinal!.totalSpent})`);
+
+  // ==========================================
+  // CASE P: Dashboard reads a local-day range and only six recent orders.
+  // ==========================================
+  console.log('\\n--- CASE P: Dashboard bounded order queries ---');
+  const dashboardCustomer = await createCustomer({
+    name: 'Khách hàng Dashboard',
+    phone: '0900777666',
+    address: '77 Dashboard Street',
+  });
+  const dashboardBase = Date.parse('2099-01-01T00:00:00.000Z');
+  for (let i = 0; i < 8; i++) {
+    const id = `DASH-ORDER-${String(i).padStart(3, '0')}`;
+    const createdAt = new Date(dashboardBase + i * 60 * 60 * 1000).toISOString();
+    const status = i === 0 ? 'completed' : 'new';
+    await setDocumentAsAdmin('orders', id, {
+      customerId: dashboardCustomer.id,
+      customerSnapshot: { name: dashboardCustomer.name, phone: dashboardCustomer.phone, address: dashboardCustomer.address },
+      items: [{ id: `${id}-ITEM-0`, productId: p1.id, productSnapshot: { name: 'Hoa Dashboard', unit: 'bó' }, quantity: 1, unitPrice: 1000, subtotal: 1000 }],
+      summary: { subtotal: 1000, deliveryFee: 0, discount: 0, total: 1000 },
+      status,
+      statusHistory: [{ id: `${id}-HIST-0`, status, timestamp: createdAt, actorName: 'Dashboard Fixture' }],
+      createdAt,
+      createdBy: 'Dashboard Fixture',
+    });
+  }
+  const dashboardResult = await getDashboardOrders(
+    '2099-01-01T00:00:00.000Z',
+    '2099-01-02T00:00:00.000Z'
+  );
+  assert(dashboardResult.todayOrders.length === 7, 'Case P: dashboard day query returns exactly seven orders in the day window');
+  assert(dashboardResult.todayOrders[0].id === 'DASH-ORDER-006', 'Case P: today orders are sorted newest first');
+  assert(dashboardResult.recentOrders.length === 6, 'Case P: dashboard recent query is capped at six orders');
+  assert(dashboardResult.recentOrders[0].id === 'DASH-ORDER-007', 'Case P: recent query includes the newest order regardless of day');
+  assert(dashboardResult.recentOrders[5].id === 'DASH-ORDER-002', 'Case P: recent query returns the six newest orders only');
 
   // Restore staff session for clean shutdown
   await signInWithEmailAndPassword(auth, testStaffEmail, testStaffPass);
