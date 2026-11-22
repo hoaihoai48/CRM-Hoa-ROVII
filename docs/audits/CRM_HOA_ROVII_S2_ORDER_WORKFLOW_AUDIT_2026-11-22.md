@@ -108,44 +108,6 @@ These are the only blockers before implementing the corresponding S2 UX/schema. 
 4. Preserve Spark compatibility. No paid Firebase services, production data repair, destructive migration or production deployment without explicit approval.
 
 
-## 7. Stable audit identity groundwork (PR #12)
-
-- Added optional `createdByUid` to new orders and `actorUid` to status history; UI sources these from the authenticated membership UID.
-- Firestore Rules validate any supplied actor UID against `request.auth.uid` and preserve `createdByUid` after creation.
-- Legacy orders/history remain valid without these fields; no data backfill required.
-- Emulator verifies a forged creator UID is denied; Playwright verifies all create/edit/status-history entries retain the signed-in staff UID.
-- PR #12 merged at `64c539e423c78bfe0b7089889b40d479afdfa799`; PR CI #44982896197 and post-merge main CI #44983058488 PASS.
-- This does not implement assignment or change staff permissions. Assignment policy remains a separate business decision.
-
-
-## 8. Printable order slip (PR #13)
-
-- Added browser-native print action and A4 print styling to order detail.
-- Output uses only existing order data: order code/creation metadata, status, customer/delivery snapshot, note, products and totals. Internal timeline and interactive controls are excluded.
-- Playwright covers invoking `window.print()` and print-media visibility.
-- PR #13 merged at `bd3e259082b8f600db4474e39947b0ee0218e4fa`; PR CI #44983725322 PASS and post-merge main CI #44983907739 PASS.
-- No schema changes, data migration, production data access, deployment, or paid Firebase services.
-
-
-## 9. Customer aggregate scale remediation (PR #14)
-
-- PR #14: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/14 — merged at `568083053d7311f6d5abbe608f3a100f0c803444`.
-- Bounded `orderSummaries` to 50 recent active rows plus at most one currently changed cancelled row (maximum 51). Full historical orders remain in the canonical `orders` collection.
-- Lifetime `totalOrders` and `totalSpent` now update by transaction deltas on create/status changes. Edits to new/confirmed orders only update the projection. `syncCustomerAggregates()` remains the full-scan repair path.
-- Firestore Rules enforce the size cap only when the projection is created/changed; profile-only edits on legacy oversized arrays remain allowed. A subsequent order mutation or aggregate repair compacts those arrays.
-- Emulator Case N verifies 65 synthetic orders, exact totals/date, compaction, old order update/edit, latest active cancellation, subsequent create, oversize rejection, legacy profile edit and repair compaction.
-- PR CI #44985057671 PASS and post-merge main CI #44985288167 PASS. No production migration/data access, paid Firebase service, or deployment.
-
-
-## 10. Dashboard collection-read optimization (PR #15)
-
-- PR #15: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/15 — merged at `4ce6d95095141180cb855426bff8c94c722b880b`.
-- Dashboard reads only all orders in the local-day ISO window and the six newest orders overall; no longer calls unbounded `listOrders()`.
-- Local midnight-to-midnight boundaries are converted to UTC ISO timestamps, avoiding the former local-calendar/UTC-prefix mismatch.
-- Emulator Case P validates range inclusion/exclusion, descending order and limit six. PR CI #44985805872 PASS; post-merge main CI #44986041575 PASS.
-- Orders/customers list pagination remains an audit item because their global substring search currently depends on loading the full collection.
-
-
 ## 10. Verified technical delivery after the initial audit
 
 - PR #11 — atomic first-time customer + first order; merge `73bb72ca19e5af82027e7f27096e693cb5892497`; PR CI #44982355903 and post-merge #44982521247 PASS.
