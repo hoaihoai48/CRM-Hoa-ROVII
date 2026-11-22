@@ -46,6 +46,7 @@ export interface Customer {
   totalOrders: number;
   totalSpent: number;
   lastOrderDate: string;
+  /** Bounded recent-order projection (max 51, including a currently changed cancelled order); not the lifetime source of truth. */
   orderSummaries?: CustomerOrderSummary[];
   note?: string;
   createdAt: string;

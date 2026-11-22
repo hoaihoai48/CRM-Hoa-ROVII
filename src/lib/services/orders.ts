@@ -22,6 +22,51 @@ import {
 import { canTransitionOrderStatus } from '@/lib/utils/order-status';
 import { normalizeIsoString } from '@/lib/utils/timestamp';
 
+const MAX_CUSTOMER_ORDER_SUMMARIES = 50;
+
+function mapCustomerOrderSummaries(raw: unknown): CustomerOrderSummary[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((entry: Record<string, unknown>) => ({
+    id: String(entry.id || ''),
+    status: (entry.status as Order['status']) || 'new',
+    total: Number(entry.total || 0),
+    createdAt: normalizeIsoString(entry.createdAt),
+  }));
+}
+
+/**
+ * Keep the legacy customer projection bounded without losing the order currently
+ * being changed (Firestore Rules require that exact projection in the same write).
+ * Small histories retain their previous complete shape for backward compatibility.
+ */
+function projectCustomerOrderSummaries(
+  existing: CustomerOrderSummary[],
+  changed: CustomerOrderSummary
+): CustomerOrderSummary[] {
+  const all = [...existing.filter((summary) => summary.id !== changed.id), changed];
+  if (all.length <= MAX_CUSTOMER_ORDER_SUMMARIES) return all;
+
+  const recentActive = all
+    .filter((summary) => summary.status !== 'cancelled')
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
+    .slice(0, MAX_CUSTOMER_ORDER_SUMMARIES);
+
+  if (changed.status === 'cancelled') {
+    return [...recentActive, changed];
+  }
+  if (recentActive.some((summary) => summary.id === changed.id)) {
+    return recentActive;
+  }
+  return [...recentActive.slice(0, MAX_CUSTOMER_ORDER_SUMMARIES - 1), changed];
+}
+
+function latestDate(summaries: CustomerOrderSummary[]): string {
+  return summaries.reduce(
+    (latest, summary) => summary.createdAt > latest ? summary.createdAt : latest,
+    ''
+  );
+}
+
 function mapDocToOrder(id: string, data: Record<string, unknown>): Order {
   const rawItems = Array.isArray(data.items) ? data.items : [];
   const items: OrderItem[] = rawItems.map((item: Record<string, unknown>, idx: number) => ({
@@ -78,8 +123,8 @@ function mapDocToOrder(id: string, data: Record<string, unknown>): Order {
 }
 
 /**
- * Rebuild the customer's materialized order projection from the orders collection and
- * derive aggregate fields from that projection.
+ * Rebuild lifetime aggregates from the complete orders collection and compact the
+ * customer document's bounded recent-order projection.
  *
  * The orders query cannot be included in a Firestore Web SDK transaction. To avoid
  * overwriting a concurrent create/status mutation, snapshot the customer's current
@@ -127,6 +172,12 @@ export async function syncCustomerAggregates(customerId: string): Promise<void> 
         createdAt: order.createdAt,
       };
     });
+    const boundedProjection = scannedSummaries.length <= MAX_CUSTOMER_ORDER_SUMMARIES
+      ? scannedSummaries
+      : scannedSummaries
+          .filter((summary) => summary.status !== 'cancelled')
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
+          .slice(0, MAX_CUSTOMER_ORDER_SUMMARIES);
 
     try {
       await runTransaction(db, async (tx) => {
@@ -140,6 +191,7 @@ export async function syncCustomerAggregates(customerId: string): Promise<void> 
           throw new Error('SYNC_CUSTOMER_AGGREGATES_RETRY');
         }
 
+        // Lifetime counters always come from the full order scan, never the bounded cache.
         const activeOrders = scannedSummaries.filter((order) => order.status !== 'cancelled');
         const completedOrders = scannedSummaries.filter((order) => order.status === 'completed');
         const totalOrders = activeOrders.length;
@@ -150,7 +202,7 @@ export async function syncCustomerAggregates(customerId: string): Promise<void> 
           totalOrders,
           totalSpent,
           lastOrderDate: sortedDates.at(-1) || '',
-          orderSummaries: scannedSummaries,
+          orderSummaries: boundedProjection,
         });
       });
       return;
@@ -336,40 +388,35 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
       deliveryDate: input.deliveryDate || null,
     };
 
-    // Transactionally read customer's existing order summaries from customer document
-    // This makes customer aggregate computation 100% concurrency-safe with atomic transaction locks
+    // The customer document is the transaction's contention point. Update scalar
+    // aggregates by deltas; never derive lifetime totals from the bounded projection.
     const custRaw = customerSnap.exists() ? customerSnap.data() || {} : {};
-    const existingSummaries: CustomerOrderSummary[] = Array.isArray(custRaw.orderSummaries)
-      ? custRaw.orderSummaries.map((s: Record<string, unknown>) => ({
-          id: String(s.id || ''),
-          status: (s.status as Order['status']) || 'new',
-          total: Number(s.total || 0),
-          createdAt: normalizeIsoString(s.createdAt),
-        }))
-      : [];
-
+    const existingSummaries = mapCustomerOrderSummaries(custRaw.orderSummaries);
     const newOrderSummary: CustomerOrderSummary = {
       id: orderId,
       status: 'new',
       total,
       createdAt: now,
     };
-
-    // Project new order summary into transactional list
-    const allProjectedSummaries = [...existingSummaries, newOrderSummary];
-    const activeSummaries = allProjectedSummaries.filter((o) => o.status !== 'cancelled');
-    const completedSummaries = allProjectedSummaries.filter((o) => o.status === 'completed');
-
-    const totalOrders = activeSummaries.length;
-    const totalSpent = completedSummaries.reduce((sum, o) => sum + o.total, 0);
-    const sortedDates = activeSummaries.map((o) => o.createdAt).sort();
-    const lastOrderDate = sortedDates.at(-1) || '';
+    const projectedSummaries = projectCustomerOrderSummaries(existingSummaries, newOrderSummary);
+    const fallbackActive = existingSummaries.filter((summary) => summary.status !== 'cancelled');
+    const currentTotalOrders = Number.isFinite(Number(custRaw.totalOrders))
+      ? Number(custRaw.totalOrders)
+      : fallbackActive.length;
+    const currentTotalSpent = Number.isFinite(Number(custRaw.totalSpent))
+      ? Number(custRaw.totalSpent)
+      : existingSummaries
+          .filter((summary) => summary.status === 'completed')
+          .reduce((sum, summary) => sum + summary.total, 0);
+    const currentLastOrderDate = typeof custRaw.lastOrderDate === 'string' && custRaw.lastOrderDate
+      ? normalizeIsoString(custRaw.lastOrderDate)
+      : latestDate(fallbackActive);
 
     const updatedCustomerAggregates = {
-      totalOrders,
-      totalSpent,
-      lastOrderDate,
-      orderSummaries: allProjectedSummaries,
+      totalOrders: currentTotalOrders + 1,
+      totalSpent: currentTotalSpent,
+      lastOrderDate: now > currentLastOrderDate ? now : currentLastOrderDate,
+      orderSummaries: projectedSummaries,
     };
 
     // 3. ALL WRITES AFTER READS (Atomic)
@@ -437,51 +484,41 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
     const existingHistory = Array.isArray(orderData.statusHistory) ? orderData.statusHistory : [];
     const updatedHistory = [...existingHistory, historyEntry];
 
-    // Transactionally read and update customer order summaries inside the transaction
     const custRaw = customerSnap.data() || {};
-    const existingSummaries: CustomerOrderSummary[] = Array.isArray(custRaw.orderSummaries)
-      ? custRaw.orderSummaries.map((s: Record<string, unknown>) => ({
-          id: String(s.id || ''),
-          status: (s.status as Order['status']) || 'new',
-          total: Number(s.total || 0),
-          createdAt: normalizeIsoString(s.createdAt),
-        }))
-      : [];
-
+    const existingSummaries = mapCustomerOrderSummaries(custRaw.orderSummaries);
     const orderTotal = Number((orderData.summary as Record<string, unknown>)?.total || 0);
     const orderCreatedAt = normalizeIsoString(orderData.createdAt);
+    const changedSummary: CustomerOrderSummary = {
+      id,
+      status: input.status,
+      total: orderTotal,
+      createdAt: orderCreatedAt,
+    };
+    const projectedSummaries = projectCustomerOrderSummaries(existingSummaries, changedSummary);
 
-    // Project order with new status across customer's transactional order summaries
-    let orderFoundInSummaries = false;
-    const projectedSummaries = existingSummaries.map((s) => {
-      if (s.id === id) {
-        orderFoundInSummaries = true;
-        return {
-          ...s,
-          status: input.status,
-          total: orderTotal,
-          createdAt: orderCreatedAt,
-        };
-      }
-      return s;
-    });
-
-    if (!orderFoundInSummaries) {
-      projectedSummaries.push({
-        id,
-        status: input.status,
-        total: orderTotal,
-        createdAt: orderCreatedAt,
-      });
-    }
-
-    const activeSummaries = projectedSummaries.filter((o) => o.status !== 'cancelled');
-    const completedSummaries = projectedSummaries.filter((o) => o.status === 'completed');
-
-    const totalOrders = activeSummaries.length;
-    const totalSpent = completedSummaries.reduce((sum, o) => sum + o.total, 0);
-    const sortedDates = activeSummaries.map((o) => o.createdAt).sort();
-    const lastOrderDate = sortedDates.at(-1) || '';
+    const fallbackActive = existingSummaries.filter((summary) => summary.status !== 'cancelled');
+    const currentTotalOrders = Number.isFinite(Number(custRaw.totalOrders))
+      ? Number(custRaw.totalOrders)
+      : fallbackActive.length;
+    const currentTotalSpent = Number.isFinite(Number(custRaw.totalSpent))
+      ? Number(custRaw.totalSpent)
+      : existingSummaries
+          .filter((summary) => summary.status === 'completed')
+          .reduce((sum, summary) => sum + summary.total, 0);
+    const totalOrders = currentTotalOrders
+      + (input.status === 'cancelled' ? 0 : 1)
+      - (currentStatus === 'cancelled' ? 0 : 1);
+    const totalSpent = currentTotalSpent
+      + (input.status === 'completed' ? orderTotal : 0)
+      - (currentStatus === 'completed' ? orderTotal : 0);
+    const currentLastOrderDate = typeof custRaw.lastOrderDate === 'string' && custRaw.lastOrderDate
+      ? normalizeIsoString(custRaw.lastOrderDate)
+      : latestDate(fallbackActive);
+    const lastOrderDate = input.status === 'cancelled' && orderCreatedAt >= currentLastOrderDate
+      ? latestDate(projectedSummaries.filter((summary) => summary.status !== 'cancelled'))
+      : orderCreatedAt > currentLastOrderDate
+        ? orderCreatedAt
+        : currentLastOrderDate;
 
     // 3. WRITES (Atomic)
     tx.update(customerRef, {
@@ -613,41 +650,19 @@ export async function updateOrder(id: string, input: UpdateOrderInput): Promise<
       note: 'Chỉnh sửa thông tin đơn hàng',
     };
 
-    // 3. RECOMPUTE CUSTOMER AGGREGATES (total of this order may have changed)
+    // 3. Update only the bounded order projection. This order can only be new/confirmed,
+    // so editing its price does not change lifetime order count or completed spend.
     const custRaw = customerSnap.data() || {};
-    const existingSummaries: CustomerOrderSummary[] = Array.isArray(custRaw.orderSummaries)
-      ? custRaw.orderSummaries.map((s: Record<string, unknown>) => ({
-          id: String(s.id || ''),
-          status: (s.status as Order['status']) || 'new',
-          total: Number(s.total || 0),
-          createdAt: normalizeIsoString(s.createdAt),
-        }))
-      : [];
-    let orderFoundInSummaries = false;
-    const projectedSummaries = existingSummaries.map((s) => {
-      if (s.id === id) {
-        orderFoundInSummaries = true;
-        return {
-          ...s,
-          status: currentStatus,
-          total,
-          createdAt: normalizeIsoString(orderData.createdAt),
-        };
-      }
-      return s;
+    const existingSummaries = mapCustomerOrderSummaries(custRaw.orderSummaries);
+    const projectedSummaries = projectCustomerOrderSummaries(existingSummaries, {
+      id,
+      status: currentStatus,
+      total,
+      createdAt: normalizeIsoString(orderData.createdAt),
     });
-    if (!orderFoundInSummaries) {
-      projectedSummaries.push({ id, status: currentStatus, total, createdAt: normalizeIsoString(orderData.createdAt) });
-    }
-    const activeSummaries = projectedSummaries.filter((o) => o.status !== 'cancelled');
-    const completedSummaries = projectedSummaries.filter((o) => o.status === 'completed');
-    const sortedDates = activeSummaries.map((o) => o.createdAt).sort();
 
     // 4. WRITES (Atomic)
     tx.update(customerRef, {
-      totalOrders: activeSummaries.length,
-      totalSpent: completedSummaries.reduce((sum, o) => sum + o.total, 0),
-      lastOrderDate: sortedDates.at(-1) || '',
       orderSummaries: projectedSummaries,
     });
     tx.update(orderRef, {
