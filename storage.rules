@@ -19,11 +19,11 @@ service firebase.storage {
     }
 
     // Public read for product images so customers & web views can render them
-    // Writes restricted to active staff/admins (consistent with Firestore policy)
+    // Product documents are admin-only in Firestore; image objects follow the same boundary.
     match /products/{allPaths=**} {
       allow read: if true;
-      allow write: if isActiveStaff() && isImageFile();
-      allow delete: if isActiveStaff();
+      allow create, update: if isActiveAdmin() && isImageFile();
+      allow delete: if isActiveAdmin();
     }
   }
 }
