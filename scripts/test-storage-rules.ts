@@ -125,7 +125,7 @@ async function run() {
 
   // Product images are intentionally public-readable for storefront rendering.
   const publicBytes = await getBytes(adminImage);
-  assert(publicBytes.length === pngBytes.length, 'Unauthenticated client can read a public product image');
+  assert(publicBytes.byteLength === pngBytes.byteLength, 'Unauthenticated client can read a public product image');
 
   await signInWithEmailAndPassword(auth, adminEmail, password);
   await deleteObject(adminImage);
