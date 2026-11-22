@@ -139,7 +139,7 @@ Add tests alongside the feature they protect. Prefer accessible selectors and st
 - New customer and first order are written in one transaction; no orphan customer on failed order creation.
 - Creator UID and history actor UID are optional for legacy compatibility; no staff assignment permission change.
 - Print uses browser-native print CSS; no PDF dependency.
-- Customer recent-order projection is capped at 51 entries; lifetime counters update by transaction deltas; full order history remains canonical in orders.
+- Customer recent-order projection is capped at 10 active entries to keep Rules evaluation under the 1,000-expression limit; lifetime counters update by exact order-linked deltas and full order history remains canonical in orders.
 - Dashboard reads only the local-day range plus six newest orders.
 - Normal order/customer browsing loads 50-row snapshot-cursor pages with explicit load-more.
 - Search and non-default order status filters still load the full collection to preserve the existing global substring-search contract. This is intentional and documented.
@@ -301,3 +301,14 @@ Both Vercel Previews were Ready with zero unresolved feedback. No production dat
 - Vercel combined status remains FAILURE from `api-deployments-free-per-day`. A single-use team consent link was generated for `team_DkpLkBxDUKIfcZtB93xLLbWK` (`vu-nhim`) but requires owner approval and expires after 10 minutes. The Vercel connector cannot inspect deployments until that approval; a previous Ready deployment is from a different commit and is stale.
 - PR #25 is NOT READY TO MERGE. Next: inspect completion of #45077431515; after the owner approves Vercel team access and the Free quota permits a new deployment, verify Preview on the live head; after review capacity returns or an independent reviewer is available, obtain completed code and security reviews on that same head. Merge only after every gate is green and no finding/thread remains.
 - The active-only projection's fail-closed boundary remains documented: if more than 51 active orders exist and every cached active row is cancelled while older active orders remain outside the cache, staff cannot create an empty source; an active admin must run aggregate repair. Do not weaken the zero-active-count rule.
+
+
+## 25. PR #25 Rules expression-budget remediation — 2026-11-23
+
+- PR #25 remains the sole open F-01 PR on branch security/customer-aggregate-write-boundary-2026-11-23, base main 8f2d0d3695429ebdd47733caca1b51b80067f582. The latest code head before this documentation update was a411b9c373515e0c7c927aeafe663996c7d0ac0f; always inspect the live head after the handoff commits.
+- CI #45079078639 on prior head 4c843798d9490717aaa085a31e49917facdc46e4 passed lint/typecheck but failed Firebase Emulator integration because a normal status mutation exceeded Firestore Rules' 1,000-expression evaluation budget at customer update L575. Playwright/build were skipped; this is not a passing run.
+- The active-only projection cap is now 10 (Rules, order service, audit script and type docs aligned). Rules helper chunks for entries 11–20 were removed. The canonical orders collection and customer-history cursor pagination remain unchanged.
+- Case N now exercises ten sequential cancellations of the current latest order, requiring each cancellation to refill one active summary from the canonical order query. It also checks that an outside-cache cancellation updates the repair invalidation markers. The legacy fixture now uses the actual post-concurrency customer aggregates.
+- Code/test commits: 4c843798d9490717aaa085a31e49917facdc46e4, e4cf3a099d0125d90d112137ef78d4a4b888de0c, 2b6bb4e1e4797e6268fcf86d9a1121fa17f09091, d9f54a7d49438005b40c6d003bd53552460309b9, 0adc5ac746d6d20c1983df1d8d37dfe43aa618e8, c90cd5c6a99213754533ca2c489fe71826b387f3 and a411b9c373515e0c7c927aeafe663996c7d0ac0f. Documentation commits are recorded in the live PR history.
+- Latest-head Actions had not yet appeared at the last query. Vercel Preview is required for this runtime/Rules PR and still fails due api-deployments-free-per-day. Codex code/security review requests are blocked by the account usage limit; no independent security review has completed. Do not merge.
+- Next: verify fresh Actions on the live head; simplify the customer mutation predicate further if expression evaluation still exceeds the limit. Then complete a source-level code/security review, resolve findings only after exact-head verification, obtain a current-head Ready Preview, and merge only after every gate is green.
