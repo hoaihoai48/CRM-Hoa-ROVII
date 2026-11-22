@@ -24,7 +24,7 @@
 - Firebase security hardening: F-02 Storage authorization mismatch RESOLVED by PR #22; F-01 customer aggregate integrity, F-03 Data URL size bounds, F-04 membership-field hardening and F-05 historical documentation remain open.
 - PR #21 security audit: MERGED.
 - PR #22 active-admin Storage Rules + isolated Storage Emulator coverage: MERGED.
-- Open PR inventory: PR #24 documentation-only handoff synchronization is open on branch docs/record-pr22-storage-security-merge-2026-11-23; Codex code review completed without findings on head 56e9055936f89d687b8acbd7db6d0d08ccb9a6f9; a documentation-focused security review was requested and is pending. PR #23 remains closed unmerged.
+- Open PR inventory: PR #24 documentation-only handoff synchronization is open on branch docs/record-pr22-storage-security-merge-2026-11-23; PR #24 has a newer docs-only head after recording post-merge CI; fresh code and documentation-focused security reviews are required before merge. PR #23 remains closed unmerged.
 - PR #22 final head 36ae3bf27c74e55cb674c00209e78df580ebf562; PR CI #45043911114 completed SUCCESS, including Auth/Firestore/Storage Emulator tests, Playwright E2E and production build.
 - Post-merge main Actions #45047810582 completed SUCCESS on exact merge commit 3efd04c601b4bffaa976edad38c282e921d82be4. Its single job completed dependency/MCP checks, lint, TypeScript, Auth/Firestore/Storage Emulator integration, Playwright E2E and production build. PR #22 post-merge verification is PASS. Vercel's Free daily quota failure is not a required gate for this Rules/test-infrastructure-only PR.
 - No production data, deployment, billing or destructive migration touched.
@@ -108,7 +108,7 @@ A backward-compatible optional-field candidate and regression matrix are recorde
 
 ## New-chat instruction
 
-Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md from main. Fetch the live main ref, open PR inventory, branches and latest Actions/review state. PR #22 is merged as 3efd04c601b4bffaa976edad38c282e921d82be4; its final head was 36ae3bf27c74e55cb674c00209e78df580ebf562, PR CI #45043911114 PASS, Codex code review completed without findings, independent security review found no blocker, and no unresolved review threads remained. Post-merge main Actions #45047810582 completed PASS on exact merge commit 3efd04c601b4bffaa976edad38c282e921d82be4. PR #24 is open docs-only on branch docs/record-pr22-storage-security-merge-2026-11-23; its Codex code review is pending. PR #23 remains closed unmerged. Next safe work after PR #24 closes is F-01 customer aggregate integrity; do not repeat PRs #8–#22.
+Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md from main. Fetch the live main ref, open PR inventory, branches and latest Actions/review state. PR #22 is merged as 3efd04c601b4bffaa976edad38c282e921d82be4; its final head was 36ae3bf27c74e55cb674c00209e78df580ebf562, PR CI #45043911114 PASS, Codex code review completed without findings, independent security review found no blocker, and no unresolved review threads remained. Post-merge main Actions #45047810582 completed PASS on exact merge commit 3efd04c601b4bffaa976edad38c282e921d82be4. PR #24 is open docs-only on branch docs/record-pr22-storage-security-merge-2026-11-23; fresh code and documentation-focused security reviews are required after the latest docs-only head update. PR #23 remains closed unmerged. Next safe work after PR #24 closes is F-01 customer aggregate integrity; do not repeat PRs #8–#22.
 
 
 ## Delivery update — 2026-11-22 (PRs #17–#18)
@@ -158,7 +158,7 @@ Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK
 - PR #24: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/24 — documentation-only synchronization of this handoff, playbook and Firebase security audit after PR #22 merged.
 - Branch: docs/record-pr22-storage-security-merge-2026-11-23. Initial PR head: e36bf7fa119601ab4c5d0722a0d93805b8c6fb83; base: 3efd04c601b4bffaa976edad38c282e921d82be4.
 - Scope is limited to the three Markdown documents. No application/runtime code, Firebase Rules, project configuration, production data, billing or deployment changes.
-- Codex code review completed without findings on head 56e9055936f89d687b8acbd7db6d0d08ccb9a6f9; a documentation-focused security review was requested on the same head and remains pending. Re-request both reviews if the branch head changes.
+- PR #24 head advanced after this handoff was updated with post-merge CI evidence. The earlier code review on `56e9055936f89d687b8acbd7db6d0d08ccb9a6f9` is stale for the new head; fresh code and documentation-focused security reviews are required before merge.
 - Actions and Vercel Preview are not applicable for this docs-only change under the repository paths-ignore and delivery policy. Do not claim CI/Preview PASS.
 
 
