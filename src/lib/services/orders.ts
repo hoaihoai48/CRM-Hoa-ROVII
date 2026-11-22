@@ -238,15 +238,20 @@ export interface OrderPage {
  */
 export async function listOrdersPage(
   cursor: OrderPageCursor | null = null,
-  pageSize = 50
+  pageSize = 50,
+  customerId?: string
 ): Promise<OrderPage> {
   const safePageSize = Number.isFinite(pageSize)
     ? Math.min(Math.max(Math.floor(pageSize), 1), 100)
     : 50;
   const ordersRef = collection(db, 'orders');
-  const pageQuery = cursor
-    ? query(ordersRef, orderBy('createdAt', 'desc'), startAfter(cursor), limit(safePageSize + 1))
-    : query(ordersRef, orderBy('createdAt', 'desc'), limit(safePageSize + 1));
+  const pageQuery = customerId
+    ? cursor
+      ? query(ordersRef, where('customerId', '==', customerId), orderBy('createdAt', 'desc'), startAfter(cursor), limit(safePageSize + 1))
+      : query(ordersRef, where('customerId', '==', customerId), orderBy('createdAt', 'desc'), limit(safePageSize + 1))
+    : cursor
+      ? query(ordersRef, orderBy('createdAt', 'desc'), startAfter(cursor), limit(safePageSize + 1))
+      : query(ordersRef, orderBy('createdAt', 'desc'), limit(safePageSize + 1));
   const snapshot = await getDocs(pageQuery);
   const pageDocs = snapshot.docs.slice(0, safePageSize);
   const lastDoc = pageDocs.at(-1) || null;
