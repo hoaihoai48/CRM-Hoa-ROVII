@@ -1299,6 +1299,58 @@ async function runTestSuite() {
   assert(scaleAfterCompaction!.orderSummaries?.some((summary) => summary.id === scaleCompactionOrder.id) ?? false, 'Case N: newest order is retained during oldest-row compaction');
   assert(scaleAfterCompaction!.lastOrderDateOrderId === scaleCompactionOrder.id, 'Case N: newly created order becomes the latest date source');
 
+  // A client cannot evict a newer cached order by creating an order with a forged old date.
+  const oldDatedOrderId = `OLD-DATED-${crypto.randomUUID()}`;
+  const oldDatedCreatedAt = new Date(scaleBase - 60_000).toISOString();
+  const oldDatedHistoryId = `${oldDatedOrderId}-HIST-0`;
+  const oldDatedSummary = {
+    id: oldDatedOrderId,
+    status: 'new' as const,
+    total: 1000,
+    createdAt: oldDatedCreatedAt,
+  };
+  const oldProjection = scaleAfterCompaction!.orderSummaries ?? [];
+  const oldDatedBatch = writeBatch(db);
+  oldDatedBatch.set(doc(db, 'orders', oldDatedOrderId), {
+    customerId: scaleCustomer.id,
+    customerSnapshot: { name: scaleCustomer.name, phone: scaleCustomer.phone, address: scaleCustomer.address },
+    items: [{
+      id: `${oldDatedOrderId}-ITEM-0`,
+      productId: p1.id,
+      productSnapshot: { name: p1.name, unit: p1.unit },
+      quantity: 1,
+      unitPrice: 1000,
+      subtotal: 1000,
+    }],
+    summary: { subtotal: 1000, deliveryFee: 0, discount: 0, total: 1000 },
+    status: 'new',
+    statusHistory: [{
+      id: oldDatedHistoryId,
+      status: 'new',
+      timestamp: oldDatedCreatedAt,
+      actorName: 'Scale Tester',
+    }],
+    note: null,
+    createdAt: oldDatedCreatedAt,
+    createdBy: 'Scale Tester',
+    deliveryDate: null,
+  });
+  oldDatedBatch.update(doc(db, 'customers', scaleCustomer.id), {
+    totalOrders: scaleAfterCompaction!.totalOrders + 1,
+    totalSpent: scaleAfterCompaction!.totalSpent,
+    lastOrderDate: scaleAfterCompaction!.lastOrderDate,
+    lastOrderDateOrderId: scaleAfterCompaction!.lastOrderDateOrderId,
+    lastOrderMutationOrderId: oldDatedOrderId,
+    lastOrderMutationId: oldDatedHistoryId,
+    lastOrderRefillOrderId: null,
+    orderSummaries: [...oldProjection.slice(0, 9), oldDatedSummary],
+  });
+  await expectPermissionDenied(
+    'Case N: an older-dated new order cannot evict a newer active summary during compaction',
+    () => oldDatedBatch.commit(),
+  );
+  assert(!(await getDoc(doc(db, 'orders', oldDatedOrderId))).exists(), 'Case N: rejected old-dated order leaves no partial canonical order');
+
   const oldestActiveNew = scaleRows.find((row) => row.status === 'new')!;
   await updateOrderStatus(oldestActiveNew.id, { status: 'confirmed', actorName: 'Scale Tester' });
   const scaleAfterOldUpdate = await getCustomerById(scaleCustomer.id);
