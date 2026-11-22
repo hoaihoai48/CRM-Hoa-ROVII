@@ -118,3 +118,11 @@ These are the only blockers before implementing the corresponding S2 UX/schema. 
 - PR #16 — cursor pagination for order/customer lists; merge `7e923b5a0a996468a211f76b8d1ff715699e3ce4`; final PR head `83e0d6c09978ea163e7b4d0f6280d3dd3b0f2f8c`; PR CI #44988852658 PASS (lint, typecheck, Emulator Case Q, Playwright, production build). Post-merge main workflow #44989024153 completed PASS on merge commit `7e923b5a0a996468a211f76b8d1ff715699e3ce4`, including lint, typecheck, Emulator, Playwright, production build and diagnostics artifact upload.
 - PR #16 preserves global substring search and status filtering by loading the full collection only when those filters are active; ordinary browsing uses 50-row cursor pages and explicit load-more. This trade-off is intentional and documented.
 - No production customer/order data, migration, production deployment, billing change or paid Firebase service was used.
+
+
+## 11. Follow-up technical hardening — PRs #17–#18
+
+- PR #17 — customer history pagination: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/17. Customer detail now loads the 25 newest orders via existing `listOrdersPage(cursor, pageSize, customerId)` and exposes load-more for the remaining history. Playwright seeds 27 synthetic Emulator orders and verifies first-page bounds, oldest-order absence before load-more, final two records and no skipped history. Merge `8ce9930ee181b1fca788e823a53ffac8860d9067`; PR CI #45008095660 PASS; main CI #45008325128 PASS.
+- PR #18 — actor identity enforcement: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/18. When an order has `createdByUid`, Rules now require each appended history row to carry `actorUid == request.auth.uid`. Emulator proves omission is rejected atomically and valid actor UID succeeds. Orders without `createdByUid` remain backward compatible. Merge `83c354436ff9dfedca180832fcec324c03a36ffa`; PR CI #45008498582 PASS; main CI #45008753697 PASS.
+- Both Preview checks Ready with zero unresolved feedback. Latest main `83c354436ff9dfedca180832fcec324c03a36ffa`.
+- Remaining owner decisions remain unchanged: purchaser vs recipient, delivery slots/timezone, card/instruction/internal-note separation, human-readable order code, staff assignment policy, and receipt vs fulfilment print contents.
