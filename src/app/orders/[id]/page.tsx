@@ -25,7 +25,7 @@ import { getNextOrderStatuses, canTransitionOrderStatus } from '@/lib/utils/orde
 function OrderDetailContent() {
   const params = useParams();
   const orderId = params?.id as string;
-  const { membership: currentUser } = useAuth();
+  const { membership: currentUser, membershipUserId } = useAuth();
 
   const [initialOrder, setInitialOrder] = useState<Awaited<ReturnType<typeof getOrderById>> | null>(null);
   const [currentStatus, setCurrentStatus] = useState<OrderStatus>('new');
@@ -116,6 +116,7 @@ function OrderDetailContent() {
       const updated = await updateOrderStatus(initialOrder.id, {
         status: newStatus,
         actorName: currentUser.name,
+        actorUid: membershipUserId ?? undefined,
       });
       setInitialOrder(updated);
       setCurrentStatus(updated.status);
@@ -200,6 +201,7 @@ function OrderDetailContent() {
         note: editNote,
         deliveryDate: editDeliveryDate ? new Date(editDeliveryDate).toISOString() : undefined,
         actorName: currentUser.name,
+        actorUid: membershipUserId ?? undefined,
       });
       setInitialOrder(updated);
       setCurrentStatus(updated.status);

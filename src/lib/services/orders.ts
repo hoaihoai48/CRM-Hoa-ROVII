@@ -43,6 +43,7 @@ function mapDocToOrder(id: string, data: Record<string, unknown>): Order {
     timestamp: normalizeIsoString(hist.timestamp),
     note: hist.note ? String(hist.note) : undefined,
     actorName: String(hist.actorName || 'Hệ thống'),
+    actorUid: hist.actorUid ? String(hist.actorUid) : undefined,
   }));
 
   const rawSummary = (data.summary as Record<string, unknown>) || {};
@@ -71,6 +72,7 @@ function mapDocToOrder(id: string, data: Record<string, unknown>): Order {
     note: data.note ? String(data.note).trim() : undefined,
     createdAt: normalizeIsoString(data.createdAt),
     createdBy: String(data.createdBy || 'Nhân viên'),
+    createdByUid: data.createdByUid ? String(data.createdByUid) : undefined,
     deliveryDate: data.deliveryDate ? normalizeIsoString(data.deliveryDate) : undefined,
   };
 }
@@ -307,6 +309,7 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
       status: 'new',
       timestamp: now,
       actorName: input.createdBy || 'Nhân viên',
+      ...(input.createdByUid ? { actorUid: input.createdByUid } : {}),
       note: 'Đơn hàng được tạo mới',
     };
 
@@ -329,6 +332,7 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
       note: input.note?.trim() || null,
       createdAt: now,
       createdBy: input.createdBy || 'Nhân viên',
+      ...(input.createdByUid ? { createdByUid: input.createdByUid } : {}),
       deliveryDate: input.deliveryDate || null,
     };
 
@@ -426,6 +430,7 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
       status: input.status,
       timestamp: now,
       actorName: input.actorName || 'Nhân viên',
+      ...(input.actorUid ? { actorUid: input.actorUid } : {}),
       note: input.note?.trim() || null,
     };
 
@@ -604,6 +609,7 @@ export async function updateOrder(id: string, input: UpdateOrderInput): Promise<
       status: currentStatus,
       timestamp: now,
       actorName: input.actorName || 'Nhân viên',
+      ...(input.actorUid ? { actorUid: input.actorUid } : {}),
       note: 'Chỉnh sửa thông tin đơn hàng',
     };
 

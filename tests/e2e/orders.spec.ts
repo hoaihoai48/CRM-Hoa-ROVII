@@ -4,7 +4,7 @@ const projectId = 'crm-hoa-rovii';
 const authEmulator = 'http://127.0.0.1:9099';
 const firestoreEmulator = 'http://127.0.0.1:8080';
 
-async function signInAsActiveAdmin(page: Page): Promise<void> {
+async function signInAsActiveAdmin(page: Page): Promise<string> {
   const email = `rovii-orders-e2e-${crypto.randomUUID()}@example.test`;
   const password = 'RoviiOrdersE2E-2026!';
 
@@ -35,6 +35,7 @@ async function signInAsActiveAdmin(page: Page): Promise<void> {
   await page.getByLabel('Mật khẩu').fill(password);
   await page.getByRole('button', { name: 'Đăng nhập với Email' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
+  return user.localId;
 }
 
 async function seedActiveProduct(page: Page, productId: string, name: string, price: number): Promise<void> {
@@ -61,7 +62,7 @@ test('staff can create, edit and complete an order with consistent totals and hi
   const productName = `Hoa E2E ${crypto.randomUUID().slice(0, 8)}`;
   const phone = `09${String(Math.floor(Math.random() * 100000000)).padStart(8, '0')}`;
   await seedActiveProduct(page, productId, productName, 350000);
-  await signInAsActiveAdmin(page);
+  const staffUid = await signInAsActiveAdmin(page);
 
   await page.goto('/orders/new');
   await page.getByLabel('Số điện thoại').fill(phone);
@@ -117,9 +118,13 @@ test('staff can create, edit and complete an order with consistent totals and hi
   expect(orderResponse.ok()).toBeTruthy();
   const order = await orderResponse.json();
   expect(order.fields.status.stringValue).toBe('completed');
+  expect(order.fields.createdByUid.stringValue).toBe(staffUid);
   expect(order.fields.summary.mapValue.fields.subtotal.integerValue).toBe('350000');
   expect(order.fields.summary.mapValue.fields.total.integerValue).toBe('350000');
   expect(order.fields.statusHistory.arrayValue.values).toHaveLength(6);
+  for (const entry of order.fields.statusHistory.arrayValue.values) {
+    expect(entry.mapValue.fields.actorUid.stringValue).toBe(staffUid);
+  }
 
   const customerResponse = await page.request.get(
     `${firestoreEmulator}/v1/projects/${projectId}/databases/(default)/documents/customers/CUST_${phone}`,
