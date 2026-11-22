@@ -173,16 +173,10 @@ async function runTestSuite() {
 
   // Aggregate repair is a privileged admin maintenance path; ordinary order/profile
   // operations below continue to run as staff.
-  const testAdminEmail = 'admin.tester@cuatiemhoa.vn';
-  const testAdminPass = 'SecureAdminPassword123!';
-  let adminUserUid = '';
-  try {
-    const cred = await createUserWithEmailAndPassword(auth, testAdminEmail, testAdminPass);
-    adminUserUid = cred.user.uid;
-  } catch {
-    const cred = await signInWithEmailAndPassword(auth, testAdminEmail, testAdminPass);
-    adminUserUid = cred.user.uid;
-  }
+  const testAdminEmail = 'aggregate-repair.admin@cuatiemhoa.vn';
+  const testAdminPass = 'AggregateRepairPass123!';
+  const adminCred = await createUserWithEmailAndPassword(auth, testAdminEmail, testAdminPass);
+  const adminUserUid = adminCred.user.uid;
   await provisionUserMembership(adminUserUid, {
     email: testAdminEmail,
     role: 'admin',
