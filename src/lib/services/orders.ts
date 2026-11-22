@@ -228,7 +228,7 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
 
   const phoneDigits = input.customerSnapshot.phone.replace(/\D/g, '');
   const phoneNormalized = /^84[35789]\d{8}$/.test(phoneDigits) ? `0${phoneDigits.slice(2)}` : phoneDigits;
-  if (!/^0[35789]\\d{8}$/.test(phoneNormalized)) {
+  if (!/^0[35789]\d{8}$/.test(phoneNormalized)) {
     throw new Error('Số điện thoại không hợp lệ (10 số, đầu 03/05/07/08/09).');
   }
   const customerId = input.customerId || `CUST_${phoneNormalized}`;
