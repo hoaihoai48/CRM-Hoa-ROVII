@@ -52,3 +52,13 @@ Cursor-based pagination should use Firestore `orderBy('createdAt', 'desc')`, `li
 - PR #16: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/16 — squash-merged at `7e923b5a0a996468a211f76b8d1ff715699e3ce4`.
 - Final PR head: `83e0d6c09978ea163e7b4d0f6280d3dd3b0f2f8c`; final PR CI #44988852658 PASS (lint, typecheck, Emulator, Playwright and production build). Earlier CI attempts exposed two test-fixture assumptions (unscoped orders and unrelated customer rows); the tests were corrected and final head passed.
 - Vercel Preview for final PR head was Ready with zero unresolved feedback. Post-merge main workflow #44989024153 completed PASS on merge commit `7e923b5a0a996468a211f76b8d1ff715699e3ce4`, including lint, typecheck, Emulator, Playwright, production build and diagnostics artifact upload.
+
+
+## 6. Customer detail history pagination — PR #17
+
+- Reused the existing `listOrdersPage(cursor, pageSize, customerId)` query, which already applies `where(customerId == ...)`, `orderBy(createdAt desc)`, snapshot `startAfter`, and a bounded look-ahead read.
+- Customer detail loads 25 newest orders initially and provides an explicit load-more action. Full history remains accessible; the customer page no longer downloads the customer's entire order history on initial load.
+- Load-more failures show a retry action; the UI distinguishes the number loaded while additional pages remain.
+- Playwright test seeds 27 synthetic orders for one customer, verifies 25 initially, then loads the final two and confirms the oldest appears without a skip.
+- PR #17 merged at `8ce9930ee181b1fca788e823a53ffac8860d9067`; PR CI #45008095660 PASS; post-merge main #45008325128 PASS.
+- No new composite index, Rules change, schema migration, or production read/write was required.
