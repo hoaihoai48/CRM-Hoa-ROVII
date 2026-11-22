@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+const projectId = 'demo-crm-hoa-rovii';
+
 test.describe('Authentication entry points', () => {
   test('renders the email login form', async ({ page }) => {
     await page.goto('/login');
@@ -42,7 +44,7 @@ test('signs in an active synthetic member and opens the dashboard', async ({ pag
   const authUser = await authResponse.json() as { localId: string };
 
   const membershipResponse = await page.request.patch(
-    `http://127.0.0.1:8080/v1/projects/crm-hoa-rovii/databases/(default)/documents/users/${authUser.localId}`,
+    `http://127.0.0.1:8080/v1/projects/${projectId}/databases/(default)/documents/users/${authUser.localId}`,
     {
       headers: { Authorization: 'Bearer owner' },
       data: {
