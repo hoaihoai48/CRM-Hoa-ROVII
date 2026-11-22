@@ -23,7 +23,7 @@ service cloud.firestore {
     function validOrder(data) {
       return data.keys().hasOnly([
           'customerId', 'customerSnapshot', 'items', 'summary', 'status',
-          'statusHistory', 'note', 'createdAt', 'createdBy', 'deliveryDate'
+          'statusHistory', 'note', 'createdAt', 'createdBy', 'createdByUid', 'deliveryDate'
         ])
         && data.keys().hasAll([
           'customerId', 'customerSnapshot', 'items', 'summary', 'status',
@@ -54,6 +54,7 @@ service cloud.firestore {
         && data.statusHistory.size() > 0
         && data.createdAt is string
         && data.createdBy is string
+        && (!('createdByUid' in data.keys()) || (data.createdByUid is string && data.createdByUid.size() > 0))
         && (!('note' in data.keys()) || data.note == null || data.note is string)
         && (!('deliveryDate' in data.keys()) || data.deliveryDate == null || data.deliveryDate is string);
     }
@@ -99,12 +100,14 @@ service cloud.firestore {
         && data.status == 'new'
         && data.statusHistory.size() == 1
         && validStatusHistoryEntry(data.statusHistory[0])
-        && data.statusHistory[0].status == 'new';
+        && data.statusHistory[0].status == 'new'
+        && (!('createdByUid' in data.keys())
+          || (data.createdByUid == request.auth.uid && data.statusHistory[0].actorUid == data.createdByUid));
     }
 
     function validStatusHistoryEntry(entry) {
       return entry is map
-        && entry.keys().hasOnly(['id', 'status', 'timestamp', 'note', 'actorName'])
+        && entry.keys().hasOnly(['id', 'status', 'timestamp', 'note', 'actorName', 'actorUid'])
         && entry.keys().hasAll(['id', 'status', 'timestamp', 'actorName'])
         && entry.id is string
         && entry.id.size() > 0
@@ -113,7 +116,8 @@ service cloud.firestore {
         && entry.timestamp.size() > 0
         && entry.actorName is string
         && entry.actorName.size() > 0
-        && (!('note' in entry.keys()) || entry.note == null || entry.note is string);
+        && (!('note' in entry.keys()) || entry.note == null || entry.note is string)
+        && (!('actorUid' in entry.keys()) || (entry.actorUid is string && entry.actorUid.size() > 0 && entry.actorUid == request.auth.uid));
     }
 
     function validStatusTransition(from, to) {
@@ -172,6 +176,7 @@ service cloud.firestore {
         && request.resource.data.customerId == resource.data.customerId
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.get('createdByUid', null) == resource.data.get('createdByUid', null)
         && hasMatchingCustomerOrderProjection(orderId, request.resource.data);
       allow delete: if false;
     }
