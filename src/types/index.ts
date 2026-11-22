@@ -52,6 +52,8 @@ export interface Customer {
   lastOrderMutationOrderId?: string;
   /** Unique final status-history entry ID for the current order mutation. */
   lastOrderMutationId?: string;
+  /** Canonical order ID temporarily added while refilling the bounded active projection. */
+  lastOrderRefillOrderId?: string | null;
   /** Bounded active-only recent-order projection (max 20); cancelled orders remain canonical in orders. */
   orderSummaries?: CustomerOrderSummary[];
   note?: string;
