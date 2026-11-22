@@ -28,7 +28,7 @@ A delivery step is complete only when all applicable gates pass:
 | Integration/security | Firebase Emulator tests pass, including negative Rules cases where applicable |
 | Browser E2E | Playwright tests pass against isolated Auth/Firestore Emulators |
 | Production build | npm run build passes |
-| Preview | Required only for runtime/UI or Vercel deployment-config changes. For Rules, emulator/test infrastructure, docs or other non-runtime changes, mark N/A when latest-head Actions production build and relevant isolated tests pass; avoid consuming Free deployment quota |
+| Preview | Required for runtime/UI or Vercel deployment-config changes. For Firebase Rules, emulator/test infrastructure and other non-runtime code changes, Preview may be N/A only after latest-head Actions production build and relevant isolated tests pass. **Docs-only exception:** when the entire PR diff is limited to `docs/**` and Markdown, Actions may be skipped by `paths-ignore`; record Actions as NOT RUN (never PASS), state that application build/isolated app tests are not relevant, and mark Preview N/A because runtime/UI and Vercel deployment configuration are unchanged. Do not use prior baseline CI as evidence for the docs head; avoid consuming Free deployment quota |
 | Regression | Existing critical flows remain intact; known trade-offs are documented |
 | Git hygiene | Feature branch, cohesive commits, focused PR, final head SHA checked |
 | Handoff | Status, commit SHA, PR/CI links, tests, risks and next action recorded |
@@ -162,7 +162,7 @@ The audit contains a backward-compatible optional-field candidate and regression
 
 | Field | Value |
 |---|---|
-| Active step | PR #24 documentation-only handoff synchronization is open for final-head security review; PR #22 post-merge main CI is verified; then begin F-01 customer aggregate Rules hardening |
+| Active step | PR #24 docs-only handoff synchronization: correct two P2 review findings, then obtain fresh exact-head code and documentation-focused security reviews; PR #22 post-merge main CI is verified; F-01 follows after PR #24 closes |
 | S0 | COMPLETE |
 | S1 | COMPLETE |
 | S2 technical hardening | COMPLETE through PR #18 |
@@ -174,7 +174,7 @@ The audit contains a backward-compatible optional-field candidate and regression
 | Post-merge main CI | #45008753697 — PASS (PR #18); #45008325128 — PASS (PR #17) |
 | Production data | NOT ACCESSED |
 | Production deployment | NOT PERFORMED |
-| Next action | Complete PR #24 final-head review/merge; then address F-01 customer scalar aggregate tampering with Emulator negative/positive coverage and a backward-compatible Rules design |
+| Next action | Verify PR #24's corrected exact head and complete fresh code/security reviews; merge only with no findings/unresolved threads. Then address F-01 customer scalar aggregate tampering with Emulator negative/positive coverage and a backward-compatible Rules design |
 
 PR #17 paginates customer detail history (25-row pages); PR #18 makes actor UIDs mandatory on appended history entries for UID-attributed orders while preserving legacy compatibility. Do not mark S2 fully complete until the remaining owner decisions have been implemented and their end-to-end acceptance criteria pass.
 
@@ -238,5 +238,12 @@ Both Vercel Previews were Ready with zero unresolved feedback. No production dat
 
 - GitHub Actions push run #45047810582 on exact main merge `3efd04c601b4bffaa976edad38c282e921d82be4` completed SUCCESS; job #137286140172 confirms every step completed, including Auth/Firestore/Storage Emulator tests, Playwright and production build.
 - PR #22 is verified at both final PR head CI #45043911114 and post-merge main CI #45047810582. The previous NOT VERIFIED note is superseded by this evidence.
-- PR #24 remains docs-only: the prior code review passed on head `56e9055936f89d687b8acbd7db6d0d08ccb9a6f9`; the latest docs update requires fresh code/security review. Actions and Preview are not applicable under the paths-ignore/non-runtime policy.
+- PR #24 remains docs-only: Codex code review on head `5fdd2b838dbc68ec28f5fc76d8b1c699fcd417e4` completed with two P2 findings (stale review-state wording and an ambiguous docs-only CI/Preview exemption). The corrections are being committed; both code and documentation-focused security reviews must complete on the new exact head. Actions are NOT RUN because `paths-ignore` excludes Markdown/docs; no CI PASS is claimed. Under the explicit docs-only exception, app build/isolated tests are not relevant and Preview is N/A; this exception does not cover Rules or emulator/test-infrastructure code.
 - Next delivery step after PR #24 is closed: F-01 customer aggregate integrity, beginning with a focused Rules/Emulator design that preserves all valid create/edit/status/cancel transactions.
+
+
+## 21. PR #24 review correction — 2026-11-23
+
+- Codex code review on `5fdd2b838dbc68ec28f5fc76d8b1c699fcd417e4` completed with two P2 findings: the Next action described stale review state, and the docs-only CI/Preview exemption was ambiguous. Both documentation issues are corrected in the follow-up commit.
+- The PR is strictly docs-only. The workflow `.github/workflows/ci.yml` excludes Markdown and `docs/**` through `paths-ignore`; therefore Actions are NOT RUN and no CI PASS is claimed. The docs-only exception is explicit: no application build or isolated app tests are relevant, and Preview is N/A when runtime/UI and Vercel deployment configuration are untouched. This does not waive latest-head build/test evidence for Rules, emulator/test-infrastructure or other non-runtime code changes.
+- Reviews on older heads are stale. Request fresh code review and documentation-focused security review on the exact new head; merge only after both complete without findings and no unresolved threads remain. Vercel Free quota errors are not a docs-only merge gate.
