@@ -250,11 +250,18 @@ service cloud.firestore {
         );
     }
 
-    function isSafeOldestCompaction(oldSummaries, beforeExists) {
-      return !beforeExists
-        && oldSummaries is list
+    function isSafeOldestCompaction(oldSummaries, beforeExists, oldOrderSummary, expectedSummary, afterStatus) {
+      return oldSummaries is list
         && oldSummaries.size() == 51
-        && validProjectionBounds(oldSummaries);
+        && validProjectionBounds(oldSummaries)
+        && (
+          !beforeExists
+          || (
+            afterStatus != 'cancelled'
+            && !(oldOrderSummary in oldSummaries)
+            && summaryAtLeastAsRecent(expectedSummary, oldSummaries[50])
+          )
+        );
     }
 
     function oldSummaryMayBeRemoved(summary, newSummaries, orderId, canDropOldest, oldestSummary) {
@@ -531,11 +538,6 @@ service cloud.firestore {
     function validCustomerOrderProjection(expectedSummary, orderId, beforeExists, before, afterStatus) {
       let oldSummaries = resource.data.get('orderSummaries', []);
       let newSummaries = request.resource.data.get('orderSummaries', []);
-      let canDropOldest = isSafeOldestCompaction(oldSummaries, beforeExists);
-      let oldestSummary = canDropOldest ? oldSummaries[50] : {};
-      let allowedNewSummaries = afterStatus == 'cancelled'
-        ? oldSummaries.toSet()
-        : oldSummaries.toSet().union([expectedSummary].toSet());
       let oldOrderSummary = beforeExists ? {
         'id': orderId,
         'status': before.status,
@@ -543,6 +545,13 @@ service cloud.firestore {
         'createdAt': before.createdAt
       } : {};
       let wasProjected = oldOrderSummary in oldSummaries;
+      let canDropOldest = isSafeOldestCompaction(
+        oldSummaries, beforeExists, oldOrderSummary, expectedSummary, afterStatus
+      );
+      let oldestSummary = canDropOldest ? oldSummaries[50] : {};
+      let allowedNewSummaries = afterStatus == 'cancelled'
+        ? oldSummaries.toSet()
+        : oldSummaries.toSet().union([expectedSummary].toSet());
       let mayOmitChangedSummary = afterStatus != 'cancelled'
         && !wasProjected
         && newSummaries.size() == 51
