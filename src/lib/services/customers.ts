@@ -61,6 +61,40 @@ function mapDocToCustomer(id: string, data: Record<string, unknown>): Customer {
   };
 }
 
+export type CustomerPageCursor = QueryDocumentSnapshot<DocumentData>;
+
+export interface CustomerPage {
+  items: Customer[];
+  nextCursor: CustomerPageCursor | null;
+  hasMore: boolean;
+}
+
+/**
+ * Cursor-based customer browsing. Full listCustomers() remains available for
+ * global substring search so existing search behavior is not silently narrowed.
+ */
+export async function listCustomersPage(
+  cursor: CustomerPageCursor | null = null,
+  pageSize = 50
+): Promise<CustomerPage> {
+  const safePageSize = Number.isFinite(pageSize)
+    ? Math.min(Math.max(Math.floor(pageSize), 1), 100)
+    : 50;
+  const customersRef = collection(db, 'customers');
+  const pageQuery = cursor
+    ? query(customersRef, orderBy('createdAt', 'desc'), startAfter(cursor), limit(safePageSize + 1))
+    : query(customersRef, orderBy('createdAt', 'desc'), limit(safePageSize + 1));
+  const snapshot = await getDocs(pageQuery);
+  const pageDocs = snapshot.docs.slice(0, safePageSize);
+  const lastDoc = pageDocs.at(-1) || null;
+
+  return {
+    items: pageDocs.map((docSnap) => mapDocToCustomer(docSnap.id, docSnap.data())),
+    nextCursor: lastDoc,
+    hasMore: snapshot.docs.length > safePageSize,
+  };
+}
+
 export async function listCustomers(): Promise<Customer[]> {
   const collRef = collection(db, 'customers');
   // Order by createdAt desc if index exists, otherwise fallback to unindexed query but let errors propagate
