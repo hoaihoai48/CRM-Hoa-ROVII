@@ -237,38 +237,52 @@ service cloud.firestore {
         );
     }
 
-    function validCustomerOrderMutation(customerId, orderId) {
+    function validCustomerOrderHistory(customerId, orderId) {
       let orderPath = /databases/$(database)/documents/orders/$(orderId);
-      let orderBeforeExists = exists(orderPath);
-      let orderAfterExists = existsAfter(orderPath);
-      let orderBefore = orderBeforeExists ? get(orderPath).data : {};
-      let orderAfter = orderAfterExists ? getAfter(orderPath).data : {};
-      let oldStatus = orderBeforeExists ? orderBefore.status : 'none';
-      let newStatus = orderAfterExists ? orderAfter.status : 'none';
-      let oldTotal = orderBeforeExists ? orderBefore.summary.total : 0;
-      let newTotal = orderAfterExists ? orderAfter.summary.total : 0;
-      let oldActive = orderBeforeExists && oldStatus != 'cancelled' ? 1 : 0;
-      let newActive = orderAfterExists && newStatus != 'cancelled' ? 1 : 0;
-      let oldCompletedTotal = orderBeforeExists && oldStatus == 'completed' ? oldTotal : 0;
-      let newCompletedTotal = orderAfterExists && newStatus == 'completed' ? newTotal : 0;
-      let oldHistorySize = orderBeforeExists ? orderBefore.statusHistory.size() : 0;
-      let newHistorySize = orderAfterExists ? orderAfter.statusHistory.size() : 0;
+      let beforeExists = exists(orderPath);
+      let afterExists = existsAfter(orderPath);
+      let before = beforeExists ? get(orderPath).data : {};
+      let after = afterExists ? getAfter(orderPath).data : {};
+      let beforeHistorySize = beforeExists ? before.statusHistory.size() : 0;
+      let afterHistorySize = afterExists ? after.statusHistory.size() : 0;
+      return afterExists
+        && after.customerId == customerId
+        && (!beforeExists || before.customerId == customerId)
+        && afterHistorySize == beforeHistorySize + 1;
+    }
+
+    function validCustomerOrderProjection(customerId, orderId) {
+      let orderAfter = getAfter(/databases/$(database)/documents/orders/$(orderId)).data;
       let expectedSummary = {
         'id': orderId,
         'status': orderAfter.status,
         'total': orderAfter.summary.total,
         'createdAt': orderAfter.createdAt
       };
+      return orderAfter.customerId == customerId
+        && expectedSummary in request.resource.data.orderSummaries;
+    }
+
+    function validCustomerAggregateDeltas(orderId) {
+      let orderPath = /databases/$(database)/documents/orders/$(orderId);
+      let beforeExists = exists(orderPath);
+      let before = beforeExists ? get(orderPath).data : {};
+      let after = getAfter(orderPath).data;
+      let oldActive = beforeExists && before.status != 'cancelled' ? 1 : 0;
+      let newActive = after.status != 'cancelled' ? 1 : 0;
+      let oldCompletedTotal = beforeExists && before.status == 'completed' ? before.summary.total : 0;
+      let newCompletedTotal = after.status == 'completed' ? after.summary.total : 0;
+      return request.resource.data.totalOrders == resource.data.totalOrders + newActive - oldActive
+        && request.resource.data.totalSpent == resource.data.totalSpent + newCompletedTotal - oldCompletedTotal;
+    }
+
+    function validCustomerOrderMutation(customerId, orderId) {
       let lastDateChanged = request.resource.data.lastOrderDate != resource.data.lastOrderDate;
       let lastDateSourceChanged = request.resource.data.get('lastOrderDateOrderId', null)
         != resource.data.get('lastOrderDateOrderId', null);
-      return orderAfterExists
-        && orderAfter.customerId == customerId
-        && (!orderBeforeExists || orderBefore.customerId == customerId)
-        && newHistorySize == oldHistorySize + 1
-        && expectedSummary in request.resource.data.orderSummaries
-        && request.resource.data.totalOrders == resource.data.totalOrders + newActive - oldActive
-        && request.resource.data.totalSpent == resource.data.totalSpent + newCompletedTotal - oldCompletedTotal
+      return validCustomerOrderHistory(customerId, orderId)
+        && validCustomerOrderProjection(customerId, orderId)
+        && validCustomerAggregateDeltas(orderId)
         && ((!lastDateChanged && !lastDateSourceChanged) || validLastOrderDateSource(customerId))
         && boundedCustomerProjection(request.resource.data);
     }
