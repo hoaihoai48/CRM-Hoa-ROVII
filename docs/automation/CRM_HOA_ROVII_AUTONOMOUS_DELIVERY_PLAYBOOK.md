@@ -188,7 +188,7 @@ Scheduling is a trigger to resume work, not a guarantee of uninterrupted executi
 | Field | Value |
 |---|---|
 | Active step | S2 — Sales workflow completion |
-| Step status | READY — S0 and S1 are merged; proceed to PR #5 audit then S2 |
+| Step status | IN PROGRESS — S0, S1 and MCP PR #10 merged; S2 read-only audit in progress |
 | S0 PR | MERGED — https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/8 (c63f2da0d2250bf8957877ce33e17142a8d6f8d3) |
 | S1 PR | MERGED — https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/9 (8ea157041599ca95966a02695e7c1a25ffe3c9a7) |
 | S1 commit | `53781a838495ac6bcf438dc42214ae4a7faf464e` (PR head); merge `8ea157041599ca95966a02695e7c1a25ffe3c9a7` |
@@ -198,7 +198,7 @@ Scheduling is a trigger to resume work, not a guarantee of uninterrupted executi
 | Vercel PR check | PASS — https://vercel.com/vu-nhim/tiem-hoa-rovii/E9N8oW7FWNUF9DrVkwz6nZwKsxVP |
 | Production data | NOT ACCESSED |
 | Merge | S0 and S1 merged; production deployment NOT PERFORMED |
-| Next permitted step | Verify/merge PR #10 MCP structured outputs; then S2 read-only audit of recipient/delivery details, scheduling, order code, staff assignment and printable order view |
+| Next permitted step | Continue S2 read-only audit and prepare a backward-compatible proposal/test matrix before implementation |
 
 Do not mark a step PASS unless all required exit criteria have verifiable evidence.
 
@@ -239,10 +239,13 @@ Do not mark a step PASS unless all required exit criteria have verifiable eviden
 - PR #10 merged by squash after all PR CI checks passed and the Preview deployment was Ready; no review threads/submissions existed.
 - PR #10 merge SHA: `6ac8304c8df47fe0c2a94dd444591a59ebb5b2da`.
 - PR CI run #44966591236: PASS — MCP schemas/protocol/safety, lint, typecheck, Emulator integration, Chromium/Playwright E2E, build and diagnostics.
-- Post-merge main run #44967174708 was still running at last inspection; Emulator job in progress after lint/typecheck/MCP passed. Playwright and build had not run yet.
+- Post-merge main workflow #44967174708 completed PASS; Emulator integration, Playwright Chromium E2E, production build and diagnostics upload all succeeded.
 - S2 read-only audit began. Current customer snapshot conflates purchaser and recipient; delivery details are a single datetime field; order note combines greeting card text and delivery instructions. No dedicated recipient fields, delivery slot/window, staff assignment UID or print view identified in examined order types/UI.
 - Generated order ID currently uses `DH-${crypto.randomUUID()}`; creator and status actors are stored as display names, not membership IDs.
 - Found a potential orphan-customer path: UI creates a customer before starting the order transaction. If order creation subsequently fails, customer remains without an order.
 - Firestore Rules whitelist order document keys, so schema additions require coordinated TypeScript/service/rules/tests changes.
 - No application implementation or data migration has been started for S2. No production data touched and no production deployment/billing/configuration change.
 - Next action: inspect the complete order detail/update implementation and tests; inspect order E2E and emulator fixtures; record a proposed backward-compatible data model. Do not guess business policies for recipient semantics, delivery windows, assignment, or printed receipt contents.
+
+
+- Final post-merge CI status: workflow #44967174708 completed successfully on `main` commit `6ac8304c8df47fe0c2a94dd444591a59ebb5b2da`.
