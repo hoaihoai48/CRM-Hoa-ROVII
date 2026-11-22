@@ -24,9 +24,9 @@
 - Firebase security hardening: F-02 Storage authorization mismatch RESOLVED by PR #22; F-01 customer aggregate integrity, F-03 Data URL size bounds, F-04 membership-field hardening and F-05 historical documentation remain open.
 - PR #21 security audit: MERGED.
 - PR #22 active-admin Storage Rules + isolated Storage Emulator coverage: MERGED.
-- Open PR inventory: PR #24 documentation-only handoff synchronization is open on branch docs/record-pr22-storage-security-merge-2026-11-23; Codex code review is running. PR #23 remains closed unmerged.
+- Open PR inventory: PR #24 documentation-only handoff synchronization is open on branch docs/record-pr22-storage-security-merge-2026-11-23; Codex code review completed without findings on head 56e9055936f89d687b8acbd7db6d0d08ccb9a6f9; a documentation-focused security review was requested and is pending. PR #23 remains closed unmerged.
 - PR #22 final head 36ae3bf27c74e55cb674c00209e78df580ebf562; PR CI #45043911114 completed SUCCESS, including Auth/Firestore/Storage Emulator tests, Playwright E2E and production build.
-- Post-merge main Actions result for merge commit 3efd04c601b4bffaa976edad38c282e921d82be4 was not returned by the available commit-workflow query; do not claim post-merge CI PASS until independently observed. Vercel reported the Free daily deployment quota limit; Preview is not an applicable gate for this Rules/test-infrastructure-only PR.
+- Post-merge main Actions #45047810582 completed SUCCESS on exact merge commit 3efd04c601b4bffaa976edad38c282e921d82be4. Its single job completed dependency/MCP checks, lint, TypeScript, Auth/Firestore/Storage Emulator integration, Playwright E2E and production build. PR #22 post-merge verification is PASS. Vercel's Free daily quota failure is not a required gate for this Rules/test-infrastructure-only PR.
 - No production data, deployment, billing or destructive migration touched.
 
 ## Merged delivery inventory
@@ -45,7 +45,7 @@
 | #17 | Customer detail order-history cursor pagination | 8ce9930ee181b1fca788e823a53ffac8860d9067 | PR CI #45008095660 and post-merge #45008325128 passed |
 | #18 | Require authenticated actor UID on appended history entries | 83c354436ff9dfedca180832fcec324c03a36ffa | PR CI #45008498582 and post-merge #45008753697 passed |
 | #21 | Firebase Security & Access-Control source audit | e728de1b8b98f91e976a3336a657720f4020f6b8 | Documentation-only; Codex code review + independent security review; Actions paths-ignore |
-| #22 | Active-admin product image Storage writes + Storage Emulator regression suite | 3efd04c601b4bffaa976edad38c282e921d82be4 | PR CI #45043911114 PASS on final head; post-merge main CI not yet returned |
+| #22 | Active-admin product image Storage writes + Storage Emulator regression suite | 3efd04c601b4bffaa976edad38c282e921d82be4 | PR CI #45043911114 PASS on final head; post-merge main #45047810582 PASS |
 
 Relevant links:
 - [PR #16](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/16)
@@ -99,16 +99,16 @@ A backward-compatible optional-field candidate and regression matrix are recorde
 
 ## Next action
 
-1. Verify post-merge main Actions for PR #22 merge commit 3efd04c601b4bffaa976edad38c282e921d82be4; the current connector query did not return a push-triggered run, so post-merge CI remains NOT VERIFIED.
+1. COMPLETE — post-merge main Actions #45047810582 completed SUCCESS on exact PR #22 merge commit 3efd04c601b4bffaa976edad38c282e921d82be4; all job steps, including Emulator integration, Playwright and production build, completed successfully.
 2. Continue with F-01 customer scalar aggregate tampering: add a negative Emulator case proving an active client can currently forge scalar aggregates, then design a compatible Rules guard that preserves create/edit/status/cancel transactions. Do not weaken valid atomic order workflows.
 3. Keep F-03 Data URL byte-size validation, F-04 membership metadata immutability/self-demotion policy, and F-05 historical source-audit correction as subsequent focused steps.
 4. Do not implement the owner-gated S2 business semantics without decisions.
-5. PR #24 is a docs-only follow-up to synchronize the handoff/audit after PR #22; review is pending and Preview/Actions are not applicable under the docs-only path policy.
+5. PR #24 is a docs-only follow-up. Code review completed without findings on head 56e9055936f89d687b8acbd7db6d0d08ccb9a6f9; security review requested and pending. Actions are excluded by docs paths-ignore and Vercel Preview is N/A; the Vercel Free quota failure is not a merge gate.
 6. No production data repair, deployment/release, billing change, paid Firebase service or destructive migration is authorized.
 
 ## New-chat instruction
 
-Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md from main. Fetch the live main ref, open PR inventory, branches and latest Actions/review state. PR #22 is merged as 3efd04c601b4bffaa976edad38c282e921d82be4; its final head was 36ae3bf27c74e55cb674c00209e78df580ebf562, PR CI #45043911114 PASS, Codex code review completed without findings, independent security review found no blocker, and no unresolved review threads remained. Post-merge main Actions were not returned by the current connector query; verify before claiming PASS. PR #24 is open docs-only on branch docs/record-pr22-storage-security-merge-2026-11-23; its Codex code review is pending. PR #23 remains closed unmerged. Next safe work after PR #24 closes is F-01 customer aggregate integrity; do not repeat PRs #8–#22.
+Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md from main. Fetch the live main ref, open PR inventory, branches and latest Actions/review state. PR #22 is merged as 3efd04c601b4bffaa976edad38c282e921d82be4; its final head was 36ae3bf27c74e55cb674c00209e78df580ebf562, PR CI #45043911114 PASS, Codex code review completed without findings, independent security review found no blocker, and no unresolved review threads remained. Post-merge main Actions #45047810582 completed PASS on exact merge commit 3efd04c601b4bffaa976edad38c282e921d82be4. PR #24 is open docs-only on branch docs/record-pr22-storage-security-merge-2026-11-23; its Codex code review is pending. PR #23 remains closed unmerged. Next safe work after PR #24 closes is F-01 customer aggregate integrity; do not repeat PRs #8–#22.
 
 
 ## Delivery update — 2026-11-22 (PRs #17–#18)
@@ -158,5 +158,12 @@ Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK
 - PR #24: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/24 — documentation-only synchronization of this handoff, playbook and Firebase security audit after PR #22 merged.
 - Branch: docs/record-pr22-storage-security-merge-2026-11-23. Initial PR head: e36bf7fa119601ab4c5d0722a0d93805b8c6fb83; base: 3efd04c601b4bffaa976edad38c282e921d82be4.
 - Scope is limited to the three Markdown documents. No application/runtime code, Firebase Rules, project configuration, production data, billing or deployment changes.
-- Codex code review was running on the initial PR head at the latest check; no review result or unresolved finding was yet available. Re-request review if the branch head changes.
+- Codex code review completed without findings on head 56e9055936f89d687b8acbd7db6d0d08ccb9a6f9; a documentation-focused security review was requested on the same head and remains pending. Re-request both reviews if the branch head changes.
 - Actions and Vercel Preview are not applicable for this docs-only change under the repository paths-ignore and delivery policy. Do not claim CI/Preview PASS.
+
+
+## Post-merge verification — PR #22 (2026-11-23)
+
+- Independently queried GitHub Actions by exact merge `head_sha=3efd04c601b4bffaa976edad38c282e921d82be4` and found push-triggered main run [#45047810582](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45047810582), event `push`, branch `main`, status `completed`, conclusion `success`.
+- Inspected its job #137286140172: dependency/MCP checks, lint, TypeScript typecheck, Firebase Auth/Firestore/Storage Emulator integration, Playwright E2E and production build all completed successfully.
+- PR #22 is now verified at both PR-head CI #45043911114 and post-merge main CI #45047810582. No production deployment/data, billing, project configuration or migration was involved.
