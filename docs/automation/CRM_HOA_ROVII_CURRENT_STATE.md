@@ -109,3 +109,11 @@ Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK
 - PR #18: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/18 — Firestore Rules now require `actorUid == request.auth.uid` on every appended history entry for orders that already contain `createdByUid`. Emulator verifies missing UID is rejected without partial order/customer writes and valid authenticated UID succeeds. Legacy orders without `createdByUid` remain compatible. Merge `83c354436ff9dfedca180832fcec324c03a36ffa`; PR CI #45008498582 PASS; post-merge main #45008753697 PASS.
 - Vercel Preview for both PRs Ready; zero unresolved feedback. No production data/deployment, migration, billing or paid Firebase service touched.
 - Latest code merge: `83c354436ff9dfedca180832fcec324c03a36ffa`; handoff and audit documentation is synced through PR #18.
+
+
+## Delivery update — 2026-11-22 (PR #19)
+
+- PR #19: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/19 — documentation-only synchronization of the Autonomous Delivery Playbook. Corrected the stale PR #16 post-merge CI note, added PRs #17–#18 to the merged inventory, removed stale statements that customer detail history remained unpaginated, and clarified that S2 technical hardening is complete through PR #18 while business semantics remain owner-gated.
+- Squash merge: `53698b09cc73acaa56135ac2e62f602f02374aea`.
+- PR #19 Vercel Preview check passed before merge. Post-merge Vercel status was still pending at handoff; no GitHub Actions run was returned for the docs-only merge commit. Do not mark post-merge verification PASS until the status is rechecked.
+- No application code, Firestore schema/Rules, production data, production deployment, migration, billing or Firebase configuration changed.
