@@ -176,15 +176,37 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    function hasMatchingFirstOrderProjection(customerId, customerData) {
+      return customerData.orderSummaries is list
+        && customerData.orderSummaries.size() == 1
+        && customerData.orderSummaries[0] is map
+        && customerData.orderSummaries[0].keys().hasOnly(['id', 'status', 'total', 'createdAt'])
+        && customerData.orderSummaries[0].keys().hasAll(['id', 'status', 'total', 'createdAt'])
+        && customerData.orderSummaries[0].status == 'new'
+        && customerData.totalOrders == 1
+        && customerData.totalSpent == 0
+        && customerData.lastOrderDate == customerData.orderSummaries[0].createdAt
+        && getAfter(/databases/$(database)/documents/orders/$(customerData.orderSummaries[0].id)).data.customerId == customerId
+        && getAfter(/databases/$(database)/documents/orders/$(customerData.orderSummaries[0].id)).data.status == 'new'
+        && getAfter(/databases/$(database)/documents/orders/$(customerData.orderSummaries[0].id)).data.summary.total == customerData.orderSummaries[0].total
+        && getAfter(/databases/$(database)/documents/orders/$(customerData.orderSummaries[0].id)).data.createdAt == customerData.orderSummaries[0].createdAt
+        && getAfter(/databases/$(database)/documents/orders/$(customerData.orderSummaries[0].id)).data.customerSnapshot.name == customerData.name
+        && getAfter(/databases/$(database)/documents/orders/$(customerData.orderSummaries[0].id)).data.customerSnapshot.phone == customerData.phone
+        && getAfter(/databases/$(database)/documents/orders/$(customerData.orderSummaries[0].id)).data.customerSnapshot.address == customerData.address;
+    }
+
     match /customers/{customerId} {
       allow read: if isActiveMember();
       allow create: if isActiveMember()
         && validCustomer(request.resource.data)
-        && request.resource.data.totalOrders == 0
-        && request.resource.data.totalSpent == 0
-        && request.resource.data.lastOrderDate == ''
-        && (!('orderSummaries' in request.resource.data.keys())
-          || request.resource.data.orderSummaries.size() == 0);
+        && (
+          (request.resource.data.totalOrders == 0
+            && request.resource.data.totalSpent == 0
+            && request.resource.data.lastOrderDate == ''
+            && (!('orderSummaries' in request.resource.data.keys())
+              || request.resource.data.orderSummaries.size() == 0))
+          || hasMatchingFirstOrderProjection(customerId, request.resource.data)
+        );
       allow update: if isActiveMember() && validCustomer(request.resource.data)
         && request.resource.data.phone == resource.data.phone
         && request.resource.data.phoneNormalized == resource.data.phoneNormalized
