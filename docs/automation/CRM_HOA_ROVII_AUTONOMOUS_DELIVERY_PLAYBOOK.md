@@ -205,3 +205,11 @@ Both Vercel Previews were Ready with zero unresolved feedback. No production dat
 - PR #20 merged the handoff fix at `93da6165ebec95a864c139baf1e4a4955e59fdcd`; Vercel Preview was Ready and Codex re-review reported no findings. The single inline P2 thread was resolved before merge.
 - Post-merge Vercel status for PR #20 was still pending when the handoff was written. The docs-only PRs are ignored by the GitHub Actions quality workflow via `paths-ignore`; do not invent an Actions PASS for them.
 - Current-state handoff is the source of the delivery-specific PR #19/#20 status; future sessions should read both docs from live main and not pin stale blob SHAs.
+
+
+## 14. Delivery update — PRs #19–#21 (2026-11-22)
+
+- PR #19 synchronized the delivery playbook through PR #18, merge `53698b09cc73acaa56135ac2e62f602f02374aea`.
+- PR #20 corrected the current-state handoff's historical playbook pin, merge `93da6165ebec95a864c139baf1e4a4955e59fdcd`. Codex re-review had no findings; the P2 thread was resolved. Post-merge Vercel status SUCCESS. Docs-only changes are ignored by Actions CI via workflow `paths-ignore`.
+- PR #21 adds the Firebase Security & Access-Control Audit, documentation-only. It records current Rules/service findings and separates confirmed issues from accepted Spark architecture trade-offs. Preview/review pending at time of handoff.
+- Do not mark S2 business semantics complete; purchaser/recipient, delivery windows, note visibility, human-readable code, staff assignment and print format still require owner decisions.
