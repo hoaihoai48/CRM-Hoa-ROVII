@@ -140,3 +140,12 @@ Read this handoff and the playbook, then fetch live GitHub state. S0/S1 and PR #
 
 
 - Final post-merge verification: `main` commit `73bb72ca19e5af82027e7f27096e693cb5892497` passed workflow #44982521247, including lint, typecheck, Emulator, Playwright and production build.
+
+
+### S2 continuation — 2026-11-22 (PR #12 stable actor identity)
+
+- PR #12: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/12 — squash-merged at `64c539e423c78bfe0b7089889b40d479afdfa799`.
+- New orders optionally store `createdByUid`; status-history entries optionally store `actorUid`. The order create/detail UI passes the authenticated membership UID from `AuthProvider`.
+- Firestore Rules require any supplied creator/history UID to match `request.auth.uid`, and keep `createdByUid` immutable. Legacy orders/history without these fields remain valid; no backfill/migration.
+- PR CI run #44982896197 PASS; post-merge main workflow #44983058488 PASS, including lint, typecheck, Emulator, Playwright E2E and production build.
+- Stable audit identity is groundwork only. No staff assignment policy, access scope, or permissions were changed.
