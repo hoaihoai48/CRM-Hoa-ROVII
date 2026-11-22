@@ -1,6 +1,6 @@
 # CRM-Hoa-ROVII — Current Delivery Handoff
 
-**Last updated:** 2026-11-22 07:35 Asia/Ho_Chi_Minh  
+**Last updated:** 2026-11-22 11:12 Asia/Ho_Chi_Minh  
 **Repository:** https://github.com/hoaihoai48/CRM-Hoa-ROVII  
 **Default branch:** `main`  
 **Current main SHA:** read the live `main` ref before resuming (this handoff file is updated on every delivery session).
@@ -157,3 +157,10 @@ Read this handoff and the playbook, then fetch live GitHub state. S0/S1 and PR #
 - Added a browser-native `In đơn hàng` action and A4 print stylesheet on order detail. Print output includes order code, creation metadata, current status, customer/delivery snapshot, note, item rows and totals; CRM navigation, editing/status controls and internal timeline are hidden.
 - No order schema, Firestore Rules, data, dependencies, Firebase service, or permissions changed.
 - PR CI #44983725322 PASS; post-merge main workflow #44983907739 PASS, including lint, typecheck, Emulator, Playwright E2E and production build.
+
+
+### Next autonomous focus
+
+- Continue the S2 order-scale audit, starting with the embedded `customers.orderSummaries` array and Firestore document-size/transaction contention risks.
+- Produce a backward-compatible scale/remediation proposal and Emulator test matrix before changing aggregate storage. Preserve historical order reads and customer totals; do not run production backfills or introduce paid Firebase services.
+- Keep recipient/purchaser semantics, delivery-window policy, card-message separation, human-facing order-code policy, staff assignment permissions, and print-slip content requirements as explicit product decisions rather than guessing them in schema changes.
