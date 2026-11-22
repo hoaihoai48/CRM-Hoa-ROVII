@@ -95,7 +95,7 @@ service cloud.firestore {
         && (
           summaries.size() == 0
           || (
-        && (summaries.size() <= 0 || validCustomerOrderSummary(summaries[0]))
+            (summaries.size() <= 0 || validCustomerOrderSummary(summaries[0]))
         && (summaries.size() <= 1 || validCustomerOrderSummary(summaries[1]))
         && (summaries.size() <= 2 || validCustomerOrderSummary(summaries[2]))
         && (summaries.size() <= 3 || validCustomerOrderSummary(summaries[3]))
