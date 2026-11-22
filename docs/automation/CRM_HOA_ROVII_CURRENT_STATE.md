@@ -124,3 +124,11 @@ Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK
 - PR #20: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/20 — corrected the handoff's historical playbook pin, explicitly identifying the old SHA as pre-PR #19 and directing the next session to the live main copy. Squash-merged at `93da6165ebec95a864c139baf1e4a4955e59fdcd` after Vercel Preview Ready, Codex review completed with no unresolved findings, and the inline P2 thread was resolved.
 - Vercel post-merge status for `93da6165ebec95a864c139baf1e4a4955e59fdcd` was `pending` at the time of this update; docs-only commits are excluded from the GitHub Actions quality workflow by `paths-ignore: '**/*.md'` and `docs/**`. Recheck Vercel status before marking post-merge deployment readiness.
 - PR #20 changed only this handoff document. No application code, rules, production data/deployment, billing, migration or Firebase configuration changed.
+
+
+## Delivery update — 2026-11-22 (PR #20 merged; security audit opened)
+
+- PR #20: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/20 — merged at `93da6165ebec95a864c139baf1e4a4955e59fdcd`. It corrects the current-state handoff so historical playbook blob SHAs are not presented as current. Codex review on final head `19ec51f3cd506313fa4bc93cfb6d8a01d449317d` completed with no unresolved findings; its inline P2 thread was resolved before merge. Post-merge Vercel status is SUCCESS; no Actions run was created because docs-only files are excluded by workflow `paths-ignore`.
+- PR #21: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/21 — opened to add the current-source Firebase security/access-control audit. This is documentation-only; the report explicitly identifies findings and verification limitations. Preview was BUILDING at handoff; Codex review requested and not yet complete.
+- Latest code merge remains `83c354436ff9dfedca180832fcec324c03a36ffa` (PR #18). PR #19/#20 are documentation merges, not new application code.
+- No production data/deployment, billing, schema migration or Firebase configuration was touched.
