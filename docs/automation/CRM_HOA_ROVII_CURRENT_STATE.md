@@ -1,6 +1,6 @@
 # CRM-Hoa-ROVII — Current Delivery Handoff
 
-**Last updated:** 2026-11-22  
+**Last updated:** 2026-11-23  
 **Repository:** https://github.com/hoaihoai48/CRM-Hoa-ROVII  
 **Default branch:** main  
 **Latest code merge:** 83c354436ff9dfedca180832fcec324c03a36ffa (PR #18; PR #21 was a documentation-only merge)  
@@ -20,10 +20,13 @@
 
 - S0 — CI/Playwright foundation: COMPLETE.
 - S1 — Order lifecycle integrity: COMPLETE.
-- S2 — Sales/order workflow technical hardening: substantial safe work COMPLETE; business semantics remain blocked on owner decisions listed below.
-- PR #16 cursor pagination: MERGED.
-- Open PR inventory: PR #22 (Storage Rules/test isolation) is open; PR #21 merged; PR #23 closed unmerged and superseded.
-- Post-merge main workflow #44989024153 completed PASS on PR #16 merge commit; all CI steps passed.
+- S2 — technical workflow hardening through PR #18: COMPLETE; purchaser/recipient, scheduling, notes, order code, assignment and print-content semantics remain owner-gated.
+- Firebase security hardening: F-02 Storage authorization mismatch RESOLVED by PR #22; F-01 customer aggregate integrity, F-03 Data URL size bounds, F-04 membership-field hardening and F-05 historical documentation remain open.
+- PR #21 security audit: MERGED.
+- PR #22 active-admin Storage Rules + isolated Storage Emulator coverage: MERGED.
+- Open PR inventory: none at the latest inspection.
+- PR #22 final head 36ae3bf27c74e55cb674c00209e78df580ebf562; PR CI #45043911114 completed SUCCESS, including Auth/Firestore/Storage Emulator tests, Playwright E2E and production build.
+- Post-merge main Actions result for merge commit 3efd04c601b4bffaa976edad38c282e921d82be4 was not returned by the available commit-workflow query; do not claim post-merge CI PASS until independently observed. Vercel reported the Free daily deployment quota limit; Preview is not an applicable gate for this Rules/test-infrastructure-only PR.
 - No production data, deployment, billing or destructive migration touched.
 
 ## Merged delivery inventory
@@ -39,6 +42,10 @@
 | #14 | Bounded customer order projection and delta aggregates | 568083053d7311f6d5abbe608f3a100f0c803444 | PR CI #44985057671 and post-merge #44985288167 passed |
 | #15 | Dashboard bounded reads/local-day query | 4ce6d95095141180cb855426bff8c94c722b880b | PR CI #44985805872 and post-merge #44986041575 passed |
 | #16 | Cursor pagination for orders/customers | 7e923b5a0a996468a211f76b8d1ff715699e3ce4 | Final PR head 83e0d6c09978ea163e7b4d0f6280d3dd3b0f2f8c; PR CI #44988852658 and post-merge #44989024153 passed |
+| #17 | Customer detail order-history cursor pagination | 8ce9930ee181b1fca788e823a53ffac8860d9067 | PR CI #45008095660 and post-merge #45008325128 passed |
+| #18 | Require authenticated actor UID on appended history entries | 83c354436ff9dfedca180832fcec324c03a36ffa | PR CI #45008498582 and post-merge #45008753697 passed |
+| #21 | Firebase Security & Access-Control source audit | e728de1b8b98f91e976a3336a657720f4020f6b8 | Documentation-only; Codex code review + independent security review; Actions paths-ignore |
+| #22 | Active-admin product image Storage writes + Storage Emulator regression suite | 3efd04c601b4bffaa976edad38c282e921d82be4 | PR CI #45043911114 PASS on final head; post-merge main CI not yet returned |
 
 Relevant links:
 - [PR #16](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/16)
@@ -92,17 +99,15 @@ A backward-compatible optional-field candidate and regression matrix are recorde
 
 ## Next action
 
-1. PR #17 (customer order-history pagination) merged at `8ce9930ee181b1fca788e823a53ffac8860d9067`; PR CI #45008095660 and post-merge main CI #45008325128 PASS.
-2. PR #18 (require authenticated actor UID for appended history on UID-attributed orders) merged at `83c354436ff9dfedca180832fcec324c03a36ffa`; PR CI #45008498582 and post-merge main CI #45008753697 PASS.
-3. Firestore Rules now require `actorUid == request.auth.uid` for every appended status-history entry when the existing order has `createdByUid`; legacy orders without creator UID retain backward-compatible optional actor UIDs.
-4. No further purchaser/recipient, delivery-slot, note, order-code, assignment or print-content implementation until the owner supplies the business decisions above.
-5. Once those decisions are supplied, implement one vertical slice at a time with coordinated types + service + Firestore Rules + Emulator positive/negative tests + Playwright + print verification.
-6. PR #21 merged as docs-only commit `e728de1b8b98f91e976a3336a657720f4020f6b8`. Its F-01 impact wording was corrected after independent security review; no Actions run is expected under `paths-ignore`, and the Vercel quota failure is not a gate for docs-only changes.
-7. PR #22 is the active security-hardening step. CI run #45043396941 on pre-fix head `5562214aa1aaf89300be79dc7cb3a5f4abfa5bea` passed lint/typecheck and Auth/Firestore/Storage Emulator tests but failed 3 of 6 Playwright tests because E2E fixtures still seeded project `crm-hoa-rovii` while the app ran under `demo-crm-hoa-rovii`; production build was skipped. The fixture project IDs were corrected in commits `df358a63ebfecc62b98c0bb131febbf5eae44c59` and `2f643fd07c85c58d35b2ba37a6a0f1cac3133765`. Re-run full CI on the synchronized latest head and complete code/security review before merge.
+1. Verify post-merge main Actions for PR #22 merge commit 3efd04c601b4bffaa976edad38c282e921d82be4; the current connector query did not return a push-triggered run, so post-merge CI remains NOT VERIFIED.
+2. Continue with F-01 customer scalar aggregate tampering: add a negative Emulator case proving an active client can currently forge scalar aggregates, then design a compatible Rules guard that preserves create/edit/status/cancel transactions. Do not weaken valid atomic order workflows.
+3. Keep F-03 Data URL byte-size validation, F-04 membership metadata immutability/self-demotion policy, and F-05 historical source-audit correction as subsequent focused steps.
+4. Do not implement the owner-gated S2 business semantics without decisions.
+5. No production data repair, deployment/release, billing change, paid Firebase service or destructive migration is authorized.
 
 ## New-chat instruction
 
-Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md. Fetch the live main ref, open PR inventory and latest Actions runs. PRs #8–#18 and #21 are merged; PR #23 is closed unmerged; PR #22 is the active Storage Rules/test-isolation hardening PR. The previous PR #22 run #45043396941 failed only in Playwright because E2E fixtures still used the old project ID; those fixtures were corrected in commits `df358a63ebfecc62b98c0bb131febbf5eae44c59` and `2f643fd07c85c58d35b2ba37a6a0f1cac3133765`. Recheck the latest head and run full CI/reviews before merge; do not repeat PRs #8–#18, #21 or #23.
+Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md from main. Fetch the live main ref, open PR inventory, branches and latest Actions/review state. PR #22 is merged as 3efd04c601b4bffaa976edad38c282e921d82be4; its final head was 36ae3bf27c74e55cb674c00209e78df580ebf562, PR CI #45043911114 PASS, Codex code review completed without findings, independent security review found no blocker, and no unresolved review threads remained. Post-merge main Actions were not returned by the current connector query; verify before claiming PASS. PR #23 remains closed unmerged. Next safe work is F-01 customer aggregate integrity; do not repeat PRs #8–#22.
 
 
 ## Delivery update — 2026-11-22 (PRs #17–#18)
@@ -135,3 +140,13 @@ Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK
 - PR #22 branch is being synchronized with main after PR #21. The next gate is a completed latest-head Actions run plus current-head code/security review. Vercel Preview is N/A because this PR changes Rules/test infrastructure only, not runtime/UI or Vercel deployment configuration.
 - PR #23 was closed unmerged at `2026-11-22T15:48:14Z`; do not reopen or duplicate it.
 - No production Auth/Firestore/Storage data, deployment, billing, migration or Firebase project settings were accessed or changed.
+
+## Delivery update — 2026-11-23 (PR #22 merged)
+
+- PR #22: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/22 — squash-merged as 3efd04c601b4bffaa976edad38c282e921d82be4 from final head 36ae3bf27c74e55cb674c00209e78df580ebf562, based on main e728de1b8b98f91e976a3336a657720f4020f6b8.
+- Storage Rules now require an authenticated active admin for product-image create/update/delete; public reads remain unchanged. Storage Emulator coverage includes anonymous, missing membership, malformed/non-admin membership, active/inactive staff, admin upload/overwrite/delete, public read, MIME/extension rejection and the strict under-10-MiB boundary.
+- Emulator test scripts fail closed unless the explicit demo-crm-hoa-rovii project and loopback Auth/Firestore/Storage hosts are configured. Playwright and fixture REST calls use the same demo project.
+- GitHub Actions PR run #45043911114 completed SUCCESS on the exact final PR head: lint, typecheck, Auth/Firestore/Storage Emulator tests, six Playwright E2E cases and production build. The earlier run #45043396941 failed 3 of 6 Playwright cases because fixtures still targeted crm-hoa-rovii; corrected before the final passing run.
+- Review gates: Codex code review completed on 36ae3bf27c with no major findings; independent security review on the full SHA found no additional source-level blocker; zero unresolved inline threads. Vercel deployment was rate-limited by the Free daily quota; Preview was correctly treated as N/A because the PR changes Rules/test infrastructure, not runtime/UI or Vercel deployment configuration.
+- Post-merge main Actions for 3efd04c601b4bffaa976edad38c282e921d82be4 were not returned by the available commit-workflow query. Combined status showed only a pending Vercel context; do not treat that as GitHub Actions evidence. Verify a push-triggered main run when available.
+- F-02 is resolved. No production data, production deployment, billing, Firebase project settings, paid service or migration was touched.
