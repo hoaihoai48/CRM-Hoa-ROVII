@@ -7,6 +7,9 @@ import {
   where,
   limit,
   orderBy,
+  startAfter,
+  type DocumentData,
+  type QueryDocumentSnapshot,
   runTransaction,
   updateDoc
 } from 'firebase/firestore';
