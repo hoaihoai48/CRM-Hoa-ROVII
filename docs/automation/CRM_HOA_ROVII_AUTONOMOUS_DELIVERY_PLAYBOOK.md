@@ -249,3 +249,11 @@ Both Vercel Previews were Ready with zero unresolved feedback. No production dat
 4. Correct the historical 2026-10-16 source audit so the Spark-compatible client transaction architecture is clear.
 5. Preserve Firebase Spark and never access production data or perform production deployment/billing changes.
 
+
+
+## 16. Test isolation hardening — 2026-11-22
+
+- PR #22 now requires explicit `demo-crm-hoa-rovii` plus loopback Auth/Firestore/Storage emulator hosts in its direct Firestore and Storage test scripts. This prevents accidental standalone execution from reaching a real Firebase project.
+- Playwright's `test:e2e` command and Next.js web-server environment both use `demo-crm-hoa-rovii`; all emulator-backed tests remain local.
+- PR #23 is closed unmerged and superseded by PR #22. Never merge the duplicate branch.
+- Re-run and inspect the full Actions workflow on the latest PR head after the guard changes. Vercel Preview is N/A for this Rules/test-infrastructure-only change; do not consume Free deployment quota unless runtime/UI or Vercel configuration changes.
