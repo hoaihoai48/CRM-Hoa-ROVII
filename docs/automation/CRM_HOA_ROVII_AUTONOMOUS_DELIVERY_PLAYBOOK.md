@@ -162,7 +162,7 @@ The audit contains a backward-compatible optional-field candidate and regression
 
 | Field | Value |
 |---|---|
-| Active step | PR #24 docs-only handoff synchronization: correct two P2 review findings, then obtain fresh exact-head code and documentation-focused security reviews; PR #22 post-merge main CI is verified; F-01 follows after PR #24 closes |
+| Active step | PR #24 docs-only handoff synchronization: correct the P3 stale New-chat instruction found on head 05b58f7f147b1c351f5422d3ac933e576285f4ac after the two P2 corrections, then obtain fresh exact-head code and documentation-focused security reviews; PR #22 post-merge main CI is verified; F-01 follows after PR #24 closes |
 | S0 | COMPLETE |
 | S1 | COMPLETE |
 | S2 technical hardening | COMPLETE through PR #18 |
@@ -247,3 +247,11 @@ Both Vercel Previews were Ready with zero unresolved feedback. No production dat
 - Codex code review on `5fdd2b838dbc68ec28f5fc76d8b1c699fcd417e4` completed with two P2 findings: the Next action described stale review state, and the docs-only CI/Preview exemption was ambiguous. Both documentation issues are corrected in the follow-up commit.
 - The PR is strictly docs-only. The workflow `.github/workflows/ci.yml` excludes Markdown and `docs/**` through `paths-ignore`; therefore Actions are NOT RUN and no CI PASS is claimed. The docs-only exception is explicit: no application build or isolated app tests are relevant, and Preview is N/A when runtime/UI and Vercel deployment configuration are untouched. This does not waive latest-head build/test evidence for Rules, emulator/test-infrastructure or other non-runtime code changes.
 - Reviews on older heads are stale. Request fresh code review and documentation-focused security review on the exact new head; merge only after both complete without findings and no unresolved threads remain. Vercel Free quota errors are not a docs-only merge gate.
+
+
+## 22. PR #24 follow-up — stale resume instruction correction (2026-11-23)
+
+- The fresh Codex code review on PR #24 head `05b58f7f147b1c351f5422d3ac933e576285f4ac` found one P3 documentation issue: the New-chat instruction still said the two P2 corrections were “being committed” although they were already present. Both P2 issues remain corrected; this follow-up changes the stale wording to a completed state and requires reviewers to inspect the live PR head.
+- PR #24 remains documentation-only (three Markdown files). GitHub Actions are NOT RUN because the workflow excludes `docs/**` and Markdown via `paths-ignore`; no CI PASS is claimed. Vercel status on the previous head was success, but Preview is N/A for this docs-only diff and is not a merge gate.
+- The two P2 threads are resolved/outdated; the P3 thread is unresolved until the correction is committed. The review receipts on earlier heads are stale. After this commit, request fresh code review and documentation-focused security review on the exact resulting head; do not merge while either review or any thread is unresolved.
+- No application code, Firebase Rules, emulator/test infrastructure, production data, deployment, billing, project configuration or migration changed. F-01 remains the next code-delivery step after PR #24 closes.
