@@ -41,3 +41,12 @@ Cursor-based pagination should use Firestore `orderBy('createdAt', 'desc')`, `li
 - Customer detail history can be paginated independently later without affecting global search.
 - Do not add Algolia or another paid search service without explicit approval.
 - Do not backfill production search fields or deploy schema changes without a reviewed migration plan.
+
+
+## 5. Cursor pagination implementation (PR #16)
+
+- Added `listOrdersPage()` and `listCustomersPage()` using `createdAt desc`, Firestore snapshot cursors, and a default page size of 50 (maximum 100).
+- Normal browsing loads the first 50 records and exposes an explicit “Tải thêm” action. The extra look-ahead document determines `hasMore` without skipping a record between pages.
+- To preserve current global substring search and status-filter behavior, activating search or a non-default order status loads the complete collection and applies the existing client-side filter. Clearing all filters returns to the first cursor page. This intentionally means broad searches still read the full collection.
+- Emulator Case Q seeds eight orders and seven customers, traverses pages of three, and checks ordering, page sizes, no duplicates/skips, and correct final-page behavior.
+- PR #16 and CI status will be recorded after final-head verification and merge.
