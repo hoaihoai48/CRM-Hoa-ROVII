@@ -442,14 +442,18 @@ service cloud.firestore {
         && request.resource.data.createdAt == resource.data.createdAt
         && (
           isCustomerProfileOnlyUpdate()
+          || isAdminAggregateRepair()
           || (
             request.resource.data.diff(resource.data).affectedKeys().hasOnly([
               'totalOrders', 'totalSpent', 'lastOrderDate', 'lastOrderDateOrderId',
               'orderSummaries', 'lastOrderMutationOrderId', 'lastOrderMutationId', 'lastOrderRefillOrderId'
             ])
+            && request.resource.data.lastOrderMutationOrderId is string
+            && request.resource.data.lastOrderMutationId is string
+            && request.resource.data.lastOrderMutationId.size() > 0
+            && request.resource.data.lastOrderMutationId != resource.data.get('lastOrderMutationId', null)
             && hasMatchingCustomerOrderMutation(customerId)
           )
-          || isAdminAggregateRepair()
         );
       allow delete: if false;
     }
