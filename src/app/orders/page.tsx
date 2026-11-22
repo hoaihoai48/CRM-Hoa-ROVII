@@ -40,12 +40,14 @@ function OrdersPageContent() {
   const [hasMore, setHasMore] = useState(false);
   const [isFullDatasetLoaded, setIsFullDatasetLoaded] = useState(false);
   const loadRequestRef = useRef(0);
+  const fullLoadInFlightRef = useRef(false);
 
   const loadFirstPage = useCallback(() => {
     const requestId = ++loadRequestRef.current;
     setIsLoading(true);
     setLoadError(null);
     setIsFullDatasetLoaded(false);
+    fullLoadInFlightRef.current = false;
     listOrdersPage(null, 50)
       .then((page) => {
         if (requestId !== loadRequestRef.current) return;
@@ -64,6 +66,8 @@ function OrdersPageContent() {
   }, []);
 
   const loadFullOrders = useCallback(() => {
+    if (fullLoadInFlightRef.current) return;
+    fullLoadInFlightRef.current = true;
     const requestId = ++loadRequestRef.current;
     setIsLoading(true);
     setLoadError(null);
@@ -81,7 +85,10 @@ function OrdersPageContent() {
         }
       })
       .finally(() => {
-        if (requestId === loadRequestRef.current) setIsLoading(false);
+        if (requestId === loadRequestRef.current) {
+          fullLoadInFlightRef.current = false;
+          setIsLoading(false);
+        }
       });
   }, []);
 
@@ -101,7 +108,7 @@ function OrdersPageContent() {
     const needsFullDataset = Boolean(searchTerm.trim()) || selectedStatus !== 'all';
     if (needsFullDataset && !isFullDatasetLoaded) {
       loadFullOrders();
-    } else if (!needsFullDataset && isFullDatasetLoaded) {
+    } else if (!needsFullDataset && (isFullDatasetLoaded || fullLoadInFlightRef.current)) {
       loadFirstPage();
     }
   }, [searchTerm, selectedStatus, isFullDatasetLoaded, loadFirstPage, loadFullOrders]);
