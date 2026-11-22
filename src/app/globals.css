@@ -254,12 +254,12 @@ body {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 
-  .printable-order .lg\\:col-span-8 {
+  .printable-order > .grid > div:first-child {
     grid-column: 1 / -1 !important;
   }
 
   .printable-order .p-4,
-  .printable-order .sm\\:p-5 {
+  .printable-order [class~="sm:p-5"] {
     padding: 10px !important;
   }
 }
