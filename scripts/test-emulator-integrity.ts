@@ -1281,7 +1281,7 @@ async function runTestSuite() {
   assert(scaleAfterSync!.totalSpent === scaleCompleted.length * 1000, 'Case N: lifetime totalSpent includes all completed orders');
   assert(scaleAfterSync!.lastOrderDate === scaleLatestActive!.createdAt, 'Case N: lastOrderDate remains exact after projection compaction');
   assert(scaleAfterSync!.lastOrderDateOrderId === scaleLatestActive!.id, 'Case N: date source marker identifies the latest active order');
-  assert((scaleAfterSync!.orderSummaries ?? []).length <= 51, 'Case N: repair compacts the active-only projection to at most 51 rows');
+  assert((scaleAfterSync!.orderSummaries ?? []).length <= 20, 'Case N: repair compacts the active-only projection to at most 20 rows');
   assert(scaleAfterSync!.orderSummaries?.every((summary) => summary.status !== 'cancelled') ?? true, 'Case N: cancelled orders are excluded from the active-only projection');
   assert(scaleAfterSync!.orderSummaries?.some((summary) => summary.id === scaleLatestActive!.id) ?? false, 'Case N: compact projection retains latest active order');
 
@@ -1295,7 +1295,7 @@ async function runTestSuite() {
   });
   const scaleAfterCompaction = await getCustomerById(scaleCustomer.id);
   assert(scaleAfterCompaction!.totalOrders === scaleActive.length + 1, 'Case N: creating beyond the projection cap preserves the lifetime counter');
-  assert((scaleAfterCompaction!.orderSummaries ?? []).length === 51, 'Case N: safe oldest-row compaction keeps exactly 51 active summaries');
+  assert((scaleAfterCompaction!.orderSummaries ?? []).length === 20, 'Case N: safe oldest-row compaction keeps exactly 20 active summaries');
   assert(scaleAfterCompaction!.orderSummaries?.some((summary) => summary.id === scaleCompactionOrder.id) ?? false, 'Case N: newest order is retained during oldest-row compaction');
   assert(scaleAfterCompaction!.lastOrderDateOrderId === scaleCompactionOrder.id, 'Case N: newly created order becomes the latest date source');
 
@@ -1304,7 +1304,7 @@ async function runTestSuite() {
   const scaleAfterOldUpdate = await getCustomerById(scaleCustomer.id);
   assert(scaleAfterOldUpdate!.totalOrders === scaleActive.length + 1, 'Case N: changing an old order to confirmed does not alter lifetime count');
   assert(!(scaleAfterOldUpdate!.orderSummaries ?? []).some((summary) => summary.id === oldestActiveNew.id), 'Case N: an older canonical order outside the cache does not displace recent summaries');
-  assert((scaleAfterOldUpdate!.orderSummaries ?? []).length <= 51, 'Case N: old-order status changes keep the active projection bounded');
+  assert((scaleAfterOldUpdate!.orderSummaries ?? []).length <= 20, 'Case N: old-order status changes keep the active projection bounded');
 
   await updateOrder(oldestActiveNew.id, {
     items: [{ productId: p1.id, quantity: 1 }],
@@ -1319,7 +1319,7 @@ async function runTestSuite() {
   assert(scaleAfterEdit!.totalOrders === scaleActive.length + 1, 'Case N: editing an old order preserves lifetime order count');
   assert(scaleAfterEdit!.totalSpent === scaleCompleted.length * 1000, 'Case N: editing a non-completed order preserves completed spend');
   assert(!(scaleAfterEdit!.orderSummaries ?? []).some((summary) => summary.id === oldestActiveNew.id), 'Case N: editing an old order outside the cache does not displace recent summaries');
-  assert((scaleAfterEdit!.orderSummaries ?? []).length <= 51, 'Case N: editing an old order keeps the projection bounded');
+  assert((scaleAfterEdit!.orderSummaries ?? []).length <= 20, 'Case N: editing an old order keeps the projection bounded');
 
   await updateOrderStatus(scaleCompactionOrder.id, { status: 'cancelled', actorName: 'Scale Tester' });
   const scaleAfterCompactionCancel = await getCustomerById(scaleCustomer.id);
@@ -1337,7 +1337,7 @@ async function runTestSuite() {
   assert(scaleAfterCancel!.lastOrderDate === nextLatestActive!.createdAt, 'Case N: cancelling latest order finds the next latest active date');
   assert(!(scaleAfterCancel!.orderSummaries ?? []).some((summary) => summary.id === latestActiveOrder.id), 'Case N: cancelled orders are removed from the active-only projection');
   assert(scaleAfterCancel!.lastOrderDateOrderId === nextLatestActive!.id, 'Case N: latest source marker moves to the next active order');
-  assert((scaleAfterCancel!.orderSummaries ?? []).length <= 51, 'Case N: active-only projection remains within 51 entries');
+  assert((scaleAfterCancel!.orderSummaries ?? []).length <= 20, 'Case N: active-only projection remains within 20 entries');
 
   const scaleNewOrder = await createOrder({
     customerId: scaleCustomer.id,
@@ -1351,13 +1351,37 @@ async function runTestSuite() {
   assert(scaleAfterCreate!.totalOrders === scaleActive.length, 'Case N: new order increments compacted lifetime count without loss');
   assert(scaleAfterCreate!.totalSpent === scaleCompleted.length * 1000, 'Case N: new order does not alter completed spend');
   assert(scaleAfterCreate!.orderSummaries?.some((summary) => summary.id === scaleNewOrder.id) ?? false, 'Case N: new order is present in bounded projection');
-  assert((scaleAfterCreate!.orderSummaries ?? []).length <= 51, 'Case N: new order keeps projection bounded to 51');
+  assert((scaleAfterCreate!.orderSummaries ?? []).length <= 20, 'Case N: new order keeps projection bounded to 20');
   assert(scaleAfterCreate!.lastOrderDateOrderId === scaleNewOrder.id, 'Case N: newest created order becomes the latest date source');
+
+  // A bounded cache cannot invent a source once every cached active row is cancelled
+  // while older canonical active orders remain outside the cache. Rules must fail closed;
+  // the existing active-admin aggregate repair then repopulates the projection.
+  let scaleCache = await getCustomerById(scaleCustomer.id);
+  while ((scaleCache!.orderSummaries ?? []).length > 1) {
+    const currentSourceId = scaleCache!.lastOrderDateOrderId!;
+    await updateOrderStatus(currentSourceId, { status: 'cancelled', actorName: 'Scale Tester' });
+    scaleCache = await getCustomerById(scaleCustomer.id);
+  }
+  assert((scaleCache!.orderSummaries ?? []).length === 1, 'Case N: one cached active source remains before exhaustion');
+  assert(scaleCache!.totalOrders > 1, 'Case N: older active orders remain outside the bounded cache');
+  await expectPermissionDenied(
+    'Case N: staff cannot clear the final cached source while older active orders remain outside the cache',
+    () => updateOrderStatus(scaleCache!.lastOrderDateOrderId!, { status: 'cancelled', actorName: 'Scale Tester' }),
+  );
+  const scaleAfterDeniedExhaustion = await getCustomerById(scaleCustomer.id);
+  assert((scaleAfterDeniedExhaustion!.orderSummaries ?? []).length === 1, 'Case N: denied source exhaustion leaves the customer projection unchanged');
+  assert(scaleAfterDeniedExhaustion!.totalOrders > 1, 'Case N: denied source exhaustion preserves active-order count');
+  await withAdminSession(() => syncCustomerAggregates(scaleCustomer.id));
+  const scaleAfterExhaustionRepair = await getCustomerById(scaleCustomer.id);
+  assert((scaleAfterExhaustionRepair!.orderSummaries ?? []).length === 20, 'Case N: active-admin repair restores the latest 20 active summaries');
+  assert(scaleAfterExhaustionRepair!.lastOrderDateOrderId === scaleAfterExhaustionRepair!.orderSummaries![0].id, 'Case N: admin repair restores the latest active date source');
+  assert(scaleAfterExhaustionRepair!.lastOrderDate === scaleAfterExhaustionRepair!.orderSummaries![0].createdAt, 'Case N: admin repair restores the exact latest active date');
 
   let oversizedProjectionBlocked = false;
   try {
     await updateDoc(doc(db, 'customers', scaleCustomer.id), {
-      orderSummaries: Array.from({ length: 52 }, (_, index) => ({
+      orderSummaries: Array.from({ length: 21 }, (_, index) => ({
         id: `FORGED-SUMMARY-${index}`,
         status: 'new',
         total: 1000,
@@ -1367,17 +1391,17 @@ async function runTestSuite() {
   } catch {
     oversizedProjectionBlocked = true;
   }
-  assert(oversizedProjectionBlocked, 'Case N: Firestore Rules reject a customer projection larger than 51 entries');
+  assert(oversizedProjectionBlocked, 'Case N: Firestore Rules reject a customer projection larger than 20 entries');
 
   await setDocumentAsAdmin('customers', scaleCustomer.id, {
     name: scaleCustomer.name,
     phone: scaleCustomer.phone,
     phoneNormalized: scaleCustomer.phoneNormalized,
     address: scaleCustomer.address,
-    totalOrders: scaleAfterCreate!.totalOrders,
-    totalSpent: scaleAfterCreate!.totalSpent,
-    lastOrderDate: scaleAfterCreate!.lastOrderDate,
-    orderSummaries: Array.from({ length: 52 }, (_, index) => ({
+    totalOrders: scaleAfterExhaustionRepair!.totalOrders,
+    totalSpent: scaleAfterExhaustionRepair!.totalSpent,
+    lastOrderDate: scaleAfterExhaustionRepair!.lastOrderDate,
+    orderSummaries: Array.from({ length: 22 }, (_, index) => ({
       id: `LEGACY-SUMMARY-${index}`,
       status: 'new',
       total: 1000,
@@ -1391,10 +1415,10 @@ async function runTestSuite() {
     address: '88 Scale Street, updated',
     note: 'Legacy projection compatibility',
   });
-  assert(legacyProfileUpdate.name === 'Khách hàng Scale đã cập nhật', 'Case N: profile edits remain allowed for legacy projections larger than 51');
+  assert(legacyProfileUpdate.name === 'Khách hàng Scale đã cập nhật', 'Case N: profile edits remain allowed for legacy projections larger than 20');
   await withAdminSession(() => syncCustomerAggregates(scaleCustomer.id));
   const compactedLegacyCustomer = await getCustomerById(scaleCustomer.id);
-  assert((compactedLegacyCustomer!.orderSummaries ?? []).length <= 51, 'Case N: aggregate repair compacts a legacy oversized projection');
+  assert((compactedLegacyCustomer!.orderSummaries ?? []).length <= 20, 'Case N: aggregate repair compacts a legacy oversized projection');
 
   // ==========================================
   // SECURITY TESTS: Role-based Firestore Authorization
