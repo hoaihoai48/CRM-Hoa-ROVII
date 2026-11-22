@@ -19,7 +19,7 @@ import { PageHeader } from '@/components/common/Cards';
 import { Input, Textarea } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
-import { createCustomer, createOrder, findCustomerByPhone, getCustomerById, listActiveProducts, listCustomers } from '@/lib/services';
+import { createOrder, findCustomerByPhone, getCustomerById, listActiveProducts, listCustomers } from '@/lib/services';
 import { isValidVNPhone } from '@/lib/services/customers';
 import { Customer, Product } from '@/types';
 import { formatVND } from '@/lib/utils/format';
@@ -183,14 +183,8 @@ function CreateOrderPageContent() {
     setIsSubmitting(true);
     try {
       const existingCustomer = selectedCustomer ?? await findCustomerByPhone(phoneSearch);
-      const customer = existingCustomer ?? await createCustomer({
-        name: customerName,
-        phone: phoneSearch,
-        address: customerAddress,
-      });
-
       const order = await createOrder({
-        customerId: customer.id,
+        customerId: existingCustomer?.id,
         customerSnapshot: {
           name: customerName.trim(),
           phone: phoneSearch.trim(),
