@@ -480,6 +480,7 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
     const updatedCustomerAggregates = {
       lastOrderDate: latestActive?.createdAt || '',
       lastOrderDateOrderId: latestActive?.id || null,
+      lastOrderRefillOrderId: null,
       lastOrderMutationOrderId: orderId,
       lastOrderMutationId: initialHistory.id,
       orderSummaries: projectedSummaries,
@@ -723,6 +724,7 @@ export async function updateOrder(id: string, input: UpdateOrderInput): Promise<
     tx.update(customerRef, {
       lastOrderDate: latestActive?.createdAt || '',
       lastOrderDateOrderId: latestActive?.id || null,
+      lastOrderRefillOrderId: null,
       orderSummaries: projectedSummaries,
       lastOrderMutationOrderId: id,
       lastOrderMutationId: editEntry.id,
