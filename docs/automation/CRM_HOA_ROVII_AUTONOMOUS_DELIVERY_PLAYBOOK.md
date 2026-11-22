@@ -188,17 +188,17 @@ Scheduling is a trigger to resume work, not a guarantee of uninterrupted executi
 | Field | Value |
 |---|---|
 | Active step | S2 — Sales workflow completion |
-| Step status | READY — S0 and S1 quality gates passed; S1 PR is ready for review but not merged |
-| S0 PR | https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/8 |
-| S1 PR | https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/9 |
-| S1 commit | `6c603747f0de25dd676bcefaa29eebc490f1f572` |
-| CI run | https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44907652688 |
+| Step status | READY — S0 and S1 are merged; proceed to PR #5 audit then S2 |
+| S0 PR | MERGED — https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/8 (c63f2da0d2250bf8957877ce33e17142a8d6f8d3) |
+| S1 PR | MERGED — https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/9 (8ea157041599ca95966a02695e7c1a25ffe3c9a7) |
+| S1 commit | `53781a838495ac6bcf438dc42214ae4a7faf464e` (PR head); merge `8ea157041599ca95966a02695e7c1a25ffe3c9a7` |
+| CI run | https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44966311523 — PASS |
 | Playwright result | 5/5 PASS — 4 auth/access tests + complete order lifecycle |
 | Emulator result | PASS — all integration and invariant checks |
 | Vercel PR check | PASS — https://vercel.com/vu-nhim/tiem-hoa-rovii/E9N8oW7FWNUF9DrVkwz6nZwKsxVP |
 | Production data | NOT ACCESSED |
-| Merge / production deployment | NOT PERFORMED |
-| Next permitted step | S2 — audit recipient/delivery details, scheduling, order code, staff assignment and printable order view against existing implementation and verified business requirements |
+| Merge | S0 and S1 merged; production deployment NOT PERFORMED |
+| Next permitted step | Audit stale PR #5; then S2 read-only audit of recipient/delivery details, scheduling, order code, staff assignment and printable order view |
 
 Do not mark a step PASS unless all required exit criteria have verifiable evidence.
 
@@ -211,3 +211,14 @@ Do not mark a step PASS unless all required exit criteria have verifiable eviden
 - Squash merge caused the S1 branch to diverge from main by one historical S0 commit. Synchronize/rebase the S1 branch onto the new main, then rerun PR CI before merging.
 - Main post-merge workflow #44966225503 was still in progress at handoff; verify its final conclusion.
 - No production deployment, production data access, billing change or destructive migration occurred.
+
+
+## 10. Delivery session log — 2026-11-22
+
+- PR #8 merged to main by squash (`c63f2da0d2250bf8957877ce33e17142a8d6f8d3`).
+- PR #6 closed without merge because its implementation was superseded by PR #9.
+- PR #9 branch synchronized with main after the squash-history mismatch; final head `53781a838495ac6bcf438dc42214ae4a7faf464e`.
+- Final PR #9 GitHub Actions run #44966311523 passed all gates: dependency installation/audit, Functions syntax, MCP safety smoke, lint, typecheck, Emulator suite, Playwright, production build and artifact upload. Vercel Preview feedback check passed with zero unresolved feedback.
+- PR #9 marked ready and squash-merged to main (`8ea157041599ca95966a02695e7c1a25ffe3c9a7`).
+- S0 and S1 are complete. PR #5 is the only remaining open PR and must be revalidated before any merge.
+- No production deployment, production data access, billing changes or destructive migrations.
