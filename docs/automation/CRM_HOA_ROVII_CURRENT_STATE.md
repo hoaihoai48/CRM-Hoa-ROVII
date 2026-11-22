@@ -1,9 +1,9 @@
 # CRM-Hoa-ROVII — Current Delivery Handoff
 
-**Last updated:** 2026-11-22 (PR #22 Storage Rules hardening in progress)  
+**Last updated:** 2026-11-22  
 **Repository:** https://github.com/hoaihoai48/CRM-Hoa-ROVII  
 **Default branch:** main  
-**Latest code merge:** 83c354436ff9dfedca180832fcec324c03a36ffa (PR #18)  
+**Latest code merge:** 83c354436ff9dfedca180832fcec324c03a36ffa (PR #18; PR #21 was a documentation-only merge)  
 **Resume rule:** Always read this file and the playbook, then inspect live GitHub state and latest main ref before acting. This file is updated last in a delivery session.
 
 ## Owner delegation and safety boundaries
@@ -20,12 +20,10 @@
 
 - S0 — CI/Playwright foundation: COMPLETE.
 - S1 — Order lifecycle integrity: COMPLETE.
-- S2 — Sales/order workflow technical hardening: core workflow complete through PR #18; security hardening continues.
-- PR #19 and #20: MERGED (documentation synchronization).
-- PR #21: OPEN — Firebase Security & Access-Control Audit. Latest code review on head `7ebb3fb61122a45a3f02dcfc1a28bea104cb5939` completed with no findings; the separately requested security review has not returned a result.
-- PR #22: OPEN — selected Storage Rules hardening implementation. Current branch `feat/storage-rules-emulator-coverage`; latest commits add explicit create/update rules and tests for missing/malformed memberships plus admin overwrite. Re-run CI and review against the latest head before merge.
-- PR #23: OPEN — overlapping Storage Rules implementation on `security/storage-emulator-admin-boundary-2026-11-22`; it duplicates PR #22's scope. Prefer PR #22 because it keeps Storage tests in a dedicated test file and had a completed CI pass on its earlier head. Close PR #23 as superseded only after PR #22 is verified/merged.
-- Latest verified main Actions run: #45008753697 PASS on PR #18 merge `83c354436ff9dfedca180832fcec324c03a36ffa`. Docs-only PR #19/#20 did not trigger Actions due to workflow path filters.
+- S2 — Sales/order workflow technical hardening: substantial safe work COMPLETE; business semantics remain blocked on owner decisions listed below.
+- PR #16 cursor pagination: MERGED.
+- Open PR inventory: PR #22 (Storage Rules/test isolation) is open; PR #21 merged; PR #23 closed unmerged and superseded.
+- Post-merge main workflow #44989024153 completed PASS on PR #16 merge commit; all CI steps passed.
 - No production data, deployment, billing or destructive migration touched.
 
 ## Merged delivery inventory
@@ -99,10 +97,12 @@ A backward-compatible optional-field candidate and regression matrix are recorde
 3. Firestore Rules now require `actorUid == request.auth.uid` for every appended status-history entry when the existing order has `createdByUid`; legacy orders without creator UID retain backward-compatible optional actor UIDs.
 4. No further purchaser/recipient, delivery-slot, note, order-code, assignment or print-content implementation until the owner supplies the business decisions above.
 5. Once those decisions are supplied, implement one vertical slice at a time with coordinated types + service + Firestore Rules + Emulator positive/negative tests + Playwright + print verification.
+6. PR #21 merged as docs-only commit `e728de1b8b98f91e976a3336a657720f4020f6b8`. Its F-01 impact wording was corrected after independent security review; no Actions run is expected under `paths-ignore`, and the Vercel quota failure is not a gate for docs-only changes.
+7. PR #22 is the active security-hardening step. CI run #45043396941 on pre-fix head `5562214aa1aaf89300be79dc7cb3a5f4abfa5bea` passed lint/typecheck and Auth/Firestore/Storage Emulator tests but failed 3 of 6 Playwright tests because E2E fixtures still seeded project `crm-hoa-rovii` while the app ran under `demo-crm-hoa-rovii`; production build was skipped. The fixture project IDs were corrected in commits `df358a63ebfecc62b98c0bb131febbf5eae44c59` and `2f643fd07c85c58d35b2ba37a6a0f1cac3133765`. Re-run full CI on the synchronized latest head and complete code/security review before merge.
 
 ## New-chat instruction
 
-Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md. Fetch the live main ref, open PR inventory and latest Actions runs. PRs #17 and #18 are merged; PR #17 CI #45008095660 / main #45008325128 and PR #18 CI #45008498582 / main #45008753697 all passed. Latest docs files are linked by path; use the live main branch rather than pinning historical blob SHAs. The next blocker is the business decisions in the S2 audit; do not repeat PRs #8–#18.
+Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md. Fetch the live main ref, open PR inventory and latest Actions runs. PRs #8–#18 and #21 are merged; PR #23 is closed unmerged; PR #22 is the active Storage Rules/test-isolation hardening PR. The previous PR #22 run #45043396941 failed only in Playwright because E2E fixtures still used the old project ID; those fixtures were corrected in commits `df358a63ebfecc62b98c0bb131febbf5eae44c59` and `2f643fd07c85c58d35b2ba37a6a0f1cac3133765`. Recheck the latest head and run full CI/reviews before merge; do not repeat PRs #8–#18, #21 or #23.
 
 
 ## Delivery update — 2026-11-22 (PRs #17–#18)
@@ -110,7 +110,7 @@ Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK
 - PR #17: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/17 — customer history now loads 25 newest orders, then uses the existing customer-scoped Firestore snapshot cursor for older pages. Playwright Case verifies 27 synthetic orders, newest-first ordering and load-more retrieval of the final two without skipping. Merge `8ce9930ee181b1fca788e823a53ffac8860d9067`; PR CI #45008095660 PASS; post-merge main #45008325128 PASS.
 - PR #18: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/18 — Firestore Rules now require `actorUid == request.auth.uid` on every appended history entry for orders that already contain `createdByUid`. Emulator verifies missing UID is rejected without partial order/customer writes and valid authenticated UID succeeds. Legacy orders without `createdByUid` remain compatible. Merge `83c354436ff9dfedca180832fcec324c03a36ffa`; PR CI #45008498582 PASS; post-merge main #45008753697 PASS.
 - Vercel Preview for both PRs Ready; zero unresolved feedback. No production data/deployment, migration, billing or paid Firebase service touched.
-- Latest code merge: `83c354436ff9dfedca180832fcec324c03a36ffa`; documentation synchronization continues independently of code merges.
+- Latest code merge: `83c354436ff9dfedca180832fcec324c03a36ffa`; handoff and audit documentation is synced through PR #18.
 
 
 ## Delivery update — 2026-11-22 (PR #19)
@@ -121,42 +121,17 @@ Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK
 - No application code, Firestore schema/Rules, production data, production deployment, migration, billing or Firebase configuration changed.
 
 
-## Delivery update — 2026-11-22 (PR #20)
+## Security review correction — 2026-11-22
 
-- PR #20: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/20 — corrected the handoff's historical playbook pin, explicitly identifying the old SHA as pre-PR #19 and directing the next session to the live main copy. Squash-merged at `93da6165ebec95a864c139baf1e4a4955e59fdcd` after Vercel Preview Ready, Codex review completed with no unresolved findings, and the inline P2 thread was resolved.
-- Vercel post-merge status for `93da6165ebec95a864c139baf1e4a4955e59fdcd` completed SUCCESS at `https://vercel.com/vu-nhim/tiem-hoa-rovii/6pUXp2mCwe6gKsSiHecsxpBnpMEH`. Docs-only commits are excluded from the GitHub Actions quality workflow by `paths-ignore: '**/*.md'` and `docs/**`; no new Actions run was created.
-- PR #20 changed only this handoff document. No application code, rules, production data/deployment, billing, migration or Firebase configuration changed.
-
-
-## Delivery update — 2026-11-22 (PR #20 merged; security audit opened)
-
-- PR #20: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/20 — merged at `93da6165ebec95a864c139baf1e4a4955e59fdcd`. It corrects the current-state handoff so historical playbook blob SHAs are not presented as current. Codex review on final head `19ec51f3cd506313fa4bc93cfb6d8a01d449317d` completed with no unresolved findings; its inline P2 thread was resolved before merge. Post-merge Vercel status is SUCCESS; no Actions run was created because docs-only files are excluded by workflow `paths-ignore`.
-- PR #21: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/21 — opened to add the current-source Firebase security/access-control audit. This is documentation-only; the report explicitly identifies findings and verification limitations. Vercel Preview is READY at `https://vercel.com/vu-nhim/tiem-hoa-rovii/EBm9xWTib9i5msFPgvpjjiwodDz6`. Codex review is still RUNNING on head `5b1cf1f993a7693b886992f6058c02721fc59808`; no findings have been returned yet.
-- Latest code merge remains `83c354436ff9dfedca180832fcec324c03a36ffa` (PR #18). PR #19/#20 are documentation merges, not new application code.
-- No production data/deployment, billing, schema migration or Firebase configuration was touched.
+- Independent review identified an overstatement in F-01: same-status edits to `new`/`confirmed` orders can change editable items/summary values because Rules validate shape and lifecycle/history, not product-price arithmetic. The impact statement now says this explicitly.
+- No application code or policy changed in this documentation correction. The remaining customer aggregate weakness is unchanged: an active client can directly forge customer scalar aggregates/projection fields within the current schema.
 
 
-## Current follow-up status — PR #21
+## Delivery update — 2026-11-22 (PR #21 merged; PR #22 E2E fixture correction)
 
-- PR #21 audit document was added on `docs/firebase-security-audit-2026-11-22` and opened as https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/21. The latest status checked: Vercel Preview READY, no unresolved review threads, Codex review still running on `5b1cf1f993a7693b886992f6058c02721fc59808`.
-- The PR #21 audit branch contains the Firebase security audit and synchronization of this handoff + playbook. The documentation diffs are intentional and limited to these three Markdown files.
-- Do not merge PR #21 until Codex review is complete and any findings are resolved. Docs-only changes do not trigger the repo's quality workflow by design.
-
-
-## Delivery update — 2026-11-22 (PR #21 audit + PR #22 Storage Emulator hardening)
-
-- PR #21: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/21. Audit P2 wording about membership controls was corrected. Code review on head `7ebb3fb61122a45a3f02dcfc1a28bea104cb5939` completed with no findings; a separate security review was requested and remains outstanding. Vercel Preview Ready; docs-only workflow intentionally skipped by `paths-ignore`.
-- PR #22: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/22. Dedicated `scripts/test-storage-rules.ts` suite and Storage Emulator port 9199 are included in the isolated `demo-crm-hoa-rovii` runner. Earlier head `53a9df1b927971c33e3c7fad2b29f2df68f52b79` had Actions run #45032043903 SUCCESS and Vercel status SUCCESS. Follow-up commits now split `allow create, update` from `allow delete` and extend tests to missing/malformed membership documents and admin overwrite success; the new head must be rechecked because those commits invalidate the earlier CI/review evidence.
-- PR #23 overlaps the same Storage policy change. Keep PR #22 as the canonical implementation because its Storage suite is isolated in a dedicated test file. Do not merge both. Close PR #23 as superseded after PR #22 passes final CI and review.
-- PR #22 remains unmerged until latest-head Actions, Vercel, code review/security review and diff checks complete.
-- No production bucket/data, customer/order data, production deployment, billing, paid Firebase service or migration was used.
-
-
-## Delivery update — 2026-11-22 (PR #22 fail-closed test isolation)
-
-- PR #23 was closed unmerged at `2026-11-22T15:48:14Z`; it is superseded by PR #22. It is not an open PR and must not be merged.
-- Independent security review found that invoking the Emulator test scripts directly without the wrapper could initialize Auth/Firestore against a non-demo Firebase project. PR #22 now makes both Firestore and Storage test scripts fail closed unless `NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-crm-hoa-rovii` and the required Auth/Firestore (plus Storage) emulator hosts are loopback addresses.
-- Playwright E2E now uses the same explicit `demo-crm-hoa-rovii` project in both the Firebase Emulator command and Next.js web-server configuration. The wrapper continues to set demo project + local Auth/Firestore/Storage hosts.
-- New PR #22 head: `2a43093786378db8cf68b1a8dcbf1cb4e5f0e7f9`. Earlier Actions #45040260709 and the earlier code-review receipt apply to head `948920b7ac57051bd01c0119a190e14e2839006f` only; they do not verify this updated head. Latest-head Actions and review are pending.
-- Vercel Preview is not an applicable gate: the PR changes Firebase Rules and isolated test infrastructure only, with no Next.js runtime/UI or Vercel deployment configuration. The earlier Vercel quota failure is not a required gate under the delivery policy.
-- No production Auth/Firestore/Storage data, production deployment, Firebase project settings, billing, migration or paid service was accessed or changed.
+- PR #21 merged by squash as `e728de1b8b98f91e976a3336a657720f4020f6b8`. It adds the Firebase Security & Access-Control Audit and the F-01 wording correction. Codex code review completed with no findings on `f9fa49c5`; independent security review found/corrected the editable-order-total qualification. No GitHub Actions run was returned because docs-only changes are excluded by `paths-ignore`; Vercel failed with the Free daily deployment quota, which is not applicable to docs-only work.
+- PR #22 (`feat/storage-rules-emulator-coverage`) implements active-admin-only Storage product image writes/deletes, Storage Emulator regression coverage, fail-closed demo/loopback guards for both Emulator test scripts, and Playwright demo-project isolation.
+- PR #22 run #45043396941 on old head `5562214aa1aaf89300be79dc7cb3a5f4abfa5bea`: lint, typecheck, Auth/Firestore/Storage Emulator tests passed; Playwright had 3 failures and 3 passes because `auth.spec.ts` and `orders.spec.ts` still seeded `crm-hoa-rovii` while the app used `demo-crm-hoa-rovii`; production build was skipped. Fixed the fixtures in `df358a63ebfecc62b98c0bb131febbf5eae44c59` and `2f643fd07c85c58d35b2ba37a6a0f1cac3133765`.
+- PR #22 branch is being synchronized with main after PR #21. The next gate is a completed latest-head Actions run plus current-head code/security review. Vercel Preview is N/A because this PR changes Rules/test infrastructure only, not runtime/UI or Vercel deployment configuration.
+- PR #23 was closed unmerged at `2026-11-22T15:48:14Z`; do not reopen or duplicate it.
+- No production Auth/Firestore/Storage data, deployment, billing, migration or Firebase project settings were accessed or changed.
