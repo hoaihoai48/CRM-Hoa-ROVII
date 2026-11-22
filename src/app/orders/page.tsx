@@ -100,8 +100,12 @@ function OrdersPageContent() {
   }, [loadFirstPage, loadFullOrders, searchTerm, selectedStatus]);
 
   useEffect(() => {
-    loadFirstPage();
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) loadFirstPage();
+    });
     return () => {
+      cancelled = true;
       loadRequestRef.current += 1;
     };
   }, [loadFirstPage]);
@@ -109,9 +113,9 @@ function OrdersPageContent() {
   useEffect(() => {
     const needsFullDataset = Boolean(searchTerm.trim()) || selectedStatus !== 'all';
     if (needsFullDataset && !isFullDatasetLoaded) {
-      loadFullOrders();
+      void Promise.resolve().then(loadFullOrders);
     } else if (!needsFullDataset && (isFullDatasetLoaded || fullLoadInFlightRef.current)) {
-      loadFirstPage();
+      void Promise.resolve().then(loadFirstPage);
     }
   }, [searchTerm, selectedStatus, isFullDatasetLoaded, loadFirstPage, loadFullOrders]);
 
