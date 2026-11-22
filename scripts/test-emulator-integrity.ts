@@ -1453,7 +1453,7 @@ async function runTestSuite() {
   assert(pagedOrders.length === 8 && new Set(pagedOrders.map((order) => order.id)).size === 8, 'Case Q: order cursors return all eight records exactly once');
   assert(pagedOrders[0].id === 'DASH-ORDER-007' && pagedOrders[7].id === 'DASH-ORDER-000', 'Case Q: order pages preserve descending createdAt order');
 
-  const customerPageBase = Date.parse('2099-02-01T00:00:00.000Z');
+  const customerPageBase = Date.parse('2999-02-01T00:00:00.000Z');
   for (let i = 0; i < 7; i++) {
     const id = `CUST-PAGE-${String(i).padStart(3, '0')}`;
     const phone = `0900000${String(100 + i).slice(-3)}`;
