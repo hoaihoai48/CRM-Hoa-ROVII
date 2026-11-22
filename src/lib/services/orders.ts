@@ -511,8 +511,8 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
     const totalSpent = currentTotalSpent
       + (input.status === 'completed' ? orderTotal : 0)
       - (currentStatus === 'completed' ? orderTotal : 0);
-    const currentLastOrderDate = typeof custRaw.lastOrderDate === 'string'
-      ? normalizeIsoString(custRaw.lastOrderDate, '')
+    const currentLastOrderDate = typeof custRaw.lastOrderDate === 'string' && custRaw.lastOrderDate
+      ? normalizeIsoString(custRaw.lastOrderDate)
       : latestDate(fallbackActive);
     const lastOrderDate = input.status === 'cancelled' && orderCreatedAt >= currentLastOrderDate
       ? latestDate(projectedSummaries.filter((summary) => summary.status !== 'cancelled'))
