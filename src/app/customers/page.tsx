@@ -40,6 +40,7 @@ function CustomersPageContent() {
   const loadFirstPage = useCallback(() => {
     const requestId = ++loadRequestRef.current;
     setIsLoading(true);
+    setIsLoadingMore(false);
     setLoadError(null);
     setIsFullDatasetLoaded(false);
     fullLoadInFlightRef.current = false;
@@ -65,6 +66,7 @@ function CustomersPageContent() {
     fullLoadInFlightRef.current = true;
     const requestId = ++loadRequestRef.current;
     setIsLoading(true);
+    setIsLoadingMore(false);
     setLoadError(null);
     listCustomers()
       .then((data) => {
