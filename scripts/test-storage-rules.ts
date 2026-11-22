@@ -7,7 +7,7 @@ const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? '';
 const authEmulatorHost = process.env.FIREBASE_AUTH_EMULATOR_HOST ?? '';
 const firestoreHost = process.env.FIRESTORE_EMULATOR_HOST ?? '';
 const storageEmulatorHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST ?? '';
-const isLoopbackEmulatorHost = (host: string) => /^(127\\.0\\.0\\.1|localhost):\\d+$/.test(host);
+const isLoopbackEmulatorHost = (host: string) => /^(127\.0\.0\.1|localhost):\d+$/.test(host);
 
 if (
   projectId !== DEMO_PROJECT_ID ||
