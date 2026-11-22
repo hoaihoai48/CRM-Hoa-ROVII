@@ -201,3 +201,13 @@ Scheduling is a trigger to resume work, not a guarantee of uninterrupted executi
 | Next permitted step | S2 — audit recipient/delivery details, scheduling, order code, staff assignment and printable order view against existing implementation and verified business requirements |
 
 Do not mark a step PASS unless all required exit criteria have verifiable evidence.
+
+
+## 9. Delivery session log — 2026-11-22
+
+- PR #8 was squash-merged to main as `c63f2da0d2250bf8957877ce33e17142a8d6f8d3` after CI and Vercel checks passed.
+- PR #6 was closed without merge; PR #9 is the canonical replacement.
+- PR #9 was retargeted to main and its description refreshed.
+- Squash merge caused the S1 branch to diverge from main by one historical S0 commit. Synchronize/rebase the S1 branch onto the new main, then rerun PR CI before merging.
+- Main post-merge workflow #44966225503 was still in progress at handoff; verify its final conclusion.
+- No production deployment, production data access, billing change or destructive migration occurred.
