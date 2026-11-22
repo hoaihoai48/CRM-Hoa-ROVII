@@ -19,31 +19,36 @@ import { PageHeader, StatCard } from '@/components/common/Cards';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
 import { ZaloButton } from '@/components/common/ZaloButton';
-import { listOrders } from '@/lib/services';
+import { getDashboardOrders } from '@/lib/services';
 import { getStoreSettings } from '@/lib/services/settings';
 import { Order } from '@/types';
 import { formatDate } from '@/lib/utils/format';
 
 function DashboardContent() {
-  const [orders, setOrders] = React.useState<Order[]>([]);
+  const [todayOrders, setTodayOrders] = React.useState<Order[]>([]);
+  const [recentOrders, setRecentOrders] = React.useState<Order[]>([]);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [storeZaloUrl, setStoreZaloUrl] = React.useState('');
 
   React.useEffect(() => {
-    listOrders().then(setOrders).catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải dữ liệu tổng quan.'));
+    const now = new Date();
+    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+    getDashboardOrders(dayStart, dayEnd)
+      .then((result) => {
+        setTodayOrders(result.todayOrders);
+        setRecentOrders(result.recentOrders);
+      })
+      .catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải dữ liệu tổng quan.'));
     getStoreSettings().then((settings) => setStoreZaloUrl(settings.zaloUrl)).catch(() => {});
   }, []);
 
-  const now = new Date();
-  const todayKey = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
-  const todayOrders = orders.filter((order) => order.createdAt.slice(0, 10) === todayKey);
   const newOrders = todayOrders.filter((order) => order.status === 'new');
   const processingOrders = todayOrders.filter(
     (order) => order.status === 'confirmed' || order.status === 'delivering'
   );
   const completedOrders = todayOrders.filter((order) => order.status === 'completed');
   const todayRevenue = completedOrders.reduce((sum, order) => sum + order.summary.total, 0);
-  const recentOrders = orders.slice(0, 6);
 
   return (
     <>

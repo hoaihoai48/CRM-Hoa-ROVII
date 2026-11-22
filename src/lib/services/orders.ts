@@ -4,7 +4,8 @@ import {
   getDocs, 
   getDoc, 
   query, 
-  orderBy, 
+  orderBy,
+  limit,
   runTransaction,
   where
 } from 'firebase/firestore';
@@ -236,6 +237,36 @@ export async function listOrders(): Promise<Order[]> {
 
   const orders = snapshot.docs.map((docSnap) => mapDocToOrder(docSnap.id, docSnap.data()));
   return orders.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+/**
+ * Load only the order data required by the dashboard: every order in the supplied
+ * local-day window plus the six most recent orders. This avoids downloading the
+ * entire order collection just to render dashboard KPIs and the recent-orders panel.
+ */
+export async function getDashboardOrders(
+  dayStartInclusive: string,
+  dayEndExclusive: string
+): Promise<{ todayOrders: Order[]; recentOrders: Order[] }> {
+  if (!dayStartInclusive || !dayEndExclusive || dayStartInclusive >= dayEndExclusive) {
+    throw new Error('Khoảng thời gian dashboard không hợp lệ.');
+  }
+
+  const ordersRef = collection(db, 'orders');
+  const [todaySnapshot, recentSnapshot] = await Promise.all([
+    getDocs(query(
+      ordersRef,
+      where('createdAt', '>=', dayStartInclusive),
+      where('createdAt', '<', dayEndExclusive),
+      orderBy('createdAt', 'desc')
+    )),
+    getDocs(query(ordersRef, orderBy('createdAt', 'desc'), limit(6))),
+  ]);
+
+  return {
+    todayOrders: todaySnapshot.docs.map((docSnap) => mapDocToOrder(docSnap.id, docSnap.data())),
+    recentOrders: recentSnapshot.docs.map((docSnap) => mapDocToOrder(docSnap.id, docSnap.data())),
+  };
 }
 
 export async function listOrdersByCustomer(customerId: string): Promise<Order[]> {
