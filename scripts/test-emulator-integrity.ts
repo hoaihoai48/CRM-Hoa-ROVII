@@ -308,10 +308,14 @@ async function runTestSuite() {
     deliveryFee: 0,
     discount: 0,
     createdBy: 'Tester',
+    createdByUid: staffUserUid,
   });
   const atomicCustomer = await getCustomerById('CUST_0901111224');
   assert(atomicCustomer !== null, 'Successful first-order transaction must create the customer');
   assert(atomicCustomer!.totalOrders === 1, 'New customer must receive the first order aggregate atomically');
+  const atomicOrderRecord = await getOrderById(atomicSuccess.id);
+  assert(atomicOrderRecord?.createdByUid === staffUserUid, 'New order must retain the authenticated creator UID');
+  assert(atomicOrderRecord?.statusHistory[0]?.actorUid === staffUserUid, 'Initial order history must retain the authenticated actor UID');
   assert(atomicCustomer!.orderSummaries?.some((summary) => summary.id === atomicSuccess.id) ?? false, 'New customer projection must contain the first order');
 
   // ==========================================
