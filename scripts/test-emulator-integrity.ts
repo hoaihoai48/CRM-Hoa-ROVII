@@ -423,6 +423,149 @@ async function runTestSuite() {
     createdBy: 'Tester',
   });
 
+  const initialOrderSnap = await getDoc(doc(db, 'orders', oTrans.id));
+
+  // Order creation must atomically update the matching customer order projection.
+  const orphanOrderId = `ORPHAN-ORDER-${crypto.randomUUID()}`;
+  let orphanOrderCreateBlocked = false;
+  try {
+    await setDoc(doc(db, 'orders', orphanOrderId), initialOrderSnap.data() || {});
+  } catch {
+    orphanOrderCreateBlocked = true;
+  }
+  assert(
+    orphanOrderCreateBlocked,
+    'Firestore Rules must reject creating an order without its customer projection in the same transaction',
+  );
+
+  // Keep projection-negative test fixtures isolated from the main lifecycle aggregate assertions.
+  const custProjection = await createCustomer({
+    name: 'Khách hàng kiểm tra projection',
+    phone: '0900000012',
+    address: '12 Đường Hoa, Hà Nội',
+  });
+
+  // A valid status/history transition must also update the customer's order projection atomically.
+  const projectionStatusOrder = await createOrder({
+    customerId: custProjection.id,
+    customerSnapshot: { name: custProjection.name, phone: custProjection.phone, address: custProjection.address },
+    items: [{ productId: p1.id, quantity: 1 }],
+    deliveryFee: 0,
+    discount: 0,
+    createdBy: 'Tester',
+  });
+  const projectionStatusSnap = await getDoc(doc(db, 'orders', projectionStatusOrder.id));
+  const projectionStatusData = projectionStatusSnap.data() || {};
+  let missingStatusProjectionBlocked = false;
+  try {
+    await updateDoc(doc(db, 'orders', projectionStatusOrder.id), {
+      status: 'confirmed',
+      statusHistory: [
+        ...((projectionStatusData.statusHistory || []) as Array<Record<string, unknown>>),
+        {
+          id: 'FORGED-STATUS-WITHOUT-PROJECTION',
+          status: 'confirmed',
+          timestamp: new Date().toISOString(),
+          actorName: 'Untrusted Client',
+        },
+      ],
+    });
+  } catch {
+    missingStatusProjectionBlocked = true;
+  }
+  assert(
+    missingStatusProjectionBlocked,
+    'Firestore Rules must reject status transitions that do not atomically update the customer projection',
+  );
+
+  // A price/total edit must update the same customer's order summary in that transaction.
+  const projectionTotalOrder = await createOrder({
+    customerId: custProjection.id,
+    customerSnapshot: { name: custProjection.name, phone: custProjection.phone, address: custProjection.address },
+    items: [{ productId: p1.id, quantity: 1 }],
+    deliveryFee: 0,
+    discount: 0,
+    createdBy: 'Tester',
+  });
+  const projectionTotalSnap = await getDoc(doc(db, 'orders', projectionTotalOrder.id));
+  const projectionTotalData = projectionTotalSnap.data() || {};
+  let missingTotalProjectionBlocked = false;
+  try {
+    await updateDoc(doc(db, 'orders', projectionTotalOrder.id), {
+      summary: { subtotal: 1, deliveryFee: 0, discount: 0, total: 1 },
+      statusHistory: [
+        ...((projectionTotalData.statusHistory || []) as Array<Record<string, unknown>>),
+        {
+          id: 'FORGED-TOTAL-WITHOUT-PROJECTION',
+          status: 'new',
+          timestamp: new Date().toISOString(),
+          actorName: 'Untrusted Client',
+        },
+      ],
+    });
+  } catch {
+    missingTotalProjectionBlocked = true;
+  }
+  assert(
+    missingTotalProjectionBlocked,
+    'Firestore Rules must reject order total changes that do not atomically update the customer projection',
+  );
+
+  const invalidInitialOrderId = `INVALID-INITIAL-HISTORY-${crypto.randomUUID()}`;
+  let invalidInitialHistoryBlocked = false;
+  try {
+    await setDoc(doc(db, 'orders', invalidInitialOrderId), {
+      ...(initialOrderSnap.data() || {}),
+      status: 'confirmed',
+    });
+  } catch {
+    invalidInitialHistoryBlocked = true;
+  }
+  assert(
+    invalidInitialHistoryBlocked,
+    'Firestore Rules must reject a new order whose initial status/history does not start at new',
+  );
+
+  let directInvalidTransitionBlocked = false;
+  try {
+    await updateDoc(doc(db, 'orders', oTrans.id), { status: 'completed' });
+  } catch {
+    directInvalidTransitionBlocked = true;
+  }
+  assert(
+    directInvalidTransitionBlocked,
+    'Firestore Rules must block a direct client transition from new to completed',
+  );
+
+  let directStatusWithoutHistoryBlocked = false;
+  try {
+    await updateDoc(doc(db, 'orders', oTrans.id), { status: 'confirmed' });
+  } catch {
+    directStatusWithoutHistoryBlocked = true;
+  }
+  assert(
+    directStatusWithoutHistoryBlocked,
+    'Firestore Rules must block status changes that do not append a matching history entry',
+  );
+
+  let directHistoryRewriteBlocked = false;
+  try {
+    await updateDoc(doc(db, 'orders', oTrans.id), {
+      statusHistory: [{
+        id: 'FORGED-HISTORY',
+        status: 'new',
+        timestamp: new Date().toISOString(),
+        actorName: 'Untrusted Client',
+      }],
+    });
+  } catch {
+    directHistoryRewriteBlocked = true;
+  }
+  assert(
+    directHistoryRewriteBlocked,
+    'Firestore Rules must prevent replacing an existing status-history entry',
+  );
+
   // Invalid transition test: new -> completed (not allowed without confirmed/delivering)
   let invalidTransitionBlocked = false;
   try {
@@ -435,6 +578,30 @@ async function runTestSuite() {
 
   // Case D: new -> confirmed
   await updateOrderStatus(oTrans.id, { status: 'confirmed', actorName: 'Tester' });
+
+  const confirmedOrderSnap = await getDoc(doc(db, 'orders', oTrans.id));
+  const confirmedHistory = (confirmedOrderSnap.data()?.statusHistory || []) as Array<Record<string, unknown>>;
+  let reorderedHistoryBlocked = false;
+  try {
+    await updateDoc(doc(db, 'orders', oTrans.id), {
+      statusHistory: [
+        ...[...confirmedHistory].reverse(),
+        {
+          id: 'FORGED-APPEND',
+          status: 'confirmed',
+          timestamp: new Date().toISOString(),
+          actorName: 'Untrusted Client',
+        },
+      ],
+    });
+  } catch {
+    reorderedHistoryBlocked = true;
+  }
+  assert(
+    reorderedHistoryBlocked,
+    'Firestore Rules must preserve the exact order of prior status-history entries',
+  );
+
   const statusAfterClientUpdate = await getOrderById(oTrans.id);
   assert(
     statusAfterClientUpdate?.statusHistory.at(-1)?.actorName === 'Tester',
@@ -443,15 +610,91 @@ async function runTestSuite() {
   let snapCust = await getCustomerById(custTrans.id);
   assert(snapCust!.totalOrders === 1 && snapCust!.totalSpent === 0, 'Case D: confirmed retains totalOrders=1, totalSpent=0');
 
+  // A valid transition must not smuggle unrelated order-content or financial changes.
+  const preDeliveringSnap = await getDoc(doc(db, 'orders', oTrans.id));
+  const preDeliveringData = preDeliveringSnap.data() || {};
+  const preDeliveringHistory = (preDeliveringData.statusHistory || []) as Array<Record<string, unknown>>;
+  let transitionWithTamperedTotalsBlocked = false;
+  try {
+    await updateDoc(doc(db, 'orders', oTrans.id), {
+      status: 'delivering',
+      summary: { subtotal: 1, deliveryFee: 0, discount: 0, total: 1 },
+      statusHistory: [
+        ...preDeliveringHistory,
+        {
+          id: 'FORGED-TRANSITION',
+          status: 'delivering',
+          timestamp: new Date().toISOString(),
+          actorName: 'Untrusted Client',
+        },
+      ],
+    });
+  } catch {
+    transitionWithTamperedTotalsBlocked = true;
+  }
+  assert(
+    transitionWithTamperedTotalsBlocked,
+    'Firestore Rules must restrict a status transition to status and history fields only',
+  );
+
   // Case E: confirmed -> delivering
   await updateOrderStatus(oTrans.id, { status: 'delivering', actorName: 'Tester' });
   snapCust = await getCustomerById(custTrans.id);
+
+  const deliveringSnap = await getDoc(doc(db, 'orders', oTrans.id));
+  const deliveringHistory = (deliveringSnap.data()?.statusHistory || []) as Array<Record<string, unknown>>;
+  let deliveringEditBlocked = false;
+  try {
+    await updateDoc(doc(db, 'orders', oTrans.id), {
+      note: 'forged edit after delivery started',
+      statusHistory: [
+        ...deliveringHistory,
+        {
+          id: 'FORGED-DELIVERING-EDIT',
+          status: 'delivering',
+          timestamp: new Date().toISOString(),
+          actorName: 'Untrusted Client',
+        },
+      ],
+    });
+  } catch {
+    deliveringEditBlocked = true;
+  }
+  assert(
+    deliveringEditBlocked,
+    'Firestore Rules must make delivering orders immutable, including same-status edits',
+  );
   assert(snapCust!.totalOrders === 1 && snapCust!.totalSpent === 0, 'Case E: delivering retains totalOrders=1, totalSpent=0');
 
   // Case F: delivering -> completed
   await updateOrderStatus(oTrans.id, { status: 'completed', actorName: 'Tester' });
   snapCust = await getCustomerById(custTrans.id);
   assert(snapCust!.totalSpent === 1650000, `Case F: completed increases totalSpent to 1,650,000 (got ${snapCust!.totalSpent})`);
+
+  const completedSnap = await getDoc(doc(db, 'orders', oTrans.id));
+  const completedData = completedSnap.data() || {};
+  const completedHistory = (completedData.statusHistory || []) as Array<Record<string, unknown>>;
+  let completedEditBlocked = false;
+  try {
+    await updateDoc(doc(db, 'orders', oTrans.id), {
+      summary: { subtotal: 1, deliveryFee: 0, discount: 0, total: 1 },
+      statusHistory: [
+        ...completedHistory,
+        {
+          id: 'FORGED-COMPLETED-EDIT',
+          status: 'completed',
+          timestamp: new Date().toISOString(),
+          actorName: 'Untrusted Client',
+        },
+      ],
+    });
+  } catch {
+    completedEditBlocked = true;
+  }
+  assert(
+    completedEditBlocked,
+    'Firestore Rules must make completed orders immutable, including same-status edits',
+  );
 
   // Case G: Test cancellation of active order
   const oCancel = await createOrder({
@@ -469,6 +712,30 @@ async function runTestSuite() {
   snapCust = await getCustomerById(custTrans.id);
   assert(snapCust!.totalOrders === 1, `Case G: cancelled order decrements totalOrders back to 1 (got ${snapCust!.totalOrders})`);
   assert(snapCust!.totalSpent === 1650000, 'Case G: cancelled order does not affect previous completed totalSpent');
+
+  const cancelledSnap = await getDoc(doc(db, 'orders', oCancel.id));
+  const cancelledHistory = (cancelledSnap.data()?.statusHistory || []) as Array<Record<string, unknown>>;
+  let cancelledEditBlocked = false;
+  try {
+    await updateDoc(doc(db, 'orders', oCancel.id), {
+      note: 'forged edit after cancellation',
+      statusHistory: [
+        ...cancelledHistory,
+        {
+          id: 'FORGED-CANCELLED-EDIT',
+          status: 'cancelled',
+          timestamp: new Date().toISOString(),
+          actorName: 'Untrusted Client',
+        },
+      ],
+    });
+  } catch {
+    cancelledEditBlocked = true;
+  }
+  assert(
+    cancelledEditBlocked,
+    'Firestore Rules must make cancelled orders immutable, including same-status edits',
+  );
 
   // ==========================================
   // CASE H: Self-Healing Invariant / Inconsistent Aggregate Repair

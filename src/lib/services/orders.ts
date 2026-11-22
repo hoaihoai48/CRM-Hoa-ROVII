@@ -435,7 +435,12 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
     const projectedSummaries = existingSummaries.map((s) => {
       if (s.id === id) {
         orderFoundInSummaries = true;
-        return { ...s, status: input.status };
+        return {
+          ...s,
+          status: input.status,
+          total: orderTotal,
+          createdAt: orderCreatedAt,
+        };
       }
       return s;
     });
@@ -600,7 +605,12 @@ export async function updateOrder(id: string, input: UpdateOrderInput): Promise<
     const projectedSummaries = existingSummaries.map((s) => {
       if (s.id === id) {
         orderFoundInSummaries = true;
-        return { ...s, total };
+        return {
+          ...s,
+          status: currentStatus,
+          total,
+          createdAt: normalizeIsoString(orderData.createdAt),
+        };
       }
       return s;
     });
