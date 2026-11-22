@@ -264,7 +264,7 @@ test('customer order history loads additional cursor pages without skipping reco
   await expect(page.getByRole('link', { name: /#ORDER-HISTORY-E2E-000/ })).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Tải thêm đơn hàng' }).click();
-  await expect(page.getByText('27 đơn')).toBeVisible();
+  await expect(page.getByText('27 đơn').last()).toBeVisible();
   await expect(page.getByRole('link', { name: /#ORDER-HISTORY-E2E-000/ })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Tải thêm đơn hàng' })).toHaveCount(0);
 });
