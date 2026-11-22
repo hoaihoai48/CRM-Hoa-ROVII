@@ -28,6 +28,7 @@ function CustomersPageContent() {
   const [hasMore, setHasMore] = useState(false);
   const [isFullDatasetLoaded, setIsFullDatasetLoaded] = useState(false);
   const loadRequestRef = useRef(0);
+  const fullLoadInFlightRef = useRef(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
@@ -41,6 +42,7 @@ function CustomersPageContent() {
     setIsLoading(true);
     setLoadError(null);
     setIsFullDatasetLoaded(false);
+    fullLoadInFlightRef.current = false;
     listCustomersPage(null, 50)
       .then((page) => {
         if (requestId !== loadRequestRef.current) return;
@@ -59,6 +61,8 @@ function CustomersPageContent() {
   }, []);
 
   const loadFullCustomers = useCallback(() => {
+    if (fullLoadInFlightRef.current) return;
+    fullLoadInFlightRef.current = true;
     const requestId = ++loadRequestRef.current;
     setIsLoading(true);
     setLoadError(null);
@@ -76,7 +80,10 @@ function CustomersPageContent() {
         }
       })
       .finally(() => {
-        if (requestId === loadRequestRef.current) setIsLoading(false);
+        if (requestId === loadRequestRef.current) {
+          fullLoadInFlightRef.current = false;
+          setIsLoading(false);
+        }
       });
   }, []);
 
@@ -95,7 +102,7 @@ function CustomersPageContent() {
   useEffect(() => {
     if (searchTerm.trim() && !isFullDatasetLoaded) {
       loadFullCustomers();
-    } else if (!searchTerm.trim() && isFullDatasetLoaded) {
+    } else if (!searchTerm.trim() && (isFullDatasetLoaded || fullLoadInFlightRef.current)) {
       loadFirstPage();
     }
   }, [searchTerm, isFullDatasetLoaded, loadFirstPage, loadFullCustomers]);
