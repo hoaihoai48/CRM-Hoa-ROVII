@@ -318,6 +318,22 @@ async function runTestSuite() {
   assert(atomicOrderRecord?.statusHistory[0]?.actorUid === staffUserUid, 'Initial order history must retain the authenticated actor UID');
   assert(atomicCustomer!.orderSummaries?.some((summary) => summary.id === atomicSuccess.id) ?? false, 'New customer projection must contain the first order');
 
+  let forgedActorUidBlocked = false;
+  try {
+    await createOrder({
+      customerSnapshot: { name: 'Forged Actor', phone: '0901111226', address: 'Atomic Test Address' },
+      items: [{ productId: p1.id, quantity: 1 }],
+      deliveryFee: 0,
+      discount: 0,
+      createdBy: 'Tester',
+      createdByUid: 'NOT-THE-AUTHENTICATED-UID',
+    });
+  } catch {
+    forgedActorUidBlocked = true;
+  }
+  assert(forgedActorUidBlocked, 'Rules must reject a forged creator UID');
+  assert((await getCustomerById('CUST_0901111226')) === null, 'Rejected forged actor write must not create a customer');
+
   // ==========================================
   // TEST: Inactive / Invalid Product Guards
   // ==========================================
