@@ -490,9 +490,8 @@ service cloud.firestore {
       let oldestSummary = canDropOldest ? oldSummaries[19] : {};
       let refillId = request.resource.data.get('lastOrderRefillOrderId', null);
       let refillSummary = customerRefillSummary();
-      let hasRefill = refillId is string;
       let allowedNewSummaries = afterStatus == 'cancelled'
-        ? oldSummaries.toSet().union(hasRefill ? [refillSummary].toSet() : [].toSet())
+        ? oldSummaries.toSet().union(refillId is string ? [refillSummary].toSet() : [].toSet())
         : oldSummaries.toSet().union([expectedSummary].toSet());
       let mayOmitChangedSummary = afterStatus != 'cancelled'
         && !wasProjected
