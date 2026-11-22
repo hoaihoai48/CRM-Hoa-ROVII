@@ -140,6 +140,8 @@ service cloud.firestore {
       return historySize == oldData.statusHistory.size() + 1
         && newData.statusHistory == oldData.statusHistory.concat([historyEntry])
         && validStatusHistoryEntry(historyEntry)
+        && (!('createdByUid' in oldData.keys())
+          || ('actorUid' in historyEntry.keys() && historyEntry.actorUid == request.auth.uid))
         && historyEntry.status == newData.status
         && (
           (sameStatus && oldData.status in ['new', 'confirmed'])
