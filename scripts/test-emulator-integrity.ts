@@ -14,7 +14,7 @@ const DEMO_PROJECT_ID = 'demo-crm-hoa-rovii';
 const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? '';
 const authEmulatorHost = process.env.FIREBASE_AUTH_EMULATOR_HOST ?? '';
 const firestoreHost = process.env.FIRESTORE_EMULATOR_HOST ?? '';
-const isLoopbackEmulatorHost = (host: string) => /^(127\\.0\\.0\\.1|localhost):\\d+$/.test(host);
+const isLoopbackEmulatorHost = (host: string) => /^(127\.0\.0\.1|localhost):\d+$/.test(host);
 
 if (
   projectId !== DEMO_PROJECT_ID ||
