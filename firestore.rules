@@ -67,7 +67,7 @@ service cloud.firestore {
       return data.keys().hasOnly([
           'name', 'phone', 'phoneNormalized', 'address',
           'totalOrders', 'totalSpent', 'lastOrderDate', 'lastOrderDateOrderId',
-          'lastOrderMutationId', 'orderSummaries', 'note', 'createdAt'
+          'lastOrderMutationOrderId', 'lastOrderMutationId', 'orderSummaries', 'note', 'createdAt'
         ])
         && data.keys().hasAll([
           'name', 'phone', 'phoneNormalized', 'address',
@@ -86,6 +86,8 @@ service cloud.firestore {
         && (!('lastOrderDateOrderId' in data.keys())
           || data.lastOrderDateOrderId == null
           || (data.lastOrderDateOrderId is string && data.lastOrderDateOrderId.size() > 0))
+        && (!('lastOrderMutationOrderId' in data.keys())
+          || (data.lastOrderMutationOrderId is string && data.lastOrderMutationOrderId.size() > 0))
         && (!('lastOrderMutationId' in data.keys())
           || (data.lastOrderMutationId is string && data.lastOrderMutationId.size() > 0))
         && data.createdAt is string
@@ -164,6 +166,7 @@ service cloud.firestore {
       let customerAfter = getAfter(
         /databases/$(database)/documents/customers/$(orderData.customerId)
       );
+      let historySize = orderData.statusHistory.size();
       let expectedSummary = {
         'id': orderId,
         'status': orderData.status,
@@ -171,7 +174,8 @@ service cloud.firestore {
         'createdAt': orderData.createdAt
       };
       return customerAfter.data.orderSummaries is list
-        && customerAfter.data.lastOrderMutationId == orderId
+        && customerAfter.data.lastOrderMutationOrderId == orderId
+        && customerAfter.data.lastOrderMutationId == orderData.statusHistory[historySize - 1].id
         && expectedSummary in customerAfter.data.orderSummaries;
     }
 
@@ -203,7 +207,8 @@ service cloud.firestore {
         && customerData.totalOrders == 1
         && customerData.totalSpent == 0
         && customerData.lastOrderDate == customerData.orderSummaries[0].createdAt
-        && customerData.lastOrderMutationId == customerData.orderSummaries[0].id
+        && customerData.lastOrderMutationOrderId == customerData.orderSummaries[0].id
+        && customerData.lastOrderMutationId == getAfter(/databases/$(database)/documents/orders/$(customerData.orderSummaries[0].id)).data.statusHistory[0].id
         && customerData.lastOrderDateOrderId == customerData.orderSummaries[0].id
         && getAfter(/databases/$(database)/documents/orders/$(customerData.orderSummaries[0].id)).data.customerId == customerId
         && getAfter(/databases/$(database)/documents/orders/$(customerData.orderSummaries[0].id)).data.status == 'new'
@@ -216,15 +221,14 @@ service cloud.firestore {
 
 
     // Customer aggregate writes by staff must be tied to a real order write in the
-    // same transaction. The order rules enforce lifecycle/history; these checks bind
-    // the customer counters and projection to that exact before/after order state.
+    // same transaction. Keep this helper's document reads bounded: the order's before
+    // and after snapshots are reused for history, projection and scalar-delta checks.
     function validLastOrderDateSource(customerId) {
       let sourceId = request.resource.data.get('lastOrderDateOrderId', null);
       return (request.resource.data.lastOrderDate == '' && sourceId == null)
         || (
           sourceId is string
           && sourceId.size() > 0
-          && existsAfter(/databases/$(database)/documents/orders/$(sourceId))
           && getAfter(/databases/$(database)/documents/orders/$(sourceId)).data.customerId == customerId
           && getAfter(/databases/$(database)/documents/orders/$(sourceId)).data.status != 'cancelled'
           && getAfter(/databases/$(database)/documents/orders/$(sourceId)).data.createdAt == request.resource.data.lastOrderDate
@@ -237,33 +241,7 @@ service cloud.firestore {
         );
     }
 
-    function validCustomerOrderHistory(customerId, orderId) {
-      let orderPath = /databases/$(database)/documents/orders/$(orderId);
-      let beforeExists = exists(orderPath);
-      let afterExists = existsAfter(orderPath);
-      let before = beforeExists ? get(orderPath).data : {};
-      let after = afterExists ? getAfter(orderPath).data : {};
-      let beforeHistorySize = beforeExists ? before.statusHistory.size() : 0;
-      let afterHistorySize = afterExists ? after.statusHistory.size() : 0;
-      return afterExists
-        && after.customerId == customerId
-        && (!beforeExists || before.customerId == customerId)
-        && afterHistorySize == beforeHistorySize + 1;
-    }
-
-    function validCustomerOrderProjection(customerId, orderId) {
-      let orderAfter = getAfter(/databases/$(database)/documents/orders/$(orderId)).data;
-      let expectedSummary = {
-        'id': orderId,
-        'status': orderAfter.status,
-        'total': orderAfter.summary.total,
-        'createdAt': orderAfter.createdAt
-      };
-      return orderAfter.customerId == customerId
-        && expectedSummary in request.resource.data.orderSummaries;
-    }
-
-    function validCustomerAggregateDeltas(orderId) {
+    function validCustomerOrderMutation(customerId, orderId) {
       let orderPath = /databases/$(database)/documents/orders/$(orderId);
       let beforeExists = exists(orderPath);
       let before = beforeExists ? get(orderPath).data : {};
@@ -272,23 +250,28 @@ service cloud.firestore {
       let newActive = after.status != 'cancelled' ? 1 : 0;
       let oldCompletedTotal = beforeExists && before.status == 'completed' ? before.summary.total : 0;
       let newCompletedTotal = after.status == 'completed' ? after.summary.total : 0;
-      return request.resource.data.totalOrders == resource.data.totalOrders + newActive - oldActive
-        && request.resource.data.totalSpent == resource.data.totalSpent + newCompletedTotal - oldCompletedTotal;
-    }
-
-    function validCustomerOrderMutation(customerId, orderId) {
+      let expectedSummary = {
+        'id': orderId,
+        'status': after.status,
+        'total': after.summary.total,
+        'createdAt': after.createdAt
+      };
       let lastDateChanged = request.resource.data.lastOrderDate != resource.data.lastOrderDate;
-      let lastDateSourceChanged = request.resource.data.get('lastOrderDateOrderId', null)
-        != resource.data.get('lastOrderDateOrderId', null);
-      return validCustomerOrderHistory(customerId, orderId)
-        && validCustomerOrderProjection(customerId, orderId)
-        && validCustomerAggregateDeltas(orderId)
-        && ((!lastDateChanged && !lastDateSourceChanged) || validLastOrderDateSource(customerId))
+      return after.customerId == customerId
+        && (!beforeExists || before.customerId == customerId)
+        && after.statusHistory is list
+        && after.statusHistory.size() == (beforeExists ? before.statusHistory.size() + 1 : 1)
+        && after.statusHistory[after.statusHistory.size() - 1].id == request.resource.data.lastOrderMutationId
+        && request.resource.data.lastOrderMutationId != resource.data.get('lastOrderMutationId', null)
+        && expectedSummary in request.resource.data.orderSummaries
+        && request.resource.data.totalOrders == resource.data.totalOrders + newActive - oldActive
+        && request.resource.data.totalSpent == resource.data.totalSpent + newCompletedTotal - oldCompletedTotal
+        && (!lastDateChanged || validLastOrderDateSource(customerId))
         && boundedCustomerProjection(request.resource.data);
     }
 
     function hasMatchingCustomerOrderMutation(customerId) {
-      let orderId = request.resource.data.get('lastOrderMutationId', '');
+      let orderId = request.resource.data.get('lastOrderMutationOrderId', '');
       return orderId is string
         && orderId.size() > 0
         && validCustomerOrderMutation(customerId, orderId);
@@ -330,7 +313,7 @@ service cloud.firestore {
           || (
             request.resource.data.diff(resource.data).affectedKeys().hasOnly([
               'totalOrders', 'totalSpent', 'lastOrderDate', 'lastOrderDateOrderId',
-              'orderSummaries', 'lastOrderMutationId'
+              'orderSummaries', 'lastOrderMutationOrderId', 'lastOrderMutationId'
             ])
             && hasMatchingCustomerOrderMutation(customerId)
           )

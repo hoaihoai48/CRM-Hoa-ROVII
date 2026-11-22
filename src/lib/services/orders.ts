@@ -492,17 +492,18 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
     const currentLastOrderDate = typeof custRaw.lastOrderDate === 'string' && custRaw.lastOrderDate
       ? normalizeIsoString(custRaw.lastOrderDate)
       : latestDate(fallbackActive);
+    const advancesLastOrderDate = now > currentLastOrderDate;
     const currentLastOrderDateOrderId = typeof custRaw.lastOrderDateOrderId === 'string' && custRaw.lastOrderDateOrderId
       ? custRaw.lastOrderDateOrderId
-      : existingSummaries.find((summary) => summary.status !== 'cancelled' && summary.createdAt === currentLastOrderDate)?.id ?? null;
-    const advancesLastOrderDate = now > currentLastOrderDate;
+      : null;
 
     const updatedCustomerAggregates = {
       totalOrders: currentTotalOrders + 1,
       totalSpent: currentTotalSpent,
       lastOrderDate: advancesLastOrderDate ? now : currentLastOrderDate,
       lastOrderDateOrderId: advancesLastOrderDate ? orderId : currentLastOrderDateOrderId,
-      lastOrderMutationId: orderId,
+      lastOrderMutationOrderId: orderId,
+      lastOrderMutationId: initialHistory.id,
       orderSummaries: projectedSummaries,
     };
 
@@ -603,7 +604,7 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
       : latestDate(fallbackActive);
     const currentLastOrderDateOrderId = typeof custRaw.lastOrderDateOrderId === 'string' && custRaw.lastOrderDateOrderId
       ? custRaw.lastOrderDateOrderId
-      : existingSummaries.find((summary) => summary.status !== 'cancelled' && summary.createdAt === currentLastOrderDate)?.id ?? null;
+      : null;
     let lastOrderDate = currentLastOrderDate;
     let lastOrderDateOrderId = currentLastOrderDateOrderId;
     if (input.status === 'cancelled' && orderCreatedAt >= currentLastOrderDate) {
@@ -621,7 +622,8 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
       totalSpent,
       lastOrderDate,
       lastOrderDateOrderId,
-      lastOrderMutationId: id,
+      lastOrderMutationOrderId: id,
+      lastOrderMutationId: updatedHistory[updatedHistory.length - 1].id,
       orderSummaries: projectedSummaries,
     });
 
@@ -761,7 +763,8 @@ export async function updateOrder(id: string, input: UpdateOrderInput): Promise<
     // 4. WRITES (Atomic)
     tx.update(customerRef, {
       orderSummaries: projectedSummaries,
-      lastOrderMutationId: id,
+      lastOrderMutationOrderId: id,
+      lastOrderMutationId: editEntry.id,
     });
     tx.update(orderRef, {
       customerSnapshot: {

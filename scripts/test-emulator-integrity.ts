@@ -895,7 +895,8 @@ async function runTestSuite() {
       totalSpent: 88888888,
       lastOrderDate: '2099-01-01T00:00:00.000Z',
       lastOrderDateOrderId: oTrans.id,
-      lastOrderMutationId: oTrans.id,
+      lastOrderMutationOrderId: oTrans.id,
+      lastOrderMutationId: 'FORGED-HISTORY-ID',
       orderSummaries: [{
         id: oTrans.id,
         status: 'completed',
