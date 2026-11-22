@@ -128,7 +128,9 @@ Add tests alongside the feature they protect. Prefer accessible selectors and st
 | #13 | Browser-native A4 printable order slip | bd3e259082b8f600db4474e39947b0ee0218e4fa | PR #44983725322 + main #44983907739 PASS |
 | #14 | Bounded customer order projection; lifetime aggregate deltas | 568083053d7311f6d5abbe608f3a100f0c803444 | PR #44985057671 + main #44985288167 PASS |
 | #15 | Dashboard local-day range + six newest orders | 4ce6d95095141180cb855426bff8c94c722b880b | PR #44985805872 + main #44986041575 PASS |
-| #16 | Cursor pagination for orders/customers | 7e923b5a0a996468a211f76b8d1ff715699e3ce4 | PR head 83e0d6c09978ea163e7b4d0f6280d3dd3b0f2f8c; PR #44988852658 PASS; main #44989024153 pending final verification |
+| #16 | Cursor pagination for orders/customers | 7e923b5a0a996468a211f76b8d1ff715699e3ce4 | PR #44988852658 PASS; post-merge main #44989024153 PASS |
+| #17 | Customer order-history cursor pagination (25 rows + load more) | 8ce9930ee181b1fca788e823a53ffac8860d9067 | PR #45008095660 PASS; post-merge main #45008325128 PASS |
+| #18 | Require authenticated actor UID on appended history for UID-attributed orders | 83c354436ff9dfedca180832fcec324c03a36ffa | PR #45008498582 PASS; post-merge main #45008753697 PASS |
 
 ### S2 technical invariants and trade-offs
 
@@ -139,7 +141,7 @@ Add tests alongside the feature they protect. Prefer accessible selectors and st
 - Dashboard reads only the local-day range plus six newest orders.
 - Normal order/customer browsing loads 50-row snapshot-cursor pages with explicit load-more.
 - Search and non-default order status filters still load the full collection to preserve the existing global substring-search contract. This is intentional and documented.
-- Customer detail order history remains unpaginated and may be considered separately.
+- Customer detail order history is paginated independently (PR #17): 25 newest orders initially, then snapshot-cursor load-more; Playwright verifies 27 synthetic orders without skips.
 
 ## 8. S2 business decisions — do not guess
 
@@ -158,7 +160,7 @@ The audit contains a backward-compatible optional-field candidate and regression
 
 | Field | Value |
 |---|---|
-| Active step | S2 — business semantics pending owner decisions |
+| Active step | S2 — technical hardening complete through PR #18; business semantics pending owner decisions |
 | S0 | COMPLETE |
 | S1 | COMPLETE |
 | S2 technical hardening | COMPLETE through PR #18 |
@@ -186,3 +188,11 @@ Every new run must re-read this playbook and docs/automation/CRM_HOA_ROVII_CURRE
 | #18 | Require authenticated actor UID on appended history entries for UID-attributed orders; preserve legacy records | `83c354436ff9dfedca180832fcec324c03a36ffa` | #45008498582 PASS | #45008753697 PASS |
 
 Both Vercel Previews were Ready with zero unresolved feedback. No production data or deployment, migration, billing change or paid Firebase service was involved.
+
+
+## 12. Resume update — PRs #17–#18 (2026-11-22)
+
+- PR #17 completed customer detail order-history pagination: first 25 newest orders, then explicit load-more using the customer-scoped snapshot cursor. Playwright verified 27 synthetic orders, ordering and complete traversal without duplicates/skips. Merge `8ce9930ee181b1fca788e823a53ffac8860d9067`; PR CI #45008095660 PASS; post-merge main #45008325128 PASS.
+- PR #18 strengthened Firestore Rules: every appended status-history entry on an order with `createdByUid` must include `actorUid == request.auth.uid`. Emulator coverage verifies rejection without partial writes and acceptance of a valid authenticated UID; legacy orders without creator UID remain compatible. Merge `83c354436ff9dfedca180832fcec324c03a36ffa`; PR CI #45008498582 PASS; post-merge main #45008753697 PASS.
+- Both Preview deployments were Ready with zero unresolved feedback. No production data/deployment, migration, billing or paid Firebase service was touched.
+- Remaining owner decisions are unchanged: purchaser vs recipient, delivery scheduling/timezone, note visibility and separation, human-readable order code, staff assignment policy, and customer receipt vs fulfilment print content.
