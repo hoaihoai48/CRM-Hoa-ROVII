@@ -40,9 +40,9 @@ function mapCustomerOrderSummaries(raw: unknown): CustomerOrderSummary[] {
 }
 
 /**
- * Keep the legacy customer projection bounded without losing the order currently
- * being changed (Firestore Rules require that exact projection in the same write).
- * Small histories retain their previous complete shape for backward compatibility.
+ * Keep a bounded, active-only projection ordered newest-first. Canonical order documents
+ * remain complete; edits to older orders outside this cache do not displace recent rows.
+ * Firestore Rules verify the first/last boundaries and allow only safe oldest-row compaction.
  */
 function compareCustomerOrderSummaryDesc(a: CustomerOrderSummary, b: CustomerOrderSummary): number {
   if (a.createdAt !== b.createdAt) return a.createdAt > b.createdAt ? -1 : 1;
