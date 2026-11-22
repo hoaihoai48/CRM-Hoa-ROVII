@@ -54,7 +54,7 @@ export interface Customer {
   lastOrderMutationId?: string;
   /** Canonical order ID temporarily added while refilling the bounded active projection. */
   lastOrderRefillOrderId?: string | null;
-  /** Bounded active-only recent-order projection (max 20); cancelled orders remain canonical in orders. */
+  /** Bounded active-only recent-order projection (max 10); cancelled orders remain canonical in orders. */
   orderSummaries?: CustomerOrderSummary[];
   note?: string;
   createdAt: string;
