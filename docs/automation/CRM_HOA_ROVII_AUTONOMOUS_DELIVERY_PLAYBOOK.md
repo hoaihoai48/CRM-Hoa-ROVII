@@ -198,7 +198,7 @@ Scheduling is a trigger to resume work, not a guarantee of uninterrupted executi
 | Vercel PR check | PASS — https://vercel.com/vu-nhim/tiem-hoa-rovii/E9N8oW7FWNUF9DrVkwz6nZwKsxVP |
 | Production data | NOT ACCESSED |
 | Merge | S0 and S1 merged; production deployment NOT PERFORMED |
-| Next permitted step | Audit stale PR #5; then S2 read-only audit of recipient/delivery details, scheduling, order code, staff assignment and printable order view |
+| Next permitted step | Verify/merge PR #10 MCP structured outputs; then S2 read-only audit of recipient/delivery details, scheduling, order code, staff assignment and printable order view |
 
 Do not mark a step PASS unless all required exit criteria have verifiable evidence.
 
@@ -222,3 +222,13 @@ Do not mark a step PASS unless all required exit criteria have verifiable eviden
 - PR #9 marked ready and squash-merged to main (`8ea157041599ca95966a02695e7c1a25ffe3c9a7`).
 - S0 and S1 are complete. PR #5 is the only remaining open PR and must be revalidated before any merge.
 - No production deployment, production data access, billing changes or destructive migrations.
+
+
+## 11. MCP follow-up — 2026-11-22
+
+- Closed stale PR #5 without merging its combined diff.
+- Extracted the MCP structured-output portion into PR #10: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/10
+- New branch: `feat/mcp-structured-tool-outputs`
+- Scope limited to MCP output schemas, structuredContent and smoke-test coverage for schema declarations and README file reads.
+- Fresh CI run #44966591236 pending at handoff; Vercel check passed.
+- Firebase Storage removal was excluded; the existing optional Storage path remains unchanged. Any future Spark-only image-storage refactor must enforce Firestore document size constraints.
