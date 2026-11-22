@@ -95,17 +95,21 @@ function CustomersPageContent() {
   }, [loadFirstPage, loadFullCustomers, searchTerm]);
 
   useEffect(() => {
-    loadFirstPage();
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) loadFirstPage();
+    });
     return () => {
+      cancelled = true;
       loadRequestRef.current += 1;
     };
   }, [loadFirstPage]);
 
   useEffect(() => {
     if (searchTerm.trim() && !isFullDatasetLoaded) {
-      loadFullCustomers();
+      void Promise.resolve().then(loadFullCustomers);
     } else if (!searchTerm.trim() && (isFullDatasetLoaded || fullLoadInFlightRef.current)) {
-      loadFirstPage();
+      void Promise.resolve().then(loadFirstPage);
     }
   }, [searchTerm, isFullDatasetLoaded, loadFirstPage, loadFullCustomers]);
 
