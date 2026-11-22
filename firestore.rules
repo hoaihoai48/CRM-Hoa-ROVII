@@ -60,7 +60,7 @@ service cloud.firestore {
     }
 
     function boundedCustomerProjection(data) {
-      return !('orderSummaries' in data.keys()) || data.orderSummaries.size() <= 20;
+      return !('orderSummaries' in data.keys()) || data.orderSummaries.size() <= 10;
     }
 
     function validCustomerOrderSummary(summary) {
@@ -103,19 +103,6 @@ service cloud.firestore {
         && (summaries.size() <= 9 || validCustomerOrderSummary(summaries[9]));
     }
 
-    function validSummaryChunk1(summaries) {
-      return (summaries.size() <= 10 || validCustomerOrderSummary(summaries[10]))
-        && (summaries.size() <= 11 || validCustomerOrderSummary(summaries[11]))
-        && (summaries.size() <= 12 || validCustomerOrderSummary(summaries[12]))
-        && (summaries.size() <= 13 || validCustomerOrderSummary(summaries[13]))
-        && (summaries.size() <= 14 || validCustomerOrderSummary(summaries[14]))
-        && (summaries.size() <= 15 || validCustomerOrderSummary(summaries[15]))
-        && (summaries.size() <= 16 || validCustomerOrderSummary(summaries[16]))
-        && (summaries.size() <= 17 || validCustomerOrderSummary(summaries[17]))
-        && (summaries.size() <= 18 || validCustomerOrderSummary(summaries[18]))
-        && (summaries.size() <= 19 || validCustomerOrderSummary(summaries[19]));
-    }
-
     function validLatestChunk0(summaries) {
       return (summaries.size() <= 1 || summaryAtLeastAsRecent(summaries[0], summaries[1]))
         && (summaries.size() <= 2 || summaryAtLeastAsRecent(summaries[0], summaries[2]))
@@ -127,18 +114,6 @@ service cloud.firestore {
         && (summaries.size() <= 8 || summaryAtLeastAsRecent(summaries[0], summaries[8]))
         && (summaries.size() <= 9 || summaryAtLeastAsRecent(summaries[0], summaries[9]))
         && (summaries.size() <= 10 || summaryAtLeastAsRecent(summaries[0], summaries[10]));
-    }
-
-    function validLatestChunk1(summaries) {
-      return (summaries.size() <= 11 || summaryAtLeastAsRecent(summaries[0], summaries[11]))
-        && (summaries.size() <= 12 || summaryAtLeastAsRecent(summaries[0], summaries[12]))
-        && (summaries.size() <= 13 || summaryAtLeastAsRecent(summaries[0], summaries[13]))
-        && (summaries.size() <= 14 || summaryAtLeastAsRecent(summaries[0], summaries[14]))
-        && (summaries.size() <= 15 || summaryAtLeastAsRecent(summaries[0], summaries[15]))
-        && (summaries.size() <= 16 || summaryAtLeastAsRecent(summaries[0], summaries[16]))
-        && (summaries.size() <= 17 || summaryAtLeastAsRecent(summaries[0], summaries[17]))
-        && (summaries.size() <= 18 || summaryAtLeastAsRecent(summaries[0], summaries[18]))
-        && (summaries.size() <= 19 || summaryAtLeastAsRecent(summaries[0], summaries[19]));
     }
 
     function validOldestChunk0(summaries) {
@@ -154,39 +129,25 @@ service cloud.firestore {
         && (summaries.size() <= 10 || summaryNoLater(summaries[summaries.size() - 1], summaries[10]));
     }
 
-    function validOldestChunk1(summaries) {
-      return (summaries.size() <= 11 || summaryNoLater(summaries[summaries.size() - 1], summaries[11]))
-        && (summaries.size() <= 12 || summaryNoLater(summaries[summaries.size() - 1], summaries[12]))
-        && (summaries.size() <= 13 || summaryNoLater(summaries[summaries.size() - 1], summaries[13]))
-        && (summaries.size() <= 14 || summaryNoLater(summaries[summaries.size() - 1], summaries[14]))
-        && (summaries.size() <= 15 || summaryNoLater(summaries[summaries.size() - 1], summaries[15]))
-        && (summaries.size() <= 16 || summaryNoLater(summaries[summaries.size() - 1], summaries[16]))
-        && (summaries.size() <= 17 || summaryNoLater(summaries[summaries.size() - 1], summaries[17]))
-        && (summaries.size() <= 18 || summaryNoLater(summaries[summaries.size() - 1], summaries[18]))
-        && (summaries.size() <= 19 || summaryNoLater(summaries[summaries.size() - 1], summaries[19]));
-    }
-
     function validProjectionBounds(summaries) {
       return summaries is list
-        && summaries.size() <= 20
+        && summaries.size() <= 10
         && validSummaryChunk0(summaries)
-        && validSummaryChunk1(summaries)
         && validLatestChunk0(summaries)
-        && validLatestChunk1(summaries)
         && validOldestChunk0(summaries)
         && validOldestChunk1(summaries);
     }
 
     function isSafeOldestCompaction(oldSummaries, beforeExists, oldOrderSummary, expectedSummary, afterStatus) {
       return oldSummaries is list
-        && oldSummaries.size() == 20
+        && oldSummaries.size() == 10
         && validProjectionBounds(oldSummaries)
         && (
           !beforeExists
           || (
             afterStatus != 'cancelled'
             && !(oldOrderSummary in oldSummaries)
-            && summaryAtLeastAsRecent(expectedSummary, oldSummaries[19])
+            && summaryAtLeastAsRecent(expectedSummary, oldSummaries[9])
           )
         );
     }
@@ -214,24 +175,11 @@ service cloud.firestore {
         && (oldSummaries.size() <= 9 || oldSummaryMayBeRemoved(oldSummaries[9], newSummaries, orderId, canDropOldest, oldestSummary));
     }
 
-    function previousProjectionChunk1(oldSummaries, newSummaries, orderId, canDropOldest, oldestSummary) {
-      return (oldSummaries.size() <= 10 || oldSummaryMayBeRemoved(oldSummaries[10], newSummaries, orderId, canDropOldest, oldestSummary))
-        && (oldSummaries.size() <= 11 || oldSummaryMayBeRemoved(oldSummaries[11], newSummaries, orderId, canDropOldest, oldestSummary))
-        && (oldSummaries.size() <= 12 || oldSummaryMayBeRemoved(oldSummaries[12], newSummaries, orderId, canDropOldest, oldestSummary))
-        && (oldSummaries.size() <= 13 || oldSummaryMayBeRemoved(oldSummaries[13], newSummaries, orderId, canDropOldest, oldestSummary))
-        && (oldSummaries.size() <= 14 || oldSummaryMayBeRemoved(oldSummaries[14], newSummaries, orderId, canDropOldest, oldestSummary))
-        && (oldSummaries.size() <= 15 || oldSummaryMayBeRemoved(oldSummaries[15], newSummaries, orderId, canDropOldest, oldestSummary))
-        && (oldSummaries.size() <= 16 || oldSummaryMayBeRemoved(oldSummaries[16], newSummaries, orderId, canDropOldest, oldestSummary))
-        && (oldSummaries.size() <= 17 || oldSummaryMayBeRemoved(oldSummaries[17], newSummaries, orderId, canDropOldest, oldestSummary))
-        && (oldSummaries.size() <= 18 || oldSummaryMayBeRemoved(oldSummaries[18], newSummaries, orderId, canDropOldest, oldestSummary))
-        && (oldSummaries.size() <= 19 || oldSummaryMayBeRemoved(oldSummaries[19], newSummaries, orderId, canDropOldest, oldestSummary));
-    }
-
     function validPreviousProjectionRetention(oldSummaries, newSummaries, orderId, canDropOldest, oldestSummary) {
       return oldSummaries is list
-        && oldSummaries.size() <= 20
+        && oldSummaries.size() <= 10
         && previousProjectionChunk0(oldSummaries, newSummaries, orderId, canDropOldest, oldestSummary)
-        && previousProjectionChunk1(oldSummaries, newSummaries, orderId, canDropOldest, oldestSummary);
+;
     }
 
     function validCustomer(data) {
@@ -357,7 +305,7 @@ service cloud.firestore {
             && (
               expectedSummary in customerAfter.data.orderSummaries
               || (
-                customerAfter.data.orderSummaries.size() == 20
+                customerAfter.data.orderSummaries.size() == 10
                 && summaryNoLater(expectedSummary, customerAfter.data.orderSummaries[19])
               )
             )
@@ -495,7 +443,7 @@ service cloud.firestore {
         : oldSummaries.toSet().union([expectedSummary].toSet());
       let mayOmitChangedSummary = afterStatus != 'cancelled'
         && !wasProjected
-        && newSummaries.size() == 20
+        && newSummaries.size() == 10
         && summaryNoLater(expectedSummary, newSummaries[19]);
       return oldSummaries is list
         && oldSummaries.size() <= 20
