@@ -57,14 +57,15 @@ Before implementing recipient/delivery/assignment/print UX, obtain explicit requ
 
 - PR #11: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/11
 - Implementation branch: `fix/atomic-customer-order-creation`
-- CI run #44982205534 failed at TypeScript because the new test assertion returned `boolean | undefined`; corrected in the following commit.
-- Current head after correction: `104d4b137a8b629a6ba2d1b08284ffd7e8cae483`.
-- Replacement CI run #44982298301 is running; do not mark PASS or merge until its final result is checked.
+- Initial CI run #44982205534 failed TypeScript because the new test assertion returned `boolean | undefined`; corrected in the following commit.
+- Final PR CI run #44982355903: PASS on PR head `d9be7e09d90404b6487f9293d46526b7c597b65b`, including lint, typecheck, Emulator integration, Playwright and production build.
+- PR #11 merged by squash at `73bb72ca19e5af82027e7f27096e693cb5892497`.
+- Post-merge main workflow #44982521247: PASS.
 - No production data, deployment, billing, or destructive migration touched.
 
 ## 6. Next engineering steps
 
-1. Verify the replacement PR #11 CI run; fix all failures before merge.
-2. After merge, continue S2 architecture audit and draft a backward-compatible order data contract plus Rules/test matrix.
+1. PR #11 is merged and its post-merge main workflow passed.
+2. Continue S2 architecture audit and draft a backward-compatible order data contract plus Rules/test matrix.
 3. Keep customer identity/profile separate from immutable order snapshots; do not migrate existing order documents without a reviewed migration plan.
 4. Preserve Spark compatibility and avoid introducing paid Firebase services.
