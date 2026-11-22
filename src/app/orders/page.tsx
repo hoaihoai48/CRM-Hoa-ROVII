@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { 
   PlusCircle, 
@@ -15,7 +15,8 @@ import { PageHeader, EmptyState } from '@/components/common/Cards';
 import { SearchInput } from '@/components/common/Input';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { MoneyDisplay } from '@/components/common/MoneyDisplay';
-import { listOrders } from '@/lib/services';
+import { listOrders, listOrdersPage } from '@/lib/services';
+import type { OrderPageCursor } from '@/lib/services/orders';
 import { formatDate } from '@/lib/utils/format';
 import { OrderStatus } from '@/types';
 
@@ -31,43 +32,112 @@ const STATUS_FILTERS: { id: string; label: string; value?: OrderStatus }[] = [
 function OrdersPageContent() {
   const [orders, setOrders] = useState<Awaited<ReturnType<typeof listOrders>>>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  const loadOrders = useCallback(() => {
-    setIsLoading(true);
-    setLoadError(null);
-    listOrders()
-      .then(setOrders)
-      .catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải danh sách đơn hàng.'))
-      .finally(() => setIsLoading(false));
-  }, []);
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [nextCursor, setNextCursor] = useState<OrderPageCursor | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [isFullDatasetLoaded, setIsFullDatasetLoaded] = useState(false);
+  const loadRequestRef = useRef(0);
+  const fullLoadInFlightRef = useRef(false);
 
-  useEffect(() => {
-    let ignore = false;
-    listOrders()
-      .then((data) => {
-        if (!ignore) {
-          setOrders(data);
-          setLoadError(null);
-        }
+  const loadFirstPage = useCallback(() => {
+    const requestId = ++loadRequestRef.current;
+    setIsLoading(true);
+    setIsLoadingMore(false);
+    setLoadError(null);
+    setIsFullDatasetLoaded(false);
+    fullLoadInFlightRef.current = false;
+    listOrdersPage(null, 50)
+      .then((page) => {
+        if (requestId !== loadRequestRef.current) return;
+        setOrders(page.items);
+        setNextCursor(page.nextCursor);
+        setHasMore(page.hasMore);
       })
       .catch((error) => {
-        if (!ignore) {
+        if (requestId === loadRequestRef.current) {
           setLoadError(error instanceof Error ? error.message : 'Không thể tải danh sách đơn hàng.');
         }
       })
       .finally(() => {
-        if (!ignore) {
+        if (requestId === loadRequestRef.current) setIsLoading(false);
+      });
+  }, []);
+
+  const loadFullOrders = useCallback(() => {
+    if (fullLoadInFlightRef.current) return;
+    fullLoadInFlightRef.current = true;
+    const requestId = ++loadRequestRef.current;
+    setIsLoading(true);
+    setIsLoadingMore(false);
+    setLoadError(null);
+    listOrders()
+      .then((data) => {
+        if (requestId !== loadRequestRef.current) return;
+        setOrders(data);
+        setNextCursor(null);
+        setHasMore(false);
+        setIsFullDatasetLoaded(true);
+      })
+      .catch((error) => {
+        if (requestId === loadRequestRef.current) {
+          setLoadError(error instanceof Error ? error.message : 'Không thể tải danh sách đơn hàng.');
+        }
+      })
+      .finally(() => {
+        if (requestId === loadRequestRef.current) {
+          fullLoadInFlightRef.current = false;
           setIsLoading(false);
         }
       });
-
-    return () => {
-      ignore = true;
-    };
   }, []);
+
+  const loadOrders = useCallback(() => {
+    if (searchTerm.trim() || selectedStatus !== 'all') loadFullOrders();
+    else loadFirstPage();
+  }, [loadFirstPage, loadFullOrders, searchTerm, selectedStatus]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) loadFirstPage();
+    });
+    return () => {
+      cancelled = true;
+      loadRequestRef.current += 1;
+    };
+  }, [loadFirstPage]);
+
+  useEffect(() => {
+    const needsFullDataset = Boolean(searchTerm.trim()) || selectedStatus !== 'all';
+    if (needsFullDataset && !isFullDatasetLoaded) {
+      void Promise.resolve().then(loadFullOrders);
+    } else if (!needsFullDataset && (isFullDatasetLoaded || fullLoadInFlightRef.current)) {
+      void Promise.resolve().then(loadFirstPage);
+    }
+  }, [searchTerm, selectedStatus, isFullDatasetLoaded, loadFirstPage, loadFullOrders]);
+
+  const loadMoreOrders = useCallback(async () => {
+    if (!nextCursor || !hasMore || isLoadingMore || isFullDatasetLoaded) return;
+    const requestId = ++loadRequestRef.current;
+    setIsLoadingMore(true);
+    setLoadError(null);
+    try {
+      const page = await listOrdersPage(nextCursor, 50);
+      if (requestId !== loadRequestRef.current) return;
+      setOrders((current) => [...current, ...page.items]);
+      setNextCursor(page.nextCursor);
+      setHasMore(page.hasMore);
+    } catch (error) {
+      if (requestId === loadRequestRef.current) {
+        setLoadError(error instanceof Error ? error.message : 'Không thể tải thêm đơn hàng.');
+      }
+    } finally {
+      if (requestId === loadRequestRef.current) setIsLoadingMore(false);
+    }
+  }, [nextCursor, hasMore, isLoadingMore, isFullDatasetLoaded]);
 
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
@@ -252,6 +322,20 @@ function OrdersPageContent() {
           </div>
         </div>
       ) : null}
+
+      {!isLoading && !loadError && hasMore && !isFullDatasetLoaded && (
+        <div className="mt-6 flex flex-col items-center gap-2">
+          <p className="text-xs text-stone-500">Đang hiển thị {orders.length} đơn gần nhất</p>
+          <button
+            type="button"
+            onClick={loadMoreOrders}
+            disabled={isLoadingMore}
+            className="rounded-lg border border-stone-200 bg-white px-5 py-2.5 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-50"
+          >
+            {isLoadingMore ? 'Đang tải thêm...' : 'Tải thêm đơn hàng'}
+          </button>
+        </div>
+      )}
     </>
   );
 }

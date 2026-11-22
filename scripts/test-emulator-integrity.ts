@@ -1,13 +1,13 @@
 /**
  * Firebase Firestore Emulator Automated Integration & Concurrency Test Suite
- * Tests Cases A through P for Data Invariants & Optimistic Concurrency Control (OCC)
+ * Tests Cases A through Q for Data Invariants & Optimistic Concurrency Control (OCC)
  */
 
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { db, auth } from '../src/lib/firebase/config';
-import { createCustomer, findCustomerByPhone, getCustomerById, updateCustomer } from '../src/lib/services/customers';
-import { createOrder, getDashboardOrders, getOrderById, syncCustomerAggregates, updateOrder, updateOrderStatus } from '../src/lib/services/orders';
+import { createCustomer, findCustomerByPhone, getCustomerById, listCustomersPage, updateCustomer } from '../src/lib/services/customers';
+import { createOrder, getDashboardOrders, getOrderById, listOrdersPage, syncCustomerAggregates, updateOrder, updateOrderStatus } from '../src/lib/services/orders';
 import { Product } from '../src/types';
 
 function assert(condition: boolean, message: string) {
@@ -1438,6 +1438,47 @@ async function runTestSuite() {
   assert(dashboardResult.recentOrders.length === 6, 'Case P: dashboard recent query is capped at six orders');
   assert(dashboardResult.recentOrders[0].id === 'DASH-ORDER-007', 'Case P: recent query includes the newest order regardless of day');
   assert(dashboardResult.recentOrders[5].id === 'DASH-ORDER-002', 'Case P: recent query returns the six newest orders only');
+
+  // ==========================================
+  // CASE Q: Cursor pagination is stable and does not duplicate or skip records.
+  // ==========================================
+  console.log('\n--- CASE Q: Cursor pagination for orders and customers ---');
+  const orderPage1 = await listOrdersPage(null, 3, dashboardCustomer.id);
+  const orderPage2 = await listOrdersPage(orderPage1.nextCursor, 3, dashboardCustomer.id);
+  const orderPage3 = await listOrdersPage(orderPage2.nextCursor, 3, dashboardCustomer.id);
+  const pagedOrders = [...orderPage1.items, ...orderPage2.items, ...orderPage3.items];
+  assert(orderPage1.items.length === 3 && orderPage1.hasMore, 'Case Q: first order page has three records and a next page');
+  assert(orderPage2.items.length === 3 && orderPage2.hasMore, 'Case Q: second order page has three records and a next page');
+  assert(orderPage3.items.length === 2 && !orderPage3.hasMore, 'Case Q: final order page contains the remaining two records');
+  assert(pagedOrders.length === 8 && new Set(pagedOrders.map((order) => order.id)).size === 8, 'Case Q: order cursors return all eight records exactly once');
+  assert(pagedOrders[0].id === 'DASH-ORDER-007' && pagedOrders[7].id === 'DASH-ORDER-000', 'Case Q: order pages preserve descending createdAt order');
+
+  const customerPageBase = Date.parse('2999-02-01T00:00:00.000Z');
+  for (let i = 0; i < 7; i++) {
+    const id = `CUST-PAGE-${String(i).padStart(3, '0')}`;
+    const phone = `0900000${String(100 + i).slice(-3)}`;
+    await setDocumentAsAdmin('customers', id, {
+      name: `Khách hàng trang ${i}`,
+      phone,
+      phoneNormalized: phone,
+      address: `Địa chỉ ${i}`,
+      totalOrders: 0,
+      totalSpent: 0,
+      lastOrderDate: '',
+      orderSummaries: [],
+      note: null,
+      createdAt: new Date(customerPageBase + i * 60 * 60 * 1000).toISOString(),
+    });
+  }
+  const customerPage1 = await listCustomersPage(null, 3);
+  const customerPage2 = await listCustomersPage(customerPage1.nextCursor, 3);
+  const customerPage3 = await listCustomersPage(customerPage2.nextCursor, 3);
+  const pagedCustomers = [...customerPage1.items, ...customerPage2.items, ...customerPage3.items].slice(0, 7);
+  assert(customerPage1.items.length === 3 && customerPage1.hasMore, 'Case Q: first customer page has three records and a next page');
+  assert(customerPage2.items.length === 3 && customerPage2.hasMore, 'Case Q: second customer page has three records and a next page');
+  assert(customerPage3.items.length >= 1 && pagedCustomers.length === 7, 'Case Q: third customer page contains the remaining fixture records');
+  assert(new Set(pagedCustomers.map((customer) => customer.id)).size === 7, 'Case Q: customer cursors return all seven fixture records exactly once');
+  assert(pagedCustomers[0].id === 'CUST-PAGE-006' && pagedCustomers[6].id === 'CUST-PAGE-000', 'Case Q: customer pages preserve descending createdAt order');
 
   // Restore staff session for clean shutdown
   await signInWithEmailAndPassword(auth, testStaffEmail, testStaffPass);
