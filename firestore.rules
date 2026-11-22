@@ -214,15 +214,14 @@ service cloud.firestore {
     // Order writes must keep the corresponding per-order customer projection coherent
     // in the same transaction/batch. This does not prove the customer's full aggregates.
     function hasMatchingCustomerOrderMutationMarker(orderId, orderData) {
-      let customerPath = /databases/$(database)/documents/customers/$(orderData.customerId);
-      let customerBeforeExists = exists(customerPath);
-      let customerBefore = customerBeforeExists ? get(customerPath).data : {};
-      let customerAfter = getAfter(customerPath).data;
+      let customerAfter = getAfter(
+        /databases/$(database)/documents/customers/$(orderData.customerId)
+      );
       let historySize = orderData.statusHistory.size();
       let mutationId = orderData.statusHistory[historySize - 1].id;
-      return customerAfter.lastOrderMutationOrderId == orderId
-        && customerAfter.lastOrderMutationId == mutationId
-        && customerAfter.lastOrderMutationId != customerBefore.get('lastOrderMutationId', null);
+      return customerAfter.data.lastOrderMutationOrderId == orderId
+        && customerAfter.data.lastOrderMutationId == mutationId
+        && (historySize == 1 || mutationId != orderData.statusHistory[historySize - 2].id);
     }
 
     // Spark-compatible internal-team model. Rules enforce lifecycle and document invariants,
