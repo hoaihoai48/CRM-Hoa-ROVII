@@ -303,14 +303,12 @@ service cloud.firestore {
     // Customer aggregate writes by staff must be tied to a real order write in the
     // same transaction. Keep this helper's document reads bounded: the order's before
     // and after snapshots are reused for history, projection and scalar-delta checks.
-    function validLastOrderDateSource(customerId, orderId, after) {
+    // The first projection row is the latest source. Existing rows are immutable
+    // except for the order being changed; new/refill rows are tied to canonical orders.
+    // This keeps the date-source check local and avoids a second cross-document read.
+    function validLastOrderDateSource() {
       let summaries = request.resource.data.get('orderSummaries', []);
       let sourceId = request.resource.data.get('lastOrderDateOrderId', null);
-      let source = sourceId == orderId
-        ? after
-        : (sourceId is string && sourceId.size() > 0
-          ? getAfter(/databases/$(database)/documents/orders/$(sourceId)).data
-          : {});
       return (
         request.resource.data.totalOrders == 0
         && request.resource.data.lastOrderDate == ''
@@ -321,17 +319,8 @@ service cloud.firestore {
         request.resource.data.totalOrders > 0
         && summaries is list
         && summaries.size() > 0
-        && sourceId is string
         && sourceId == summaries[0].id
-        && source.customerId == customerId
-        && source.status in ['new', 'confirmed', 'delivering', 'completed']
-        && source.createdAt == request.resource.data.lastOrderDate
-        && {
-          'id': sourceId,
-          'status': source.status,
-          'total': source.summary.total,
-          'createdAt': source.createdAt
-        } == summaries[0]
+        && request.resource.data.lastOrderDate == summaries[0].createdAt
       );
     }
 
@@ -432,7 +421,7 @@ service cloud.firestore {
         && validCustomerOrderProjection(customerId, expectedSummary, orderId, beforeExists, before, after.status)
         && request.resource.data.totalOrders == resource.data.totalOrders + newActive - oldActive
         && request.resource.data.totalSpent == resource.data.totalSpent + newCompletedTotal - oldCompletedTotal
-        && validLastOrderDateSource(customerId, orderId, after)
+        && validLastOrderDateSource()
         && boundedCustomerProjection(request.resource.data);
     }
 
