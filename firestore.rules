@@ -90,19 +90,6 @@ service cloud.firestore {
     // The projection is active-only; its first row is latest and its last row is oldest.
     // Keep the active-only projection small enough for Firestore Rules' expression budget.
     // Its first row is latest and its last row is oldest.
-    function validLatestChunk0(summaries) {
-      return (summaries.size() <= 1 || summaryAtLeastAsRecent(summaries[0], summaries[1]))
-        && (summaries.size() <= 2 || summaryAtLeastAsRecent(summaries[0], summaries[2]))
-        && (summaries.size() <= 3 || summaryAtLeastAsRecent(summaries[0], summaries[3]))
-        && (summaries.size() <= 4 || summaryAtLeastAsRecent(summaries[0], summaries[4]))
-        && (summaries.size() <= 5 || summaryAtLeastAsRecent(summaries[0], summaries[5]))
-        && (summaries.size() <= 6 || summaryAtLeastAsRecent(summaries[0], summaries[6]))
-        && (summaries.size() <= 7 || summaryAtLeastAsRecent(summaries[0], summaries[7]))
-        && (summaries.size() <= 8 || summaryAtLeastAsRecent(summaries[0], summaries[8]))
-        && (summaries.size() <= 9 || summaryAtLeastAsRecent(summaries[0], summaries[9]))
-        ;
-    }
-
     function validOldestChunk0(summaries) {
       return (summaries.size() <= 1 || summaryNoLater(summaries[summaries.size() - 1], summaries[1]))
         && (summaries.size() <= 2 || summaryNoLater(summaries[summaries.size() - 1], summaries[2]))
@@ -112,30 +99,9 @@ service cloud.firestore {
         && (summaries.size() <= 6 || summaryNoLater(summaries[summaries.size() - 1], summaries[6]))
         && (summaries.size() <= 7 || summaryNoLater(summaries[summaries.size() - 1], summaries[7]))
         && (summaries.size() <= 8 || summaryNoLater(summaries[summaries.size() - 1], summaries[8]))
-        && (summaries.size() <= 9 || summaryNoLater(summaries[summaries.size() - 1], summaries[9]))
-;
+        && (summaries.size() <= 9 || summaryNoLater(summaries[summaries.size() - 1], summaries[9]));
     }
 
-    function validProjectionBounds(summaries) {
-      return summaries is list
-        && summaries.size() <= 10
-        && (summaries.size() == 0 || validCustomerOrderSummary(summaries[0]))
-        && validLatestChunk0(summaries)
-        && (summaries.size() < 10 || validOldestChunk0(summaries));
-    }
-
-    function isSafeOldestCompaction(oldSummaries, beforeExists, oldOrderSummary, expectedSummary, afterStatus) {
-      return oldSummaries is list
-        && oldSummaries.size() == 10
-        && validProjectionBounds(oldSummaries)
-        && afterStatus != 'cancelled'
-        && summaryAtLeastAsRecent(expectedSummary, oldSummaries[9])
-        && (!beforeExists || !(oldOrderSummary in oldSummaries));
-    }
-
-    // Existing summaries may only disappear when they belong to the order being
-    // mutated or are the verified oldest row during a full-cache compaction. Legacy
-    // cancelled/malformed rows require the admin repair path before staff order writes.
     function validPreviousProjectionRetention(oldSummaries, newSummaries, oldOrderSummary, canDropOldest, oldestSummary) {
       let allowedRemoved = [oldOrderSummary].toSet().union(
         canDropOldest ? [oldestSummary].toSet() : [].toSet()
@@ -303,24 +269,34 @@ service cloud.firestore {
     // Customer aggregate writes by staff must be tied to a real order write in the
     // same transaction. Keep this helper's document reads bounded: the order's before
     // and after snapshots are reused for history, projection and scalar-delta checks.
-    // The first projection row is the latest source. Existing rows are immutable
-    // except for the order being changed; new/refill rows are tied to canonical orders.
-    // This keeps the date-source check local and avoids a second cross-document read.
-    function validLastOrderDateSource() {
-      let summaries = request.resource.data.get('orderSummaries', []);
-      let sourceId = request.resource.data.get('lastOrderDateOrderId', null);
+    // Keep the date source on the previous latest row, advance it to a newer
+    // mutated order, or move exactly one slot when the current source is cancelled.
+    // The source summary is either preserved, derived from the changed order, or
+    // obtained from a canonical refill order verified in this transaction.
+    function validLastOrderDateSource(orderId, expectedSummary, afterStatus, refillSummary) {
+      let oldSummaries = resource.data.get('orderSummaries', []);
+      let newSummaries = request.resource.data.get('orderSummaries', []);
+      let oldSourceId = resource.data.get('lastOrderDateOrderId', null);
+      let sourceSummary = afterStatus == 'cancelled' && oldSourceId == orderId
+        ? (oldSummaries.size() > 1 ? oldSummaries[1] : refillSummary)
+        : (oldSummaries.size() == 0 || summaryAtLeastAsRecent(expectedSummary, oldSummaries[0])
+          ? expectedSummary
+          : oldSummaries[0]);
       return (
         request.resource.data.totalOrders == 0
         && request.resource.data.lastOrderDate == ''
-        && sourceId == null
-        && summaries is list
-        && summaries.size() == 0
+        && request.resource.data.get('lastOrderDateOrderId', null) == null
+        && newSummaries is list
+        && newSummaries.size() == 0
       ) || (
         request.resource.data.totalOrders > 0
-        && summaries is list
-        && summaries.size() > 0
-        && sourceId == summaries[0].id
-        && request.resource.data.lastOrderDate == summaries[0].createdAt
+        && oldSummaries is list
+        && (resource.data.totalOrders == 0 || oldSummaries.size() > 0)
+        && newSummaries is list
+        && newSummaries.size() > 0
+        && newSummaries[0] == sourceSummary
+        && request.resource.data.lastOrderDateOrderId == sourceSummary.id
+        && request.resource.data.lastOrderDate == sourceSummary.createdAt
       );
     }
 
@@ -359,7 +335,7 @@ service cloud.firestore {
         );
     }
 
-    function validCustomerOrderProjection(customerId, expectedSummary, orderId, beforeExists, before, afterStatus) {
+    function validCustomerOrderProjection(customerId, expectedSummary, orderId, beforeExists, before, afterStatus, refillSummary) {
       let oldSummaries = resource.data.get('orderSummaries', []);
       let newSummaries = request.resource.data.get('orderSummaries', []);
       let oldOrderSummary = beforeExists ? {
@@ -374,7 +350,6 @@ service cloud.firestore {
       );
       let oldestSummary = canDropOldest ? oldSummaries[9] : {};
       let refillId = request.resource.data.get('lastOrderRefillOrderId', null);
-      let refillSummary = customerRefillSummary();
       let allowedNewSummaries = afterStatus == 'cancelled'
         ? oldSummaries.toSet().union(refillId is string ? [refillSummary].toSet() : [].toSet())
         : oldSummaries.toSet().union([expectedSummary].toSet());
@@ -384,7 +359,9 @@ service cloud.firestore {
         && summaryNoLater(expectedSummary, newSummaries[9]);
       return oldSummaries is list
         && oldSummaries.size() <= 10
-        && validProjectionBounds(newSummaries)
+        && newSummaries is list
+        && newSummaries.size() <= 10
+        && (newSummaries.size() < 10 || validOldestChunk0(newSummaries))
         && validCustomerRefill(customerId, orderId, newSummaries, afterStatus, refillSummary)
         && newSummaries.toSet().size() == newSummaries.size()
         && newSummaries.toSet().hasOnly(allowedNewSummaries)
@@ -412,16 +389,17 @@ service cloud.firestore {
         'total': after.summary.total,
         'createdAt': after.createdAt
       };
+      let refillSummary = customerRefillSummary();
       return after.customerId == customerId
         && (!beforeExists || before.customerId == customerId)
         && after.statusHistory is list
         && after.statusHistory.size() == (beforeExists ? before.statusHistory.size() + 1 : 1)
         && after.statusHistory[after.statusHistory.size() - 1].id == request.resource.data.lastOrderMutationId
         && request.resource.data.lastOrderMutationId != resource.data.get('lastOrderMutationId', null)
-        && validCustomerOrderProjection(customerId, expectedSummary, orderId, beforeExists, before, after.status)
+        && validCustomerOrderProjection(customerId, expectedSummary, orderId, beforeExists, before, after.status, refillSummary)
         && request.resource.data.totalOrders == resource.data.totalOrders + newActive - oldActive
         && request.resource.data.totalSpent == resource.data.totalSpent + newCompletedTotal - oldCompletedTotal
-        && validLastOrderDateSource()
+        && validLastOrderDateSource(orderId, expectedSummary, after.status, refillSummary)
         && boundedCustomerProjection(request.resource.data);
     }
 
