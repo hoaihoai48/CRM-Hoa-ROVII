@@ -45,6 +45,7 @@ function OrdersPageContent() {
   const loadFirstPage = useCallback(() => {
     const requestId = ++loadRequestRef.current;
     setIsLoading(true);
+    setIsLoadingMore(false);
     setLoadError(null);
     setIsFullDatasetLoaded(false);
     fullLoadInFlightRef.current = false;
@@ -70,6 +71,7 @@ function OrdersPageContent() {
     fullLoadInFlightRef.current = true;
     const requestId = ++loadRequestRef.current;
     setIsLoading(true);
+    setIsLoadingMore(false);
     setLoadError(null);
     listOrders()
       .then((data) => {
