@@ -1,58 +1,60 @@
 # CRM-Hoa-ROVII — Current Delivery Handoff
 
-**Last updated:** 2026-11-21 20:15 Asia/Ho_Chi_Minh  
+**Last updated:** 2026-11-22 07:25 Asia/Ho_Chi_Minh  
 **Repository:** https://github.com/hoaihoai48/CRM-Hoa-ROVII  
 **Default branch:** `main`  
-**Current main SHA:** `bdf7d8ecb698b4e7bb44990a67cd74dea99568d9`
+**Current main SHA:** `c63f2da0d2250bf8957877ce33e17142a8d6f8d3`
 
-This file is the restart point for a new ChatGPT conversation. Read it together with `docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md` before making changes.
+This is the restart point for a new ChatGPT conversation. Read it together with `docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md` and inspect live GitHub state before acting.
 
-## Project guardrails
+## Owner delegation and guardrails
 
-- Internal-first flower-shop order management / mini CRM.
-- Stack: Next.js App Router + TypeScript, Firebase Auth, Firestore, Firebase Spark, Vercel, GitHub Actions, local MCP integration.
-- Preserve Spark compatibility; do not assume Blaze features or introduce paid services without approval.
-- Work on feature branches, group related files into meaningful commits, and open focused PRs.
-- Use GitHub Actions, Firebase Emulators, Playwright and Vercel Preview for verification. Do not ask the owner to run local tests for routine work.
-- Never touch production data, deploy production, change billing, perform destructive migrations or merge PRs without explicit owner approval.
-- Never claim a test passed without a completed run and inspectable evidence.
+- Owner delegated routine engineering decisions: inspect, implement, test, update PRs, merge normal code/docs PRs when all required checks pass and changes are safe.
+- Ask the owner only for decisions that genuinely require business clarification, credentials, paid-service/billing changes, production data repair/migration, production deployment/release, or other irreversible/high-risk actions.
+- Preserve Firebase Spark compatibility; do not introduce paid services without approval.
+- Never access or mutate production customer/order data for tests. Use Firebase Auth/Firestore Emulators and synthetic identities.
+- Do not deploy production, change billing, or perform destructive migrations without explicit approval.
+- Work on feature branches, group related files into cohesive commits, and keep this handoff/playbook updated during every meaningful delivery session.
+- Never report tests as PASS without inspecting completed workflow evidence.
 
-## Completed steps
+## Completed delivery
 
-### S0 — Baseline & delivery infrastructure: PASS
+### S0 — Playwright/CI foundation: MERGED
 
 - PR #8: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/8
-- Branch: `feat/ci-playwright-emulator-e2e`
-- Current PR head: `dc051ee44ee5428ae423597327796a977c033f82`
-- Verified CI run: https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44903815116
-- Playwright 4/4: login form, anonymous dashboard guard, invalid credentials, active synthetic member login.
-- CI includes dependency audit, Functions lint, MCP smoke tests, ESLint, TypeScript, Emulator tests, Chromium E2E, production build and report artifacts.
-- PR #8 is open and not merged.
+- Squash merge commit: `c63f2da0d2250bf8957877ce33e17142a8d6f8d3`
+- Pre-merge CI: https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44904053612
+- GitHub Actions and Vercel Preview checks passed.
+- Playwright Chromium: 4/4 auth/access tests passed.
+- CI includes install, dependency audit, Functions syntax, MCP smoke tests, ESLint, TypeScript, Firebase Emulator tests, Playwright and production build.
+- A post-merge `main` workflow was triggered: https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44966225503. At handoff it was IN PROGRESS; inspect before treating post-merge main as green.
 
-### S1 — Order workflow integrity: PASS
+### S1 — Order workflow integrity: implementation CI PASS, retargeted CI pending
 
 - PR #9: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/9
 - Branch: `feat/order-workflow-integrity`
-- Current branch head: `6c603747f0de25dd676bcefaa29eebc490f1f572`
-- Verified CI run: https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44907652688
-- All CI jobs passed: install, Functions syntax, dependency audit, MCP smoke tests, ESLint, TypeScript, Firebase Emulator integration, Chromium install, browser E2E, production build, artifact upload.
-- Playwright **5/5 PASS** (4 auth/access tests + one complete order lifecycle test).
-- Emulator suite: **ALL INTEGRATION & INVARIANT TESTS PASSED 100%**. It verifies initial order state, state machine, history append/immutability/order, projection atomicity, aggregates, aggregate repair, concurrency, staff rules and order edit recomputation.
-- Vercel Preview check: PASS — https://vercel.com/vu-nhim/tiem-hoa-rovii/E9N8oW7FWNUF9DrVkwz6nZwKsxVP
-- PR #9 remains draft/open and not merged. It is based on the PR #8 S0 branch history; it includes S0 ancestry while PR #8 remains unmerged. After PR #8 is merged, PR #9's diff against main will reduce to S1.
+- Head: `cadb7ae60080a6bf269bd3023f32b90c4613cf45`
+- Original CI on this exact head: https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/44908094922
+- Original CI passed: lint, TypeScript, Firebase Emulator integration/invariants, Playwright Chromium 5/5 and production build.
+- PR #9 has been retargeted to `main` after PR #8 merged.
+- The branch currently has the original PR #8 commit as ancestry while `main` contains a squash commit, so GitHub reports the branch and main as diverged (5 commits ahead, 1 behind) and mergeable=false. Do not merge until the branch is synchronized/rebased onto current main and a fresh PR-head CI run passes.
+- Preview interactive walkthrough remains NOT RUN until Preview Firebase configuration and safe test credentials are verified.
 
-## Current open PRs / conflicts to avoid
+### Superseded PR
 
-| PR | Purpose | State | Handling |
+- PR #6 (older Firestore status transition implementation) was closed without merge: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/6
+- PR #9 is the canonical, stronger implementation. Do not reopen or merge PR #6.
+
+## Open PR inventory at handoff
+
+| PR | Scope | State | Next action |
 |---|---|---|---|
-| #9 | S1 order workflow integrity | Open, draft, checks pass | Ready to mark non-draft; do not merge without owner approval |
-| #8 | S0 Playwright/CI foundation | Open, ready for review, checks pass | Merge before or together with dependent S1 |
-| #6 | Earlier Firestore order status transition draft | Open, draft | Overlaps S1; PR #9 supersedes with stronger rules. Do not merge both |
-| #5 | Spark compatibility + MCP structured reads draft | Open, draft | Separate scope; inspect before S2 if relevant |
+| #9 | S1 order workflow | Open, draft | Synchronize branch with main, rerun CI, inspect Preview, then merge if green |
+| #5 | Spark compatibility + MCP structured reads | Open, draft, stale | Audit diff and current main for duplicate/already-landed changes; close if obsolete, otherwise refresh CI and assess separately |
 
-## Important implementation details
+## Important S1 implementation details
 
-- Firestore Rules require new orders to start in `new` with one valid matching history entry.
+- New orders must start in `new` with one valid matching history entry.
 - Status transitions: `new → confirmed/cancelled`, `confirmed → delivering/cancelled`, `delivering → completed`.
 - History is append-only: exactly one valid new entry, exact prior sequence retained.
 - Same-status order content edits are allowed only in `new` and `confirmed`.
@@ -62,26 +64,32 @@ This file is the restart point for a new ChatGPT conversation. Read it together 
 - Order service recalculates from current Firestore product prices and recomputes customer aggregates transactionally.
 - Full customer aggregate math is not recomputed in Rules; service transactions and Emulator tests cover it.
 
-## Known follow-up risks
+## Known follow-up risks / S2 audit targets
 
 1. `customer.orderSummaries` grows as an embedded array; monitor Firestore 1 MiB document limit and plan a scalable projection before volume becomes large.
 2. Rules enforce a matching per-order customer projection, not the full totalOrders/totalSpent math across an unbounded order set.
 3. New customer creation currently precedes the order transaction; failed order creation can leave an empty customer. Review during S2.
-4. S2 scope from playbook: recipient/delivery information, delivery scheduling, order code, staff assignment and printable order view. Inspect existing implementation and verify business requirements before changing data contracts.
-5. PR #6 overlaps status-transition logic. Do not merge #6 and #9 together.
+4. Audit recipient/delivery information, delivery scheduling, order code, staff assignment and printable order view before changing data contracts.
+5. Validate all customer/order changes against Spark constraints and avoid Cloud Functions or paid Firebase services unless separately approved.
 
-## Next permitted step
+## Next action
 
-**S2 — Sales workflow completion.** Start with a read-only audit of the current order-entry, recipient/delivery, schedule, staff assignment and printable-view code. Then implement only confirmed gaps with Emulator + Playwright tests. Keep PR #9 open until owner approval; no merge or production deployment.
+1. Check completion of main workflow #44966225503.
+2. Synchronize `feat/order-workflow-integrity` with squash-merged `main` (the current divergence is caused by PR #8 squash history; preserve the S1 tree).
+3. Run fresh PR CI and verify Vercel Preview.
+4. Merge PR #9 only after fresh checks pass and no unresolved blocking review feedback remains.
+5. Start S2 with a read-only audit of existing order-entry and fulfilment flows.
+6. Audit PR #5 independently; close it if its value is already present or no longer needed. Do not merge it on stale October evidence.
 
-## Automation
+## Session log — 2026-11-22
 
-- Automation: `ROVII Delivery Cycle`
-- ID: `6b0189e334488191a17414a05dd26853`
-- Enabled, hourly, timezone `Asia/Ho_Chi_Minh`; next run at 20:12:04 on 2026-11-21.
-- Prompt instructs it to re-read main playbook/open PRs/branches/CI each run, avoid overlapping work, test before PR updates, and never merge/deploy production.
-- Environment selection is inherited and no explicit environment is attached; rely on GitHub Actions/Emulator/Preview evidence, not assumptions about a persistent Mac/browser session.
+- Merged PR #8 by squash after confirming its CI workflow and Vercel check succeeded.
+- Closed PR #6 without merge because PR #9 supersedes it.
+- Retargeted PR #9 from PR #8's branch to `main`.
+- Detected expected Git-history divergence after squash merge: PR #9's source branch still contains the pre-squash PR #8 commit. This must be synchronized before merge.
+- Updated PR #9 description with current scope, CI evidence, merge dependency and safety gates.
+- No production deployment, production data access, billing change or migration was performed.
 
 ## New-chat instruction
 
-Read this file and the playbook first. Continue from S2 only after checking current GitHub state, especially whether PR #8 and PR #9 have been merged or changed. Do not repeat S0/S1 work or duplicate PR #6.
+Read this handoff and the playbook, then fetch live PR/branch/Actions state. Do not assume the pending main workflow or PR #9 retargeted CI passed. Continue with branch synchronization and S1 verification before starting S2.
