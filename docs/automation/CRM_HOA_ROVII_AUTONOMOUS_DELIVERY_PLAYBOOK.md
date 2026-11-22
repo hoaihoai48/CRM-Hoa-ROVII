@@ -3,7 +3,7 @@
 - **Repository:** hoaihoai48/CRM-Hoa-ROVII
 - **Default branch:** main
 - **Operating model:** internal-first, SaaS-ready architecture, Firebase Spark-compatible, sales and CRM first
-- **Current delivery state:** S0/S1 complete; S2 technical hardening delivered through PR #16; S2 business semantics await owner decisions.
+- **Current delivery state:** S0/S1 complete; S2 technical hardening delivered through PR #18; S2 business semantics await owner decisions.
 
 ## 1. Non-negotiable delivery rules
 
@@ -142,6 +142,7 @@ Add tests alongside the feature they protect. Prefer accessible selectors and st
 - Normal order/customer browsing loads 50-row snapshot-cursor pages with explicit load-more.
 - Search and non-default order status filters still load the full collection to preserve the existing global substring-search contract. This is intentional and documented.
 - Customer detail order history is paginated independently (PR #17): 25 newest orders initially, then snapshot-cursor load-more; Playwright verifies 27 synthetic orders without skips.
+- PR #19 synchronized this playbook through PR #18; PR #20 fixed the handoff's stale historical pin. Both are documentation-only and are recorded in the current-state handoff.
 
 ## 8. S2 business decisions — do not guess
 
@@ -164,7 +165,7 @@ The audit contains a backward-compatible optional-field candidate and regression
 | S0 | COMPLETE |
 | S1 | COMPLETE |
 | S2 technical hardening | COMPLETE through PR #18 |
-| Open PR inventory | None at last inspection |
+| Open PR inventory | None after PR #20 merge |
 | Latest code merge | 83c354436ff9dfedca180832fcec324c03a36ffa (PR #18) |
 | Final PR #16 CI | #44988852658 — PASS |
 | PR #16 Preview | Ready; zero unresolved feedback |
@@ -196,3 +197,11 @@ Both Vercel Previews were Ready with zero unresolved feedback. No production dat
 - PR #18 strengthened Firestore Rules: every appended status-history entry on an order with `createdByUid` must include `actorUid == request.auth.uid`. Emulator coverage verifies rejection without partial writes and acceptance of a valid authenticated UID; legacy orders without creator UID remain compatible. Merge `83c354436ff9dfedca180832fcec324c03a36ffa`; PR CI #45008498582 PASS; post-merge main #45008753697 PASS.
 - Both Preview deployments were Ready with zero unresolved feedback. No production data/deployment, migration, billing or paid Firebase service was touched.
 - Remaining owner decisions are unchanged: purchaser vs recipient, delivery scheduling/timezone, note visibility and separation, human-readable order code, staff assignment policy, and customer receipt vs fulfilment print content.
+
+
+## 13. Delivery update — PRs #19–#20 (2026-11-22)
+
+- PR #19 merged the playbook synchronization at `53698b09cc73acaa56135ac2e62f602f02374aea`; its preview was Ready. It corrected PR #16 CI wording, added PRs #17–#18, and removed stale claims about customer history remaining unpaginated.
+- PR #20 merged the handoff fix at `93da6165ebec95a864c139baf1e4a4955e59fdcd`; Vercel Preview was Ready and Codex re-review reported no findings. The single inline P2 thread was resolved before merge.
+- Post-merge Vercel status for PR #20 was still pending when the handoff was written. The docs-only PRs are ignored by the GitHub Actions quality workflow via `paths-ignore`; do not invent an Actions PASS for them.
+- Current-state handoff is the source of the delivery-specific PR #19/#20 status; future sessions should read both docs from live main and not pin stale blob SHAs.
