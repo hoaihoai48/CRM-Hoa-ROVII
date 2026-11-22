@@ -33,7 +33,7 @@ The customer detail page already loads its full order history from the canonical
 
 ## 4. Emulator regression coverage
 
-Case M seeds 65 synthetic orders for one customer, with active, completed and cancelled statuses, then verifies:
+Case N seeds 65 synthetic orders for one customer, with active, completed and cancelled statuses, then verifies:
 - exact lifetime order count, completed spend, and latest active date after repair;
 - projection compaction to at most 50 entries;
 - an old order outside the projection can still transition and be edited without losing aggregate totals;
