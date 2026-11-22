@@ -1407,7 +1407,7 @@ async function runTestSuite() {
   // ==========================================
   // CASE P: Dashboard reads a local-day range and only six recent orders.
   // ==========================================
-  console.log('\\n--- CASE P: Dashboard bounded order queries ---');
+  console.log('\n--- CASE P: Dashboard bounded order queries ---');
   const dashboardCustomer = await createCustomer({
     name: 'Khách hàng Dashboard',
     phone: '0900777666',
