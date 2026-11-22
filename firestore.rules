@@ -247,33 +247,16 @@ service cloud.firestore {
 
     // Order writes must keep the corresponding per-order customer projection coherent
     // in the same transaction/batch. This does not prove the customer's full aggregates.
-    function hasMatchingCustomerOrderProjection(orderId, orderData) {
-      let customerAfter = getAfter(
-        /databases/$(database)/documents/customers/$(orderData.customerId)
-      );
+    function hasMatchingCustomerOrderMutationMarker(orderId, orderData) {
+      let customerPath = /databases/$(database)/documents/customers/$(orderData.customerId);
+      let customerBeforeExists = exists(customerPath);
+      let customerBefore = customerBeforeExists ? get(customerPath).data : {};
+      let customerAfter = getAfter(customerPath).data;
       let historySize = orderData.statusHistory.size();
-      let expectedSummary = {
-        'id': orderId,
-        'status': orderData.status,
-        'total': orderData.summary.total,
-        'createdAt': orderData.createdAt
-      };
-      return customerAfter.data.orderSummaries is list
-        && customerAfter.data.lastOrderMutationOrderId == orderId
-        && customerAfter.data.lastOrderMutationId == orderData.statusHistory[historySize - 1].id
-        && (
-          (orderData.status == 'cancelled' && !(expectedSummary in customerAfter.data.orderSummaries))
-          || (
-            orderData.status != 'cancelled'
-            && (
-              expectedSummary in customerAfter.data.orderSummaries
-              || (
-                customerAfter.data.orderSummaries.size() == 10
-                && summaryNoLater(expectedSummary, customerAfter.data.orderSummaries[9])
-              )
-            )
-          )
-        );
+      let mutationId = orderData.statusHistory[historySize - 1].id;
+      return customerAfter.lastOrderMutationOrderId == orderId
+        && customerAfter.lastOrderMutationId == mutationId
+        && customerAfter.lastOrderMutationId != customerBefore.get('lastOrderMutationId', null);
     }
 
     // Spark-compatible internal-team model. Rules enforce lifecycle and document invariants,
@@ -282,7 +265,7 @@ service cloud.firestore {
       allow read: if isActiveMember();
       allow create: if isActiveMember()
         && validInitialOrder(request.resource.data)
-        && hasMatchingCustomerOrderProjection(orderId, request.resource.data);
+        && hasMatchingCustomerOrderMutationMarker(orderId, request.resource.data);
       allow update: if isActiveMember()
         && validOrder(request.resource.data)
         && validStatusChange(resource.data, request.resource.data)
@@ -320,12 +303,14 @@ service cloud.firestore {
     // Customer aggregate writes by staff must be tied to a real order write in the
     // same transaction. Keep this helper's document reads bounded: the order's before
     // and after snapshots are reused for history, projection and scalar-delta checks.
-    function validLastOrderDateSource(customerId) {
+    function validLastOrderDateSource(customerId, orderId, after) {
       let summaries = request.resource.data.get('orderSummaries', []);
       let sourceId = request.resource.data.get('lastOrderDateOrderId', null);
-      let source = sourceId is string && sourceId.size() > 0
-        ? getAfter(/databases/$(database)/documents/orders/$(sourceId)).data
-        : {};
+      let source = sourceId == orderId
+        ? after
+        : (sourceId is string && sourceId.size() > 0
+          ? getAfter(/databases/$(database)/documents/orders/$(sourceId)).data
+          : {});
       return (
         request.resource.data.totalOrders == 0
         && request.resource.data.lastOrderDate == ''
@@ -447,7 +432,7 @@ service cloud.firestore {
         && validCustomerOrderProjection(customerId, expectedSummary, orderId, beforeExists, before, after.status)
         && request.resource.data.totalOrders == resource.data.totalOrders + newActive - oldActive
         && request.resource.data.totalSpent == resource.data.totalSpent + newCompletedTotal - oldCompletedTotal
-        && validLastOrderDateSource(customerId)
+        && validLastOrderDateSource(customerId, orderId, after)
         && boundedCustomerProjection(request.resource.data);
     }
 
