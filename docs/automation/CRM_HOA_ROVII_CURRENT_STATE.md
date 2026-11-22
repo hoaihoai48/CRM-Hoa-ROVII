@@ -126,3 +126,14 @@ Read this handoff and the playbook, then fetch live GitHub state. S0/S1 and PR #
 
 
 - Final verification correction: post-merge main run #44967174708 completed `success`; the earlier in-progress observation above is superseded.
+
+
+### S2 continuation — 2026-11-22 (PR #11 atomic first-customer/order write)
+
+- Opened PR #11: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/11 (`fix/atomic-customer-order-creation`).
+- The new-customer order path now creates the customer and first order in one Firestore transaction; no pre-create call remains in the order form. Existing customer lookup and legacy ID reuse remain intact.
+- Firestore Rules now permit a customer with a non-empty first-order projection only when `getAfter()` sees the matching valid initial order in the same atomic write. Standalone empty customer creation remains supported.
+- Emulator coverage added for: failed first-order leaves no customer; forged customer projection without matching order is denied; successful first order creates customer + aggregate + projection atomically. Existing Playwright create-order flow now exercises this path.
+- Initial CI run #44982205534 failed TypeScript because an optional `.some()` expression returned `boolean | undefined`; corrected with `?? false` in the next commit. Replacement run #44982298301 must be checked before merge.
+- S2 source findings and open business semantics are documented in `docs/audits/CRM_HOA_ROVII_S2_ORDER_WORKFLOW_AUDIT_2026-11-22.md`.
+- No production data/deployment/billing changes. No legacy data migration.
