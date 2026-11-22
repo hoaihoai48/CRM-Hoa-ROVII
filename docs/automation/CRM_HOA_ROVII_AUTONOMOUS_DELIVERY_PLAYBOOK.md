@@ -161,18 +161,28 @@ The audit contains a backward-compatible optional-field candidate and regression
 | Active step | S2 — business semantics pending owner decisions |
 | S0 | COMPLETE |
 | S1 | COMPLETE |
-| S2 technical hardening | COMPLETE through PR #16 |
+| S2 technical hardening | COMPLETE through PR #18 |
 | Open PR inventory | None at last inspection |
-| Latest code merge | 7e923b5a0a996468a211f76b8d1ff715699e3ce4 |
+| Latest code merge | 83c354436ff9dfedca180832fcec324c03a36ffa (PR #18) |
 | Final PR #16 CI | #44988852658 — PASS |
 | PR #16 Preview | Ready; zero unresolved feedback |
-| Post-merge main CI | #44989024153 — PASS |
+| Post-merge main CI | #45008753697 — PASS (PR #18); #45008325128 — PASS (PR #17) |
 | Production data | NOT ACCESSED |
 | Production deployment | NOT PERFORMED |
-| Next action | Verify #44989024153; then wait for the S2 business decisions before changing schema/UX |
+| Next action | Await owner decisions for remaining S2 business semantics; continue only non-blocked technical work |
 
-Do not mark S2 fully complete until the owner decisions have been implemented and the relevant end-to-end acceptance criteria pass.
+PR #17 paginates customer detail history (25-row pages); PR #18 makes actor UIDs mandatory on appended history entries for UID-attributed orders while preserving legacy compatibility. Do not mark S2 fully complete until the remaining owner decisions have been implemented and their end-to-end acceptance criteria pass.
 
 ## 10. Resume instruction
 
-Every new run must re-read this playbook and docs/automation/CRM_HOA_ROVII_CURRENT_STATE.md, fetch the live main ref, inspect open PRs and the latest Actions runs, and continue from the earliest incomplete step. PRs #8–#16 must not be repeated. Never infer a successful CI result from a started or cancelled workflow.
+Every new run must re-read this playbook and docs/automation/CRM_HOA_ROVII_CURRENT_STATE.md, fetch the live main ref, inspect open PRs and the latest Actions runs, and continue from the earliest incomplete step. PRs #8–#18 must not be repeated. Never infer a successful CI result from a started or cancelled workflow.
+
+
+## 11. Delivery update — PRs #17–#18
+
+| PR | Delivery | Merge SHA | PR CI | Post-merge CI |
+|---|---|---|---|---|
+| #17 | Customer order history cursor pagination (25 rows + load more) | `8ce9930ee181b1fca788e823a53ffac8860d9067` | #45008095660 PASS | #45008325128 PASS |
+| #18 | Require authenticated actor UID on appended history entries for UID-attributed orders; preserve legacy records | `83c354436ff9dfedca180832fcec324c03a36ffa` | #45008498582 PASS | #45008753697 PASS |
+
+Both Vercel Previews were Ready with zero unresolved feedback. No production data or deployment, migration, billing change or paid Firebase service was involved.
