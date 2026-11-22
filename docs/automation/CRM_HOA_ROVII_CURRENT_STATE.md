@@ -107,3 +107,19 @@ Read this handoff and the playbook, then fetch live GitHub state. S0 and S1 are 
 - Opened PR #10: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/10
 - PR #10 changes only `mcp-server/server.mjs` and `mcp-server/smoke-test.mjs`; fresh GitHub Actions run #44966591236 is pending at handoff. Vercel check is PASS.
 - No production data, deployment, billing or Storage configuration changed.
+
+
+### Session continuation — 2026-11-22 (PR #10 merged; S2 read-only audit)
+
+- Verified PR #10 CI run #44966591236 completed successfully on head `2e745efc26d0e6786cdbb18999f6e822127e4e00`. All job steps passed: dependency audit/report, Functions syntax, MCP syntax and protocol/safety smoke, lint, TypeScript, Firebase Emulator integration, Chromium install, Playwright browser E2E, production build and diagnostics upload.
+- Vercel Preview for PR #10 was Ready; review submissions and inline review threads were empty. Marked PR #10 ready for review and squash-merged.
+- PR #10 merge commit: `6ac8304c8df47fe0c2a94dd444591a59ebb5b2da`; live `main` ref confirmed at this SHA.
+- Main post-merge workflow #44967174708 was still in progress at this handoff; do not mark the post-merge run PASS until completed. Latest inspected state: MCP checks, lint, typecheck passed; Emulator integration step in progress; Playwright/build pending.
+- Read-only S2 audit inspected order creation page, order list/detail pages, order/customer/staff services, TypeScript models and Firestore Rules.
+- Current order-entry UI stores customer name/phone/address together in `customerSnapshot`; it does not distinguish purchaser from recipient. Delivery is a single `deliveryDate` datetime-local field, and note combines greeting-card text with instructions. No dedicated recipient phone/address, delivery window, assigned-staff ID or printable order view was found in inspected order UI/model.
+- Orders receive an ID formatted `DH-${crypto.randomUUID()}`; order list/detail routes expose this document ID. It is not a human-friendly sequential code.
+- `createdBy` is the creator's display name only; status history records actorName, not a staff membership UID. Existing staff membership collection can be listed by admin but no order assignment relationship exists in inspected schema.
+- Important architecture issue to address before S2 implementation: the order flow currently creates a customer document before calling the order transaction. If order creation fails, the newly created customer can remain orphaned. Existing transaction then atomically writes order and customer aggregate projection.
+- Firestore Rules allow order keys only for current schema and would reject additive recipient/assignment fields until rules/types/services are updated together. No migrations or writes performed.
+- No production data accessed, no production deployment, billing/configuration change, or destructive migration.
+- S2 remains AUDIT IN PROGRESS / implementation NOT STARTED. Follow-up: finish reviewing all order detail UI and service update methods, inspect test coverage for order creation/edit, then document candidate data model and explicitly separate business choices requiring owner input (recipient vs purchaser semantics, delivery date/time rules, staff assignment policy, print layout).
