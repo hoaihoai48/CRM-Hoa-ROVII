@@ -50,3 +50,19 @@ Existing smaller-history, transaction rollback, status lifecycle, aggregate repa
 - Final PR CI #44985057671: PASS. Post-merge main CI #44985288167: PASS, including lint, typecheck, Firebase Emulator Case N, Playwright E2E and production build.
 - Final test case label: Case N (the suite already had a separate Case M for admin staff management).
 - No production data, deployment, billing, or destructive migration touched.
+
+
+## 2026-11-23 architecture correction — canonical orders, scalar customer summary
+
+The embedded `customers/{customerId}.orderSummaries` array is **not required** by the customer detail page: that page already reads paginated history from canonical `orders`. It is not a source of truth and must not be reintroduced as an order-history dependency.
+
+The simpler target is:
+- `orders/{orderId}` is the only canonical order/history record.
+- Customer documents keep only three small display summaries: `totalOrders` (non-cancelled orders), `totalSpent` (completed-order total), and `lastOrderDate` (most recently placed order, even if later cancelled).
+- Create/status transactions update those scalar values only. Editing order content does not change customer counters.
+- Any aggregate repair reads canonical customer orders and updates only the three scalar values.
+- Legacy `orderSummaries` fields already stored in Firestore are left untouched for backward compatibility; new application code must neither depend on nor maintain them. No production migration or data deletion is part of this change.
+
+**Security trade-off (must remain explicit):** Firebase Spark client transactions cannot make client-computed cross-document financial arithmetic authoritative. Active internal staff are a trusted client population under this deployment model. Firestore Rules should enforce authentication, active membership, immutable customer identity fields, order shape, actor identity and legal status/history transitions. Do not imply that Rules prove the scalar arithmetic. If the threat model later includes untrusted staff or public order writers, revisit the write boundary with an approved trusted backend/billing plan.
+
+**Verification status:** This is an architecture decision, not a completion claim. Do not mark the refactor complete until the focused diff, lint/typecheck, Firestore Emulator tests, Playwright and production build have passed on the exact PR head. Do not access production customer/order data or run migrations.
