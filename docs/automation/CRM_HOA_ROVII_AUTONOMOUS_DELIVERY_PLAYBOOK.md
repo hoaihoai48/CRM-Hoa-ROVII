@@ -267,3 +267,13 @@ Both Vercel Previews were Ready with zero unresolved feedback. No production dat
 - Keep the Spark limitation explicit: Firestore Rules validate access, schema, ownership/identity, status transitions and append-only history, but do not prove aggregate arithmetic or product-price arithmetic for an untrusted client. The trusted-internal-staff model remains a deliberate limitation, not full financial integrity.
 - Do not close F-01 as a security fix. This is a complexity reduction that removes the Rules expression-budget problem; scalar forgery remains a known risk pending a trusted backend or separately validated Rules solution.
 - Required checks for the implementation PR: exact-head lint, TypeScript, Firebase Emulator integration, Playwright, production build and Vercel Preview where required. A failed or skipped stage is not a pass.
+
+## 24. Canonical customer order history implementation — 2026-11-24
+
+- The implementation is now present on refactor/simple-customer-order-source-2026-11-23; see current-state document for exact head.
+- Runtime no longer reads/writes customers.orderSummaries. Full customer order history comes from paginated canonical orders documents.
+- Customer documents retain only small scalar UI summaries: non-cancelled order count, completed-order spend, and latest placement date. Cancelling an order changes the count/spend as applicable but does not roll the placement date backwards.
+- Legacy orderSummaries arrays are tolerated by Rules for compatibility and are left untouched. No production migration or cleanup.
+- Firestore Rules retain active-member, schema, immutable customer phone identity, order lifecycle and append-only history constraints. The cross-document projection checks and refill/fingerprint helpers are removed.
+- Firebase Spark limitation remains: scalar customer summary arithmetic is not protected against a malicious authenticated staff client. Do not call this a security fix; keep F-01 open and document the trusted-internal-staff assumption.
+- Verification still required on the exact PR head: lint, TypeScript, Emulator integration, Playwright and production build. Do not merge if any check fails/skips or if independent security review identifies unresolved issues.
