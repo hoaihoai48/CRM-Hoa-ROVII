@@ -81,15 +81,6 @@ function mapDocToOrder(id: string, data: Record<string, unknown>): Order {
 }
 
 /**
- * Rebuild lifetime aggregates from the complete orders collection and compact the
- * customer document's bounded recent-order projection.
- *
- * The orders query cannot be included in a Firestore Web SDK transaction. To avoid
- * overwriting a concurrent create/status mutation, snapshot the customer's current
- * projection before querying orders, then compare it inside the transaction. If it
- * changed at any point, abort this repair attempt and repeat the query from scratch.
- */
-/**
  * Reconcile the three customer summary fields from canonical orders.
  * This is an explicit admin maintenance action, not part of order creation/history.
  */
@@ -358,8 +349,8 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
 
     const customerData = customerSnap.exists() ? customerSnap.data() || {} : {};
     const updatedCustomerAggregates = {
-      totalOrders: Number(customerData.totalOrders || 0) + 1,
-      totalSpent: Number(customerData.totalSpent || 0),
+      totalOrders: (Number.isFinite(Number(customerData.totalOrders)) ? Number(customerData.totalOrders) : 0) + 1,
+      totalSpent: Number.isFinite(Number(customerData.totalSpent)) ? Number(customerData.totalSpent) : 0,
       lastOrderDate: now,
     };
 
