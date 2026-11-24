@@ -84,28 +84,61 @@ function mapDocToOrder(id: string, data: Record<string, unknown>): Order {
  * Reconcile the three customer summary fields from canonical orders.
  * This is an explicit admin maintenance action, not part of order creation/history.
  */
+/**
+ * Reconcile customer summary fields from canonical orders.
+ * Use only as an explicit maintenance action, not in normal order workflows.
+ */
 export async function syncCustomerAggregates(customerId: string): Promise<void> {
   if (!customerId) return;
   const customerRef = doc(db, 'customers', customerId);
-  const ordersSnapshot = await getDocs(query(
+  const ordersQuery = query(
     collection(db, 'orders'),
     where('customerId', '==', customerId),
-  ));
-  const orders = ordersSnapshot.docs.map((item) => mapDocToOrder(item.id, item.data()));
-  const totalOrders = orders.filter((order) => order.status !== 'cancelled').length;
-  const totalSpent = orders
-    .filter((order) => order.status === 'completed')
-    .reduce((sum, order) => sum + order.summary.total, 0);
-  const lastOrderDate = orders.reduce(
-    (latest, order) => order.createdAt > latest ? order.createdAt : latest,
-    '',
   );
 
-  await runTransaction(db, async (tx) => {
-    const customer = await tx.get(customerRef);
-    if (!customer.exists()) return;
-    tx.update(customerRef, { totalOrders, totalSpent, lastOrderDate });
-  });
+  // Collection queries cannot run inside a Web SDK transaction. Snapshot the three
+  // aggregate values first, then retry if an order mutation changes them during the scan.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const before = await getDoc(customerRef);
+    if (!before.exists()) return;
+    const beforeData = before.data();
+    const baseline = {
+      totalOrders: Number(beforeData.totalOrders || 0),
+      totalSpent: Number(beforeData.totalSpent || 0),
+      lastOrderDate: String(beforeData.lastOrderDate || ''),
+    };
+
+    const snapshot = await getDocs(ordersQuery);
+    const orders = snapshot.docs.map((item) => mapDocToOrder(item.id, item.data()));
+    const totalOrders = orders.filter((order) => order.status !== 'cancelled').length;
+    const totalSpent = orders
+      .filter((order) => order.status === 'completed')
+      .reduce((sum, order) => sum + order.summary.total, 0);
+    const lastOrderDate = orders.reduce(
+      (latest, order) => order.createdAt > latest ? order.createdAt : latest,
+      '',
+    );
+
+    try {
+      await runTransaction(db, async (tx) => {
+        const current = await tx.get(customerRef);
+        if (!current.exists()) return;
+        const currentData = current.data();
+        const unchanged =
+          Number(currentData.totalOrders || 0) === baseline.totalOrders
+          && Number(currentData.totalSpent || 0) === baseline.totalSpent
+          && String(currentData.lastOrderDate || '') === baseline.lastOrderDate;
+        if (!unchanged) throw new Error('SYNC_CUSTOMER_AGGREGATES_RETRY');
+        tx.update(customerRef, { totalOrders, totalSpent, lastOrderDate });
+      });
+      return;
+    } catch (error) {
+      if (error instanceof Error && error.message === 'SYNC_CUSTOMER_AGGREGATES_RETRY') continue;
+      throw error;
+    }
+  }
+
+  throw new Error(`Could not repair aggregates for customer ${customerId}: order totals changed during five consecutive scans.`);
 }
 
 export type OrderPageCursor = QueryDocumentSnapshot<DocumentData>;
