@@ -885,8 +885,6 @@ async function runTestSuite() {
     finalCustConc!.totalOrders === 5,
     `Case I & J: Exactly 5 totalOrders recorded without lost update (got ${finalCustConc!.totalOrders})`
   );
-  assert(
-  );
 
   console.log('\n======================================================');
   // Case K: concurrent status changes are checked against canonical orders.
