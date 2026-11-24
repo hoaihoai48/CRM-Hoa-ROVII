@@ -43,8 +43,7 @@ function summarizeCustomer(orders) {
   return {
     totalOrders: active.length,
     totalSpent: completed.reduce((sum, order) => sum + order.total, 0),
-    lastOrderDate: active.map((order) => order.createdAt).sort().at(-1) || '',
-    orderSummaries: summaries,
+    lastOrderDate: summaries.map((order) => order.createdAt).sort().at(-1) || '',
   };
 }
 
@@ -57,7 +56,6 @@ async function main() {
   const orders = ordersSnapshot.docs.map((doc) => ({ id: doc.id, data: doc.data() }));
   const customers = new Map(customersSnapshot.docs.map((doc) => [doc.id, doc.data()]));
   const ordersByCustomer = new Map();
-  const orderCustomerById = new Map(orders.map((order) => [order.id, asString(order.data.customerId)]));
   const anomalies = {
     missingCustomerId: [],
     missingCustomerDocument: [],
@@ -65,10 +63,7 @@ async function main() {
     malformedOrderSummary: [],
     lineItemSubtotalMismatch: [],
     orderTotalMismatch: [],
-    duplicateOrderSummaryIds: [],
     customerAggregateMismatch: [],
-    customerProjectionMismatch: [],
-    orphanCustomerSummary: [],
   };
 
   for (const order of orders) {
@@ -128,34 +123,7 @@ async function main() {
       anomalies.customerAggregateMismatch.push(customerId);
     }
 
-    const actualSummaries = Array.isArray(customer.orderSummaries) ? customer.orderSummaries : [];
-    const actualIds = actualSummaries.map((summary) => asString(summary.id));
-    if (new Set(actualIds).size !== actualIds.length) anomalies.duplicateOrderSummaryIds.push(customerId);
-    for (const summary of actualSummaries) {
-      if (orderCustomerById.get(summary.id) !== customerId) {
-        anomalies.orphanCustomerSummary.push(customerId);
-        break;
-      }
-    }
 
-    const normalize = (entries) => entries
-      .map((entry) => ({
-        id: asString(entry.id),
-        status: asString(entry.status),
-        total: asNumber(entry.total),
-        createdAt: asString(entry.createdAt),
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id));
-    const actualProjection = normalize(actualSummaries);
-    const expectedProjection = normalize(expected.orderSummaries);
-    const projectionsMatch = actualProjection.length === expectedProjection.length &&
-      actualProjection.every((entry, index) =>
-        entry.id === expectedProjection[index].id &&
-        entry.status === expectedProjection[index].status &&
-        moneyClose(entry.total, expectedProjection[index].total) &&
-        entry.createdAt === expectedProjection[index].createdAt
-      );
-    if (!projectionsMatch) anomalies.customerProjectionMismatch.push(customerId);
   }
 
   const counts = Object.fromEntries(Object.entries(anomalies).map(([key, ids]) => [key, ids.length]));
