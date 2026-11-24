@@ -434,7 +434,8 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
  * - Orders in 'delivering', 'completed' or 'cancelled' are immutable (history/financial integrity).
  * - Item unit prices are always re-read from the products collection; client totals are ignored,
  *   so changing a product price never rewrites this order's recorded prices except through an explicit edit.
- * - The customer's materialized aggregates are recomputed in the same transaction.
+ * - The order document is canonical; scalar customer aggregates are unaffected because
+ *   only new/confirmed orders can be edited.
  */
 export async function updateOrder(id: string, input: UpdateOrderInput): Promise<Order> {
   if (!id) throw new Error('Mã đơn hàng không hợp lệ.');
