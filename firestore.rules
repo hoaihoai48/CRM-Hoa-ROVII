@@ -152,8 +152,6 @@ service cloud.firestore {
     // Orders are canonical. Rules validate order shape and lifecycle.
     // Scalar customer summaries are client-maintained in this Firebase Spark deployment;
     // Firestore Rules cannot prove cross-document arithmetic without a trusted backend.
-    match /orders/{orderId} { Rules enforce lifecycle and document invariants,
-    // but cannot prove cross-document arithmetic or reconstruct customer aggregates.
     match /orders/{orderId} {
       allow read: if isActiveMember();
       allow create: if isActiveMember()
