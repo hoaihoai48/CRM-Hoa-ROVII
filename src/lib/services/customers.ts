@@ -216,8 +216,8 @@ export async function createCustomer(input: CreateCustomerInput): Promise<Custom
 /**
  * Update editable customer profile fields (name, address, note).
  * Phone is the identity key baked into the document ID and order snapshots,
- * and totalOrders/totalSpent/lastOrderDate are maintained by order transactions
- * by order transactions — none of them can be changed through this function.
+ * and totalOrders/totalSpent/lastOrderDate are maintained by order transactions;
+ * none of them can be changed through this function.
  */
 export async function updateCustomer(id: string, input: UpdateCustomerInput): Promise<Customer> {
   if (!id) throw new Error('Mã khách hàng không hợp lệ.');
