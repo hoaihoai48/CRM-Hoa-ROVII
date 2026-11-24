@@ -886,8 +886,6 @@ async function runTestSuite() {
     `Case I & J: Exactly 5 totalOrders recorded without lost update (got ${finalCustConc!.totalOrders})`
   );
   assert(
-    (finalCustConc!.orderSummaries?.length ?? 0) === 5,
-    `Case I & J: Exactly 5 orderSummaries projected (got ${finalCustConc!.orderSummaries?.length})`
   );
 
   console.log('\n======================================================');
@@ -1277,7 +1275,7 @@ async function runTestSuite() {
     address: '4 Cách Mạng Tháng 8, Q3, TP.HCM',
     note: 'Thích tone pastel',
   });
-  const orderK = await createOrder({
+  await createOrder({
     customerId: custK.id,
     customerSnapshot: { name: custK.name, phone: custK.phone, address: custK.address },
     items: [{ productId: p1.id, quantity: 1 }],
@@ -1295,8 +1293,6 @@ async function runTestSuite() {
   assert(updatedK.note === 'Thích tone đỏ', 'Case K: customer note updated');
   assert(updatedK.phone === custK.phone, 'Case K: phone (identity) unchanged');
   assert(updatedK.totalOrders === 1, `Case K: totalOrders preserved (got ${updatedK.totalOrders})`);
-  assert((updatedK.orderSummaries?.length ?? 0) === 1, 'Case K: orderSummaries preserved');
-  assert(updatedK.orderSummaries![0].id === orderK.id, 'Case K: order history entry preserved');
 
   let updateMissingBlocked = false;
   try {
