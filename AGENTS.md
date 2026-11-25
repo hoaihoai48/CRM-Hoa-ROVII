@@ -50,3 +50,22 @@ Agent files are guidance, not proof that their named tools, hooks, or external p
 - Keep error messages useful to staff while avoiding leakage of secrets, tokens, or sensitive backend details.
 
 <!-- END:CRM-HOA-PROJECT-RULES -->
+
+
+## Mandatory agent memory files
+
+Before starting any repository task, read these three root-level files in this order:
+1. `GOAL.md` — durable product purpose, desired outcomes and priorities.
+2. `lessons.md` — prior mistakes, architectural constraints and delivery lessons.
+3. `HANDOFF.md` — current work, exact PR/branch/HEAD/CI state, blockers and next action.
+
+Then verify the live GitHub state. The files are durable context, not a replacement for checking the live main ref, PR heads, Actions, review threads and Preview status.
+
+After every meaningful milestone:
+- Update `HANDOFF.md` with exact commit SHA, PR and Actions links, PASS/FAIL/SKIPPED/NOT RUN states, review/Preview status, remaining risks and the next action.
+- Add reusable lessons and mistakes to `lessons.md`; include the date and the prevention rule.
+- Update `GOAL.md` only when the product goal, outcomes or priorities materially change.
+- Keep the three files mutually consistent. Do not write a success claim that is not supported by a completed exact-head result.
+- Report merged-to-main work separately from open-PR or branch-only work.
+
+Use the GitHub connector for this repository workflow when the owner invokes it. Do not switch to ChatGPT Work unless the owner explicitly requests that workflow.
