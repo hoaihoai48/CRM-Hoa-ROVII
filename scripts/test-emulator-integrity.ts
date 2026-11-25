@@ -1010,8 +1010,9 @@ async function runTestSuite() {
   await syncCustomerAggregates(scaleCustomer.id);
   const rawLegacyCustomer = await getDoc(doc(db, 'customers', scaleCustomer.id));
   assert(rawLegacyCustomer.exists(), 'Case N: legacy customer remains present');
+  const rawLegacyCustomerData = rawLegacyCustomer.data();
   assert(
-    Array.isArray(rawLegacyCustomer.data().orderSummaries) && rawLegacyCustomer.data().orderSummaries.length === 52,
+    Array.isArray(rawLegacyCustomerData?.orderSummaries) && rawLegacyCustomerData.orderSummaries.length === 52,
     'Case N: legacy embedded summaries are left untouched',
   );
 
