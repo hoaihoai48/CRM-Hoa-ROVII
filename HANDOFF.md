@@ -1,9 +1,9 @@
 # HANDOFF — CRM Hoa ROVII
 
-**Last verified:** 2026-11-25 21:20 (Asia/Ho_Chi_Minh)  
+**Last verified:** 2026-11-25 22:10 (Asia/Ho_Chi_Minh)  
 **Repository:** `hoaihoai48/CRM-Hoa-ROVII`  
 **Default branch:** `main`  
-**Main SHA at verification:** `2bf61618b8424e576115e6647cbef21aad635493`  
+**Main SHA at verification:** `cf398d1c73cd5b641084db1a19612f4b5147de2e`  
 **Canonical project memory:** [GOAL.md](GOAL.md) · [lessons.md](lessons.md) · [HANDOFF.md](HANDOFF.md)
 
 > This is the canonical live handoff. Re-fetch GitHub before acting: every SHA, PR and CI state below can change. Do not assume this file is current just because it exists.
@@ -24,7 +24,7 @@ The CRM has the main operational areas in place: Dashboard, Products, Customers,
 
 ### Main
 
-- Main currently points to `46d989cc0e638ff305e3f45cfdbf0670e6a70d86`.
+- Main currently points to `cf398d1c73cd5b641084db1a19612f4b5147de2e` (two docs-only commits after PR #28).
 - PR #27 merged this delivery-memory foundation as `46d989cc0e638ff305e3f45cfdbf0670e6a70d86`; the three canonical files and mandatory `AGENTS.md` instructions are now present on main.
 - The changes described below are not merged to main.
 - PR #25 is closed without merge; it was superseded by the simpler direction in PR #26.
@@ -33,8 +33,8 @@ The CRM has the main operational areas in place: Dashboard, Products, Customers,
 
 - URL: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/26
 - Branch: `refactor/simple-customer-order-source-2026-11-23`
-- Exact head at last verification: `ba3c4770ba168b5049b9f52ee30031f8ea5101e4`
-- State: open, Draft, mergeable reported true.
+- Exact head at last verification: `498733d00f99858f853e3f76819ffff9a7d25f2a`
+- State: open, Draft; latest metadata reports mergeable true.
 - Goal: use `orders/{orderId}` as the canonical customer history source; remove runtime dependence on embedded `customers.orderSummaries` and its bounded projection/refill/fingerprint protocol; retain scalar UI summaries.
 - Legacy `orderSummaries` data is tolerated and left untouched. No production migration is included.
 - This is a complexity reduction, **not** a fix for customer scalar aggregate tampering.
@@ -45,11 +45,11 @@ The CRM has the main operational areas in place: Dashboard, Products, Customers,
 - Exact head: `ba3c4770ba168b5049b9f52ee30031f8ea5101e4`
 - Lint: **PASS**.
 - TypeScript: **PASS**. The prior TS2532 issue at `scripts/test-emulator-integrity.ts:1014` was fixed by narrowing one snapshot value before reading its optional data.
-- Firebase Emulator integration: **FAIL** at `scripts/test-emulator-integrity.ts:437`.
-- Failure: test expects an active member's valid-shaped customer create containing scalar aggregates to be denied. Current Rules intentionally permit an active internal member to write a valid customer record; the assertion contradicts the explicitly documented Spark/trusted-staff limitation at test lines 422–426. This is a stale test contract, not proof that order creation/status/history failed.
-- Playwright E2E: **SKIPPED** because the Emulator stage failed.
-- Production build: **SKIPPED** because the Emulator stage failed.
-- Vercel Preview status: success on this exact head (does not replace Actions gates).
+- Firebase Emulator integration on the prior head: **FAIL** at `scripts/test-emulator-integrity.ts:437`; that head has since been superseded.
+- Corrective commit `498733d00f99858f853e3f76819ffff9a7d25f2a` changes the stale assertion to explicitly document that valid-shaped customer scalar aggregates are client-maintained under the Spark trusted-staff model. This corrects the test contract; it has **NOT BEEN RUN**.
+- Playwright E2E on the prior head: **SKIPPED** because the Emulator stage failed; new head: **NOT RUN / not yet reported**.
+- Production build on the prior head: **SKIPPED** because the Emulator stage failed; new head: **NOT RUN / not yet reported**.
+- Vercel Preview: a new deployment was reported as Building on 2026-11-25 22:39 local time; not yet confirmed Ready.
 - Review threads: none were returned on PR #26 at last check; a complete code/security review has not been recorded.
 
 ## Security backlog
@@ -75,13 +75,10 @@ Do not start these unrelated suites while PR #26 is blocked on its current requi
 
 ## Next actions — in order
 
-1. Re-fetch live main, PR #26 head, all recent workflow runs, review threads and Vercel status. Stop if the head advanced.
-2. Inspect the failing assertion at `scripts/test-emulator-integrity.ts:428–437` and the corresponding Rules contract.
-3. Rewrite the test to assert what the current architecture actually guarantees; do not weaken Firestore Rules or pretend scalar arithmetic is protected. Keep the trusted-internal-staff limitation explicit.
-4. Run the narrow test against the isolated `demo-crm-hoa-rovii` Auth/Firestore Emulator before pushing. If local checkout/Emulator access is unavailable, record BLOCKED and do not push a speculative commit.
-5. Only after local verification, push one cohesive fix and wait for the exact-head Actions run to finish.
-6. Require Lint, TypeScript, Emulator, Playwright and production build to pass; complete code/security review; verify Preview as applicable. Keep PR #26 Draft until all gates pass.
-7. After PR #26 is safely resolved, address F-03, F-04 and F-05 in separate small scopes, and expand missing product/customer/staff/settings E2E coverage.
+1. Owner has explicitly requested implementation-first work and no proactive test runs. Do not initiate manual tests/CI; distinguish automatic workflow results from tests deliberately run.
+2. Corrected the stale Spark trust-boundary assertion in `scripts/test-emulator-integrity.ts`; current head is `498733d00f99858f853e3f76819ffff9a7d25f2a`.
+3. Keep PR #26 Draft until the owner uses the app and any runtime defects are addressed, or explicitly asks to resume verification/review. Do not merge an unverified code change merely to close the PR.
+4. After PR #26 is resolved, address F-03, F-04 and F-05 in separate small scopes, and improve daily product/customer/staff/settings workflows.
 
 ## Delivery and safety rules
 
