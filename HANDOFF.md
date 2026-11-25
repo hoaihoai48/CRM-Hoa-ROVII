@@ -1,9 +1,9 @@
 # HANDOFF — CRM Hoa ROVII
 
-**Last verified:** 2026-11-25 21:18 (Asia/Ho_Chi_Minh)  
+**Last verified:** 2026-11-25 21:20 (Asia/Ho_Chi_Minh)  
 **Repository:** `hoaihoai48/CRM-Hoa-ROVII`  
 **Default branch:** `main`  
-**Main SHA at verification:** `8f2d0d3695429ebdd47733caca1b51b80067f582`  
+**Main SHA at verification:** `46d989cc0e638ff305e3f45cfdbf0670e6a70d86`  
 **Canonical project memory:** [GOAL.md](GOAL.md) · [lessons.md](lessons.md) · [HANDOFF.md](HANDOFF.md)
 
 > This is the canonical live handoff. Re-fetch GitHub before acting: every SHA, PR and CI state below can change. Do not assume this file is current just because it exists.
@@ -18,7 +18,8 @@ The CRM has the main operational areas in place: Dashboard, Products, Customers,
 
 ### Main
 
-- Main currently points to `8f2d0d3695429ebdd47733caca1b51b80067f582`.
+- Main currently points to `46d989cc0e638ff305e3f45cfdbf0670e6a70d86`.
+- PR #27 merged this delivery-memory foundation as `46d989cc0e638ff305e3f45cfdbf0670e6a70d86`; the three canonical files and mandatory `AGENTS.md` instructions are now present on main.
 - The changes described below are not merged to main.
 - PR #25 is closed without merge; it was superseded by the simpler direction in PR #26.
 
@@ -91,3 +92,13 @@ Do not start these unrelated suites while PR #26 is blocked on its current requi
 ## Previous handoff documents
 
 The repository also contains older `docs/automation/CRM_HOA_ROVII_CURRENT_STATE.md` and `docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK.md`. They are historical/supporting references and may contain stale status. This root-level HANDOFF plus live GitHub state is the first source to consult.
+
+## Delivery update — 2026-11-25 (canonical agent memory files merged)
+
+- PR #27: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/27 — squash-merged as `46d989cc0e638ff305e3f45cfdbf0670e6a70d86`.
+- Added root-level `GOAL.md`, `lessons.md` and `HANDOFF.md`; updated `AGENTS.md` to require every agent to read all three before work and maintain them after meaningful milestones.
+- Verified all four files exist on main at merge commit `46d989cc0e638ff305e3f45cfdbf0670e6a70d86`.
+- Diff was documentation/instructions only: four Markdown files, no application code, Firebase Rules, configuration or tests changed.
+- Actions did not run for the docs-only PR; no CI PASS is claimed. Vercel Preview was pending but is not a required gate for this docs-only change.
+- The new HANDOFF records PR #26 as open Draft with Emulator failure on exact head `ba3c4770ba168b5049b9f52ee30031f8ea5101e4`; PR #25 is closed unmerged. These remain separate from the merged documentation change.
+- No production data, deployment, billing, Firebase configuration or migration changed.
