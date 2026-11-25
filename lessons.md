@@ -62,3 +62,10 @@ When a new lesson is added:
 3. State the rule that prevents recurrence.
 4. Link the relevant PR, commit or Actions run when available.
 5. If the lesson changes future agent behavior, also update `AGENTS.md` or the relevant delivery instruction; do not rely on this file alone for mandatory workflow rules.
+
+
+## 2026-11-25 — Follow the owner's current implementation-first operating direction
+
+- The owner has asked to prioritize finishing implementation and not proactively run Playwright or other test suites; report runtime defects when the owner encounters them during normal use.
+- Avoid spending time on repeated manual test/CI runs unless the owner asks. Repository pushes may still trigger configured GitHub Actions automatically; never claim unrun checks passed.
+- Keep untested changes clearly identified and preserve production, billing and data-safety boundaries.
