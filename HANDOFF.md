@@ -3,10 +3,16 @@
 **Last verified:** 2026-11-25 21:20 (Asia/Ho_Chi_Minh)  
 **Repository:** `hoaihoai48/CRM-Hoa-ROVII`  
 **Default branch:** `main`  
-**Main SHA at verification:** `46d989cc0e638ff305e3f45cfdbf0670e6a70d86`  
+**Main SHA at verification:** `2bf61618b8424e576115e6647cbef21aad635493`  
 **Canonical project memory:** [GOAL.md](GOAL.md) · [lessons.md](lessons.md) · [HANDOFF.md](HANDOFF.md)
 
 > This is the canonical live handoff. Re-fetch GitHub before acting: every SHA, PR and CI state below can change. Do not assume this file is current just because it exists.
+
+## Current owner operating direction — 2026-11-25
+
+- Owner has asked to prioritize completing implementation and not proactively run Playwright or other test suites; report runtime defects when the owner encounters them during use.
+- Do not spend time repeatedly running CI/tests unless the owner asks. GitHub Actions may still start automatically on code pushes according to workflow triggers; do not describe an unexecuted test as passed.
+- Continue to preserve production/billing safety boundaries. An untested change must not be described as verified; keep merge/release risk explicit.
 
 ## Executive status
 
