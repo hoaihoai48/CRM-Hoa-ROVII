@@ -205,3 +205,10 @@ When a new lesson is added:
 
 - Firebase Auth proves who signed in; the `users/{uid}` membership is the CRM profile and role record. Use membership `name` and `email` for staff display and order audit actor attribution, with Firebase Auth fields only as a legacy fallback.
 - This is especially important for linked Google identities: the Google profile display name may differ from the name the shop uses operationally.
+
+
+## 2026-11-26 — Preserve order semantics across local time and product lifecycle changes
+
+- Store delivery timestamps as ISO UTC, but convert them to/from the browser's local wall-clock value for `datetime-local` inputs. Slicing a UTC ISO string directly shifts delivery time outside UTC.
+- Deactivating a catalog product must block new orders, not silently reprice or make an already accepted order impossible to edit. Existing orders may retain/reduce that product at the original snapshot price; they may not add or increase it.
+- Keep service-side item-count bounds aligned with Firestore Rules and guard delayed customer prefill so it cannot overwrite a phone identity entered by the operator.
