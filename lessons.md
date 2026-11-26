@@ -145,3 +145,10 @@ When a new lesson is added:
 - Treat canonical `orders/{orderId}` documents as the durable order history and reconciliation evidence; customer scalar aggregates are display/cache values.
 - Do not add a restrictive profile-only customer rule unless every valid create/edit/status/cancel transaction is preserved and the rule can actually prove the intended invariant. A superficial restriction is worse than a clearly documented accepted risk.
 - Continue implementation-first delivery: no manual test runs or incremental reports unless requested; fix concrete defects observed during real use.
+
+## 2026-11-26 — Keep order customer identity bound to the selected phone
+
+- The create-order UI previously allowed editing the phone after selecting a saved customer while retaining that customer's document ID. This could attach an order whose phone snapshot belonged to another person to the originally selected customer history and aggregates.
+- Clear the selected customer and the prefilled name/address when the identity phone changes; let the operator select the newly matched customer or enter a new profile.
+- Enforce the same invariant inside `createOrder()`: an explicitly selected customer must still exist and its normalized phone must match the order snapshot before any writes are committed.
+- UI guards are not sufficient by themselves; validate identity at the Firestore transaction boundary as well.
