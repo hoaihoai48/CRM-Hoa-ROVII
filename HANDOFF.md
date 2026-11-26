@@ -1,12 +1,14 @@
 # CURRENT HANDOFF — updated 2026-11-26 (Spark-first operating decision)
 
 - Repository: `hoaihoai48/CRM-Hoa-ROVII`; default branch: `main`.
+- Live `main`: `eb1bf6a91e698bb519c7b764cf21f10e005a34da` (includes PRs #36 and #37).
 - Live `main`: `cf42153c4dd3af62fb6cc46b7f9f0ca0521c5144` (includes PR #36).
 - Main includes the order/customer identity fix from [PR #35](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/35), squash merge `550c9c487688a7d7f797a2d040d93fc71c4efa12`.
 - PR #33 ([Admin catalog and staff workflows](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/33)) is **MERGED**. It adds Playwright scenarios for product create/edit/deactivation, customer create/search/profile update, staff membership/provisioning, store settings and staff permission boundaries. The secondary Firebase Auth instance now connects to the configured Auth Emulator.
 - PR #34 ([Spark-first handoff and audit alignment](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/34)) is **MERGED**; it records the Spark-only decision in `HANDOFF.md`, `lessons.md`, and the current Firebase security audit.
 - PR #35 fixes customer identity mismatch during order creation: changing the selected customer's phone clears the old selection/profile, and `createOrder()` validates the selected record's normalized phone before any write. Its E2E regression case is committed but was not run.
-- PR #36 ([avoid duplicate product catalog reads](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/36)) is **MERGED** as `cf42153c4dd3af62fb6cc46b7f9f0ca0521c5144`: the products page now performs one collection read on mount and ignores stale async responses after retry/unmount. No open PRs remain.
+- PR #36 ([avoid duplicate product catalog reads](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/36)) is **MERGED** as `cf42153c4dd3af62fb6cc46b7f9f0ca0521c5144`: the products page now performs one collection read on mount and ignores stale async responses after retry/unmount.
+- PR #37 ([prevent stale detail data after route changes](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/37)) is **MERGED** as `eb1bf6a91e698bb519c7b764cf21f10e005a34da`: customer/order detail fetches and customer-history pagination now use request identities so responses for a previous route cannot overwrite the currently opened record. No open PRs remain.
 - F-01 customer aggregate integrity is **OPEN / ACCEPTED RESIDUAL RISK** under the approved internal-team + Firebase Spark model. Customer scalar aggregates remain client-maintained; Firestore Rules cannot independently prove all client-computed cross-document arithmetic or product-price totals. Canonical `orders/{orderId}` documents remain the evidence for reconciliation. Do not claim authoritative financial integrity.
 - F-02 Storage authorization: **RESOLVED** (PR #22).
 - F-03 product image payload bounds: **RESOLVED** (PR #29).
