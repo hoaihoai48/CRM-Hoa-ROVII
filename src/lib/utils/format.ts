@@ -27,6 +27,18 @@ export function formatDate(dateString: string): string {
   }
 }
 
+/**
+ * Convert a stored ISO timestamp into the local wall-clock value expected by
+ * <input type="datetime-local">. Slicing a UTC ISO string directly shifts time outside UTC.
+ */
+export function toDateTimeLocalInput(value?: string | null): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localDate.toISOString().slice(0, 16);
+}
+
 export function formatDateShort(dateString: string): string {
   try {
     const date = new Date(dateString);
