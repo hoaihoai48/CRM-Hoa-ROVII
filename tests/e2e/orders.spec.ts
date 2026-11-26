@@ -185,9 +185,10 @@ test('can edit an existing order after its product is deactivated without repric
 
   await page.getByRole('button', { name: 'Sửa đơn hàng' }).click();
   await expect(page.getByText(/Đã ngừng bán/)).toBeVisible();
-  const inactiveRow = page.getByText(productName, { exact: true }).last().locator('xpath=../..');
-  await expect(inactiveRow.locator('button').nth(1)).toBeDisabled();
-  await inactiveRow.locator('button').nth(0).click();
+  const increaseButton = page.getByRole('button', { name: `Tăng số lượng ${productName}` });
+  const decreaseButton = page.getByRole('button', { name: `Giảm số lượng ${productName}` });
+  await expect(increaseButton).toBeDisabled();
+  await decreaseButton.click();
   await page.locator('#editDeliveryFee').fill('15000');
   await page.getByRole('button', { name: 'Lưu thay đổi' }).click();
   await expect(page.getByText('Đã lưu thay đổi đơn hàng.')).toBeVisible();

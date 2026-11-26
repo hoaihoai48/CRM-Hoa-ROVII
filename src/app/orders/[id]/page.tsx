@@ -319,6 +319,7 @@ function OrderDetailContentForId({ orderId }: { orderId: string }) {
                       type="button"
                       onClick={() => updateEditQuantity(product.id, -1)}
                       disabled={qty === 0 || isSaving}
+                      aria-label={`Giảm số lượng ${product.name}`}
                       className="w-7 h-7 rounded-md flex items-center justify-center text-stone-600 hover:bg-stone-100 disabled:opacity-30 cursor-pointer"
                     >
                       −
