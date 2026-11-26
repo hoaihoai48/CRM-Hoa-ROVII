@@ -32,7 +32,7 @@ The CRM's operational areas are Dashboard, Products, Customers, Orders, Staff an
 
 - URL: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/26
 - Branch: `refactor/simple-customer-order-source-2026-11-23`
-- Exact current head: `df3fdb9a4d54a2b2d41d966ad72e1a2f2090eb13`
+- Exact current head: `61f2db1f217991589d9f2076de40a843e1fe70a9`
 - State: open, Draft, mergeable; branch is synchronized with main (0 commits behind).
 - Goal: use `orders/{orderId}` as the only canonical customer history source; remove runtime dependence on embedded `customers.orderSummaries` and its bounded projection/refill/fingerprint protocol; retain the three scalar UI summaries.
 - Legacy `orderSummaries` values are tolerated and left untouched. No production migration is included.
