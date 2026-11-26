@@ -152,6 +152,9 @@ test.describe('Admin daily workflows', () => {
     await page.goto('/staff');
     const row = page.getByRole('row').filter({ hasText: fixture.email });
     await expect(row).toBeVisible();
+    await page.getByRole('button', { name: 'Làm mới danh sách nhân viên' }).click();
+    await expect(page.getByRole('button', { name: 'Làm mới danh sách nhân viên' })).toBeEnabled();
+    await expect(row).toBeVisible();
     await row.getByRole('button', { name: 'Lên admin' }).click();
     await expect(row.getByText('admin', { exact: true })).toBeVisible();
 
@@ -214,6 +217,10 @@ test.describe('Admin daily workflows', () => {
     expect(seed.ok()).toBeTruthy();
 
     await page.goto('/settings');
+    await expect(page.getByLabel('Tên tiệm hoa')).toHaveValue('ROVII E2E Seed');
+    await page.getByRole('button', { name: 'Làm mới cài đặt' }).click();
+    await expect(page.getByRole('button', { name: 'Làm mới cài đặt' })).toBeEnabled();
+    await expect(page.getByLabel('Tên tiệm hoa')).toHaveValue('ROVII E2E Seed');
     await page.getByLabel('Tên tiệm hoa').fill('Tiệm Hoa ROVII E2E');
     await page.getByLabel('Số điện thoại hotline').fill('0912345678');
     await page.getByLabel('Link Zalo OA / Zalo cá nhân của tiệm').fill('https://zalo.me/0912345678');
