@@ -20,7 +20,7 @@ V1 is complete only when the supported daily workflow works end to end across th
 | Step | Scope | Status | Completion gate |
 |---|---|---|---|
 | 1 | Baseline, scope and project inventory | **COMPLETE** | V1 routes, service boundaries, Rules and existing coverage have been mapped below. |
-| 2 | Authentication, membership and access | **IN PROGRESS** | Resolve the Google sign-in vs email/password-only staff provisioning mismatch; verify role gates and membership recovery. |
+| 2 | Authentication, membership and access | **IMPLEMENTED IN PR #41** | Existing Firebase identities can be linked by an active admin after verifying the UID/email shown to the signed-in employee; membership creation remains admin-only. Await delivery outcome before marking complete. |
 | 3 | Product catalog | PENDING | Admin product create/edit/activate/deactivate, image handling, catalog selection and error/retry states work together. |
 | 4 | Customer management | PENDING | Create/search/profile/history and phone identity are consistent; canonical order history is used. |
 | 5 | Order lifecycle | PENDING | Create, totals, snapshots, edits allowed by lifecycle, transitions, cancellation, history and print are coherent. |
@@ -71,7 +71,7 @@ Resolved items: F-02 Storage authorization (PR #22), F-03 product image payload 
 
 ### Prioritized findings from the baseline audit
 
-1. **Step 2 — Auth onboarding mismatch:** the login page offers Google sign-in, but the in-app staff provisioning flow creates only email/password accounts. A Google-authenticated identity without a pre-created `users/{uid}` membership is correctly blocked by AppShell, but admins have no in-app way to attach that existing Google identity. Resolve the supported onboarding contract before calling authentication complete; do not weaken membership Rules or auto-grant access to any authenticated user.
+1. **Step 2 — Auth onboarding mismatch addressed in PR #41:** an authenticated but unprovisioned user can now provide their UID/email to an admin; the admin can create a membership for that existing Auth UID. The service uses a create-only transaction, and Firestore Rules still require an active admin. Admin must verify UID/email with the employee; the client cannot independently query Firebase Auth user records.
 2. **Step 3/4/5 — Dataset-size trade-off:** orders/customers search and order-entry customer/product selection can read full collections. This is explicitly documented as a small-CRM constraint; keep it unless measured operational volume makes it a real problem. Do not add paid infrastructure.
 3. **Step 6 — Dashboard semantics:** the service has bounded date and recent-order queries; verify timezone boundaries and completed-only revenue during the dashboard step.
 4. **Step 7 — UX/reliability:** staff list/settings and several form loaders need a cross-route review for retry/unmount/duplicate-submit behavior. Do not broaden this into unrelated refactors.

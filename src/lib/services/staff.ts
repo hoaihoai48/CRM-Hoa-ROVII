@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, runTransaction, setDoc, updateDoc } from 'firebase/firestore';
 import { connectAuthEmulator, createUserWithEmailAndPassword, deleteUser, getAuth, signOut, updateProfile } from 'firebase/auth';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { db } from '@/lib/firebase/config';
@@ -13,6 +13,13 @@ export interface CreateStaffInput {
   name: string;
   email: string;
   password: string;
+  role: UserRole;
+}
+
+export interface LinkExistingStaffInput {
+  uid: string;
+  name: string;
+  email: string;
   role: UserRole;
 }
 
@@ -111,6 +118,44 @@ export async function createStaffAccount(input: CreateStaffInput): Promise<Staff
     await signOut(secondaryAuth);
   }
   return { id: credential.user.uid, ...membershipData };
+}
+
+/** Admin-only: attach an already authenticated identity (for example Google sign-in) to CRM.
+ * The admin must verify the UID and email together with the employee before granting access.
+ * This intentionally creates only the Firestore membership; it does not create or alter an Auth account.
+ */
+export async function linkExistingStaffAccount(input: LinkExistingStaffInput): Promise<StaffListItem> {
+  const uid = input.uid.trim();
+  const name = input.name.trim();
+  const email = input.email.trim().toLowerCase();
+  if (!uid || uid.length > 128) throw new Error('UID Firebase Auth không hợp lệ.');
+  if (!name || name.length > 120) throw new Error('Tên nhân viên phải có từ 1 đến 120 ký tự.');
+  if (!email || email.length > 254 || !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)) {
+    throw new Error('Email tài khoản hiện có không hợp lệ.');
+  }
+  if (input.role !== 'admin' && input.role !== 'staff') throw new Error('Vai trò không hợp lệ.');
+
+  const membershipRef = doc(db, 'users', uid);
+  const now = new Date().toISOString();
+  const membershipData = {
+    uid,
+    name,
+    email,
+    role: input.role,
+    status: 'active' as const,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await runTransaction(db, async (transaction) => {
+    const existing = await transaction.get(membershipRef);
+    if (existing.exists()) {
+      throw new Error('UID này đã có hồ sơ nhân viên. Hãy cập nhật hồ sơ hiện có thay vì liên kết lại.');
+    }
+    transaction.set(membershipRef, membershipData);
+  });
+
+  return { id: uid, ...membershipData };
 }
 
 /** Admin-only: change role or activate/deactivate. No deletes — deactivate instead. */
