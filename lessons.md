@@ -173,3 +173,14 @@ When a new lesson is added:
 - When an effect needs to start an async Firestore load through a helper that sets loading/error state, defer invocation with a microtask and guard it with an effect-local cancellation flag.
 - Cleanup must cancel a not-yet-started invocation and invalidate any request already started. This satisfies the hooks lint rule without losing stale-response protection.
 - A merged change that triggers CI must be treated as a delivery defect even when CI was not explicitly requested to be run; inspect the automatic workflow result and fix regressions caused by the patch.
+
+
+## 2026-11-26 — Link existing Firebase identities without weakening membership authorization
+
+- Google sign-in was available on the login page, but the staff UI could provision only new email/password Auth accounts. An existing Google identity with no `users/{uid}` membership was blocked correctly, yet there was no in-app admin path to authorize it.
+- Keep authentication and CRM authorization separate: signing in never grants CRM access automatically. Show the authenticated user's own UID/email on the blocked screen; require an active admin to verify both with the employee and create the membership.
+- Use a create-only Firestore transaction for linking. Do not overwrite an existing membership, trust a client-provided role, or weaken the `users/{uid}` create Rule. The existing Rules remain the authorization boundary.
+- The client SDK cannot independently prove that an arbitrary UID belongs to the supplied email; this remains an explicit admin verification step, not an automated identity assertion.
+
+
+- After an admin grants the membership, an authenticated employee should be able to retry membership resolution in the same session instead of being forced to sign out and back in. The retry invalidates the cached membership attempt and re-reads the current UID's membership.

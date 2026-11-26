@@ -1347,6 +1347,21 @@ async function runTestSuite() {
     staffListBlocked = true;
   }
   assert(staffListBlocked, 'Case M: staff must not list memberships');
+  let staffMembershipCreateBlocked = false;
+  try {
+    await setDoc(doc(db, 'users', 'STAFF-CANNOT-CREATE-MEMBERSHIP'), {
+      uid: 'STAFF-CANNOT-CREATE-MEMBERSHIP',
+      email: 'forged-staff@example.test',
+      name: 'Forged Staff',
+      role: 'staff',
+      status: 'active',
+      createdAt: nowM,
+      updatedAt: nowM,
+    });
+  } catch {
+    staffMembershipCreateBlocked = true;
+  }
+  assert(staffMembershipCreateBlocked, 'Case M: staff cannot create a membership for another UID');
   let staffSelfEscalateBlocked = false;
   try {
     await updateDoc(doc(db, 'users', mStaffCred.user.uid), { uid: mStaffCred.user.uid, role: 'admin', updatedAt: nowM });

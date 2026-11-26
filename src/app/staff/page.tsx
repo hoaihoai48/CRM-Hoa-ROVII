@@ -8,7 +8,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { PageHeader, EmptyState } from '@/components/common/Cards';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
-import { createStaffAccount, listStaff, updateStaffMembership, StaffListItem } from '@/lib/services';
+import { createStaffAccount, linkExistingStaffAccount, listStaff, updateStaffMembership, StaffListItem } from '@/lib/services';
 import { UserRole } from '@/types';
 
 function StaffPageContent() {
@@ -19,6 +19,13 @@ function StaffPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showLinkForm, setShowLinkForm] = useState(false);
+  const [existingUid, setExistingUid] = useState('');
+  const [existingEmail, setExistingEmail] = useState('');
+  const [existingName, setExistingName] = useState('');
+  const [existingRole, setExistingRole] = useState<UserRole>('staff');
+  const [isLinking, setIsLinking] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
 
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
@@ -84,6 +91,33 @@ function StaffPageContent() {
     }
   };
 
+  const handleLinkExistingAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isLinking) return;
+    setLinkError(null);
+    setActionMessage(null);
+    setIsLinking(true);
+    try {
+      const linked = await linkExistingStaffAccount({
+        uid: existingUid,
+        email: existingEmail,
+        name: existingName,
+        role: existingRole,
+      });
+      setStaff((prev) => [linked, ...prev.filter((item) => item.id !== linked.id)]);
+      setExistingUid('');
+      setExistingEmail('');
+      setExistingName('');
+      setExistingRole('staff');
+      setShowLinkForm(false);
+      setActionMessage(`Đã liên kết tài khoản ${linked.email} (${linked.role}).`);
+    } catch (error) {
+      setLinkError(error instanceof Error ? error.message : 'Không thể liên kết tài khoản hiện có.');
+    } finally {
+      setIsLinking(false);
+    }
+  };
+
   const handleMembershipChange = async (
     item: StaffListItem,
     changes: { role?: UserRole; status?: 'active' | 'inactive' }
@@ -113,14 +147,23 @@ function StaffPageContent() {
         subtitle="Tạo tài khoản đăng nhập và phân quyền nội bộ (chỉ admin)"
         backHref="/dashboard"
         action={
-          <button
-            type="button"
-            onClick={() => { setCreateError(null); setShowCreateForm((shown) => !shown); }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold shadow-xs transition-colors cursor-pointer"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Thêm nhân viên</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { setLinkError(null); setShowLinkForm((shown) => !shown); }}
+              className="inline-flex items-center gap-1.5 px-3 py-2 border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 rounded-lg text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
+            >
+              <span>Liên kết tài khoản đã có</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setCreateError(null); setShowCreateForm((shown) => !shown); }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold shadow-xs transition-colors cursor-pointer"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Thêm nhân viên</span>
+            </button>
+          </div>
         }
       />
 
@@ -179,6 +222,57 @@ function StaffPageContent() {
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setShowCreateForm(false)} className="rounded-lg border border-stone-200 px-4 py-2 text-xs font-semibold cursor-pointer">Hủy</button>
             <Button type="submit" variant="primary" size="sm" isLoading={isCreating}>Tạo tài khoản</Button>
+          </div>
+        </form>
+      )}
+
+      {showLinkForm && (
+        <form onSubmit={handleLinkExistingAccount} className="mb-6 rounded-xl border border-stone-200 bg-white p-4 sm:p-6 shadow-2xs space-y-4">
+          <h2 className="font-bold text-stone-900">Liên kết tài khoản Firebase đã đăng ký</h2>
+          <p className="text-xs text-stone-500">Dùng cho nhân viên đã đăng nhập bằng Google hoặc phương thức Firebase khác. Nhân viên cần gửi UID và email hiển thị trên màn hình từ chối quyền; admin phải xác minh hai thông tin trước khi cấp quyền. Không nhập mật khẩu tại đây.</p>
+          {linkError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-xs text-red-700">{linkError}</p>}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Input
+              label="UID Firebase Auth"
+              required
+              value={existingUid}
+              onChange={(e) => setExistingUid(e.target.value)}
+              placeholder="UID do nhân viên cung cấp"
+              disabled={isLinking}
+            />
+            <Input
+              label="Email tài khoản hiện có"
+              type="email"
+              required
+              value={existingEmail}
+              onChange={(e) => setExistingEmail(e.target.value)}
+              placeholder="nhanvien@example.com"
+              disabled={isLinking}
+            />
+            <Input
+              label="Tên hiển thị nhân viên"
+              required
+              value={existingName}
+              onChange={(e) => setExistingName(e.target.value)}
+              placeholder="Nguyễn Văn A"
+              disabled={isLinking}
+            />
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 mb-1.5">Vai trò cho tài khoản hiện có</label>
+              <select
+                value={existingRole}
+                onChange={(e) => setExistingRole(e.target.value as UserRole)}
+                disabled={isLinking}
+                className="block w-full rounded-lg border border-stone-300 text-sm text-stone-900 bg-white min-h-[42px] px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="staff">Nhân viên (staff)</option>
+                <option value="admin">Quản trị viên (admin)</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setShowLinkForm(false)} className="rounded-lg border border-stone-200 px-4 py-2 text-xs font-semibold cursor-pointer">Hủy</button>
+            <Button type="submit" variant="primary" size="sm" isLoading={isLinking}>Cấp quyền cho tài khoản</Button>
           </div>
         </form>
       )}

@@ -137,7 +137,7 @@ test.describe('Admin daily workflows', () => {
     expect(customer.fields.note.stringValue).toContain('Khách VIP');
   });
 
-  test('manages staff membership and provisions new staff in the Auth Emulator', async ({ page }) => {
+  test('manages memberships, provisions email/password staff and links an existing Firebase Auth identity', async ({ page }) => {
     await signInAsActiveAdmin(page);
 
     const fixture = await createAuthUser(page, 'rovii-staff-fixture');
@@ -169,6 +169,22 @@ test.describe('Admin daily workflows', () => {
     await page.getByRole('button', { name: 'Tạo tài khoản' }).click();
     await expect(page.getByRole('status').getByText(newStaffEmail)).toBeVisible();
     await expect(page.getByRole('row').filter({ hasText: newStaffEmail })).toBeVisible();
+
+    const existingAuthAccount = await createAuthUser(page, 'rovii-existing-auth');
+    await page.getByRole('button', { name: 'Liên kết tài khoản đã có' }).click();
+    await page.getByLabel('UID Firebase Auth').fill(existingAuthAccount.uid);
+    await page.getByLabel('Email tài khoản hiện có').fill(existingAuthAccount.email);
+    await page.getByLabel('Tên hiển thị nhân viên').fill('Nhân viên Auth E2E');
+    await page.locator('form').last().locator('select').selectOption('staff');
+    await page.getByRole('button', { name: 'Cấp quyền cho tài khoản' }).click();
+    await expect(page.getByRole('status').getByText(existingAuthAccount.email)).toBeVisible();
+
+    const linkedMembership = await readFirestoreDocument(page, 'users', existingAuthAccount.uid);
+    expect(linkedMembership.fields.uid.stringValue).toBe(existingAuthAccount.uid);
+    expect(linkedMembership.fields.email.stringValue).toBe(existingAuthAccount.email);
+    expect(linkedMembership.fields.name.stringValue).toBe('Nhân viên Auth E2E');
+    expect(linkedMembership.fields.role.stringValue).toBe('staff');
+    expect(linkedMembership.fields.status.stringValue).toBe('active');
   });
 
   test('loads and saves store settings for an active admin', async ({ page }) => {
@@ -204,6 +220,25 @@ test.describe('Admin daily workflows', () => {
     expect(settings.fields.phone.stringValue).toBe('0912345678');
     expect(settings.fields.address.stringValue).toBe('25 Đường Hoa, Nha Trang');
     expect(settings.fields.zaloUrl.stringValue).toBe('https://zalo.me/0912345678');
+  });
+
+  test('shows authenticated account UID and email when membership is not provisioned', async ({ page }) => {
+    const account = await createAuthUser(page, 'rovii-unprovisioned-login');
+
+    await page.goto('/login');
+    await page.getByLabel('Email').fill(account.email);
+    await page.getByLabel('Mật khẩu').fill('RoviiE2E-Synthetic-2026!');
+    await page.getByRole('button', { name: 'Đăng nhập với Email' }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+
+    await expect(page.getByText('UID Firebase Auth:', { exact: false })).toBeVisible();
+    await expect(page.getByText(account.uid, { exact: true })).toBeVisible();
+    await expect(page.getByText(account.email, { exact: false })).toBeVisible();
+
+    // Simulate the admin granting membership after verifying the employee's UID/email.
+    await seedMembership(page, account.uid, account.email, 'staff', 'Nhân viên vừa được cấp quyền');
+    await page.getByRole('button', { name: 'Kiểm tra lại quyền truy cập' }).click();
+    await expect(page.getByRole('heading', { name: 'Tổng quan' })).toBeVisible();
   });
 
   test('keeps admin-only staff controls unavailable to a regular staff member', async ({ page }) => {

@@ -61,7 +61,16 @@ export function AppShell({ children }: AppShellProps) {
       <div className="max-w-md rounded-2xl border border-stone-200 bg-white p-6 text-center shadow-sm">
         <h1 className="text-lg font-bold text-stone-900">Tài khoản chưa được cấp quyền</h1>
         <p className="mt-2 text-sm text-stone-600">Tài khoản đã đăng nhập nhưng chưa có hồ sơ nhân viên hợp lệ hoặc đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.</p>
-        <button type="button" onClick={() => logout().then(() => router.replace('/login'))} className="mt-5 rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Đăng xuất</button>
+        <div className="mt-4 rounded-lg bg-stone-50 p-3 text-left text-xs text-stone-600">
+          <p><strong>Email đăng nhập:</strong> {user.email || user.phoneNumber || 'Không có email'}</p>
+          <p className="mt-2"><strong>UID Firebase Auth:</strong></p>
+          <code className="mt-1 block select-all break-all rounded bg-white p-2 text-[11px] text-stone-800">{user.uid}</code>
+          <p className="mt-2">Gửi email và UID này cho quản trị viên. Admin cần xác minh hai thông tin với bạn trước khi cấp quyền CRM.</p>
+        </div>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <button type="button" onClick={retryMembership} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">Kiểm tra lại quyền truy cập</button>
+          <button type="button" onClick={() => logout().then(() => router.replace('/login'))} className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Đăng xuất</button>
+        </div>
       </div>
     </div>
   );
