@@ -190,6 +190,10 @@ export async function updateProduct(id: string, changes: Partial<Omit<Product, '
     updateData.note = changes.note?.trim() || null;
   }
 
+  if (Object.keys(updateData).length === 0) {
+    return mapDocToProduct(docSnap.id, docSnap.data());
+  }
+
   await updateDoc(docRef, updateData);
 
   const updatedSnap = await getDoc(docRef);

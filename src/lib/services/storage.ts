@@ -3,14 +3,14 @@ import { storage } from '@/lib/firebase/config';
 import { MAX_PRODUCT_IMAGE_DATA_URL_LENGTH } from './products';
 
 /**
- * Tự động nén ảnh trên trình duyệt về kích thước tối ưu cho web (Full HD / max 1200px, JPEG chất lượng 80%)
+ * Tự động nén ảnh trên trình duyệt về kích thước tối ưu cho web (tối đa 1000px, JPEG chất lượng linh hoạt)
  * và chuyển thành DataURL để lưu trữ trong Firestore khi Storage chưa được bật
  * hoặc tải lên Storage khi có cấu hình.
  * 
  * Ưu điểm:
  * 1. Hoàn toàn MIỄN PHÍ, KHÔNG cần thẻ thanh toán (Blaze Plan)
  * 2. Lưu trực tiếp cùng document sản phẩm, tải cực nhanh
- * 3. Dung lượng siêu nhẹ (~100KB), không chạm trần 1MB của Firestore
+ * 3. Data URL được giới hạn tối đa khoảng 110KB để chừa dung lượng an toàn cho document Firestore
  */
 export async function compressImageToDataUrl(
   file: File,
@@ -87,7 +87,7 @@ export async function compressImageToDataUrl(
  * Hàm upload ảnh thông minh:
  * - Đầu tiên: Nén ảnh tối ưu trên client.
  * - Thử upload lên Firebase Storage nếu dự án đã cấu hình Bucket.
- * - Nếu Firebase Storage chưa kích hoạt (bị đòi thẻ Blaze / 404), tự động fallback sang lưu Data URL nén (~80KB).
+ * - Nếu Firebase Storage chưa kích hoạt (bị đòi thẻ Blaze / 404), tự động fallback sang lưu Data URL nén (tối đa khoảng 110KB).
  * => Giúp tính năng chạy ngay lập tức 100% mà người dùng không gặp bất kỳ lỗi nào và không cần nhập thẻ Visa!
  */
 export async function uploadProductImage(
@@ -111,7 +111,7 @@ export async function uploadProductImage(
 
   // Zero-cost mode (default): Firebase Storage on new projects requires the
   // Blaze plan. Skip the upload entirely and store the compressed Data URL
-  // (~80-150KB) in Firestore. Set NEXT_PUBLIC_FIREBASE_STORAGE_ENABLED=true
+  // (bounded to about 110KB) in Firestore. Set NEXT_PUBLIC_FIREBASE_STORAGE_ENABLED=true
   // only after a Storage bucket is provisioned (and CORS configured).
   if (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_ENABLED !== 'true') {
     const fallback = getBoundedFallback();
@@ -167,7 +167,7 @@ export async function uploadProductImage(
     });
   } catch {
     // Fallback: Khi Firebase Storage chưa kích hoạt gói Blaze, sử dụng ảnh nén client
-    // Ảnh nén ~100KB hoàn toàn hợp lệ và hiển thị hoàn hảo trên giao diện
+    // Chỉ fallback khi Data URL nằm trong giới hạn Firestore đã cấu hình.
     const fallback = getBoundedFallback();
     if (onProgress) onProgress(100);
     return fallback;
