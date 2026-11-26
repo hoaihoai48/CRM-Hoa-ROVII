@@ -43,8 +43,13 @@ function ProductsPageContent() {
   }, []);
 
   useEffect(() => {
-    loadProducts();
+    let cancelled = false;
+    // Defer the external Firestore read until after the effect body.
+    void Promise.resolve().then(() => {
+      if (!cancelled) loadProducts();
+    });
     return () => {
+      cancelled = true;
       // Ignore any in-flight request after this page unmounts.
       loadRequestRef.current += 1;
     };
