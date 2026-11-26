@@ -128,3 +128,11 @@ When a new lesson is added:
 - The old `feat/order-print-view` branch was 43 commits behind main, but the print button, print-only A4 layout and Playwright print assertions were already present on current main.
 - Before porting or reimplementing an old branch, compare its exact changed files and behavior with current main. A stale branch is not proof that a feature is missing.
 - Keep audit runbooks aligned with the active Firebase Spark client-transaction architecture; historical callable-Functions guidance must not be presented as the current operational procedure.
+
+
+## 2026-11-26 — Respect implementation-first delivery; do not initiate tests
+
+- The owner explicitly directed that the work should be completed and merged for operational use, without running tests or sending incremental reports.
+- Do not start manual test suites, rerun CI, or hold delivery waiting for test results unless the owner later asks.
+- Distinguish committed test coverage from executed verification. Never imply tests passed when they were not run.
+- Prioritize the working implementation, preserve production/billing boundaries, and address defects reported during actual use.
