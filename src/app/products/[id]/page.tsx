@@ -38,10 +38,12 @@ function ProductEditForm({ product, productId }: ProductFormProps) {
   const [note, setNote] = useState(product.note || '');
   const [isActive, setIsActive] = useState(product.isActive);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDeactivating, setIsDeactivating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading || isDeactivating) return;
     if (!canManageProducts) {
       setErrorMessage('Chỉ quản trị viên đang hoạt động mới được thay đổi sản phẩm.');
       return;
@@ -62,6 +64,22 @@ function ProductEditForm({ product, productId }: ProductFormProps) {
       .finally(() => setIsLoading(false));
   };
 
+  const handleDeactivate = async () => {
+    if (!canManageProducts || isLoading || isDeactivating) return;
+    if (!confirm('Bạn có chắc muốn ngừng bán mẫu hoa này?')) return;
+
+    setIsDeactivating(true);
+    setErrorMessage(null);
+    try {
+      await updateProduct(productId, { isActive: false });
+      router.push('/products');
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Không thể cập nhật trạng thái sản phẩm.');
+    } finally {
+      setIsDeactivating(false);
+    }
+  };
+
   return (
     <>
       <PageHeader
@@ -71,14 +89,9 @@ function ProductEditForm({ product, productId }: ProductFormProps) {
         action={
           <button
             type="button"
-            onClick={() => {
-              if (confirm('Bạn có chắc muốn ngừng bán mẫu hoa này?')) {
-                updateProduct(productId, { isActive: false })
-                  .then(() => router.push('/products'))
-                  .catch((error) => setErrorMessage(error instanceof Error ? error.message : 'Không thể cập nhật trạng thái sản phẩm.'));
-              }
-            }}
-            className="p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+            onClick={handleDeactivate}
+            disabled={isLoading || isDeactivating}
+            className="p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             title="Ngừng bán sản phẩm" aria-label="Ngừng bán sản phẩm"
           >
             <Trash2 className="w-4 h-4" />
@@ -151,7 +164,7 @@ function ProductEditForm({ product, productId }: ProductFormProps) {
             <MultiImageUploader
               imageUrls={imageUrls}
               onImagesChanged={setImageUrls}
-              disabled={isLoading}
+              disabled={isLoading || isDeactivating}
             />
 
             <Textarea
@@ -193,7 +206,7 @@ function ProductEditForm({ product, productId }: ProductFormProps) {
               <Button
                 type="submit"
                 variant="primary"
-                isLoading={isLoading}
+                isLoading={isLoading || isDeactivating}
                 rightIcon={<Check className="w-4 h-4" />}
               >
                 Lưu thay đổi
@@ -250,11 +263,9 @@ function ProductEditForm({ product, productId }: ProductFormProps) {
   );
 }
 
-function EditProductContent() {
+function EditProductContentForId({ productId }: { productId: string }) {
   const { membership } = useAuth();
   const canManageProducts = membership?.role === 'admin' && membership.status === 'active';
-  const params = useParams();
-  const productId = params?.id as string;
 
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -306,6 +317,14 @@ function EditProductContent() {
   }
 
   return <ProductEditForm key={product.id} product={product} productId={productId} />;
+}
+
+function EditProductContent() {
+  const params = useParams();
+  const productId = params?.id as string;
+  // Bind all fetched/form state to the route identity. Reusing the component for
+  // another product must never pair the previous product data with the new ID.
+  return <EditProductContentForId key={productId} productId={productId} />;
 }
 
 function EditProductPageContent() {
