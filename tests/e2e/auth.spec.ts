@@ -65,4 +65,9 @@ test('signs in an active synthetic member and opens the dashboard', async ({ pag
 
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole('heading', { name: 'Tổng quan' })).toBeVisible();
+  const refreshDashboard = page.getByRole('button', { name: 'Làm mới tổng quan' });
+  await expect(refreshDashboard).toBeEnabled();
+  await expect(page.getByText('Đang tải dữ liệu tổng quan...')).not.toBeVisible();
+  await refreshDashboard.click();
+  await expect(refreshDashboard).toBeEnabled();
 });
