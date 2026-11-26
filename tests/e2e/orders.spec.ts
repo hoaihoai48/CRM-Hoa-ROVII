@@ -184,8 +184,8 @@ test('can edit an existing order after its product is deactivated without repric
   expect(deactivate.ok()).toBeTruthy();
 
   await page.getByRole('button', { name: 'Sửa đơn hàng' }).click();
-  await expect(page.getByText('Đã ngừng bán', { exact: true })).toBeVisible();
-  const inactiveRow = page.getByText(productName, { exact: true }).locator('xpath=../..');
+  await expect(page.getByText(/Đã ngừng bán/)).toBeVisible();
+  const inactiveRow = page.getByText(productName, { exact: true }).last().locator('xpath=../..');
   await expect(inactiveRow.locator('button').nth(1)).toBeDisabled();
   await inactiveRow.locator('button').nth(0).click();
   await page.locator('#editDeliveryFee').fill('15000');

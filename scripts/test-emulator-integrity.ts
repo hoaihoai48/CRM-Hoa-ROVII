@@ -1549,8 +1549,8 @@ async function runTestSuite() {
       customerAddress: inactiveCustomer.address,
       actorName: 'Tester',
     });
-  } catch {
-    inactiveIncreaseBlocked = true;
+  } catch (error) {
+    inactiveIncreaseBlocked = (error as Error).message.includes('ngừng kinh doanh');
   }
   assert(inactiveIncreaseBlocked, 'Case O: an inactive existing product quantity cannot be increased');
 
