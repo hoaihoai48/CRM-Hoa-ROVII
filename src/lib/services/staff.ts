@@ -54,7 +54,10 @@ export async function createStaffAccount(input: CreateStaffInput): Promise<Staff
   const name = input.name.trim();
   const email = input.email.trim();
   if (!name) throw new Error('Tên nhân viên là bắt buộc.');
-  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Email không hợp lệ.');
+  if (name.length > 120) throw new Error('Tên nhân viên không được vượt quá 120 ký tự.');
+  if (!email || email.length > 254 || !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)) {
+    throw new Error('Email không hợp lệ hoặc vượt quá 254 ký tự.');
+  }
   if (!input.password || input.password.length < 6) throw new Error('Mật khẩu phải có ít nhất 6 ký tự.');
   if (input.role !== 'admin' && input.role !== 'staff') throw new Error('Vai trò không hợp lệ.');
 
