@@ -27,7 +27,7 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { user: firebaseUser, membership, logout } = useAuth();
+  const { membership, logout } = useAuth();
   const storeLogoUrl = useStoreLogo();
   const isAdmin = membership?.role === 'admin' && membership?.status === 'active';
 
@@ -35,10 +35,10 @@ export function Sidebar() {
     ? [...NAV_ITEMS, { href: '/staff', label: 'Nhân viên', icon: UserIcon }]
     : NAV_ITEMS;
 
-  const user = firebaseUser
+  const user = membership
     ? {
-        name: firebaseUser.displayName || firebaseUser.phoneNumber || firebaseUser.email?.split('@')[0] || 'Nhân viên tiệm',
-        email: firebaseUser.email || firebaseUser.phoneNumber || 'Tài khoản hoạt động',
+        name: membership.name,
+        email: membership.email,
       }
     : null;
 

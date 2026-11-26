@@ -8,9 +8,9 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { BrandLogo, useStoreLogo } from '@/components/common/BrandLogo';
 
 export function MobileHeader() {
-  const { user: firebaseUser } = useAuth();
+  const { user: firebaseUser, membership } = useAuth();
   const storeLogoUrl = useStoreLogo();
-  const userName = firebaseUser?.displayName || firebaseUser?.phoneNumber || firebaseUser?.email || 'Tài khoản';
+  const userName = membership?.name || firebaseUser?.displayName || firebaseUser?.phoneNumber || firebaseUser?.email || 'Tài khoản';
 
   return (
     <header className="lg:hidden sticky top-0 inset-x-0 h-14 bg-white border-b border-stone-200 z-30 dark:bg-slate-900 dark:border-slate-800 px-4 flex items-center justify-between">

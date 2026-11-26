@@ -199,3 +199,9 @@ When a new lesson is added:
 - Request IDs prevent an older Firestore read from overwriting a newer customer, but they do not reset component-local edit fields, save messages or pagination state when a dynamic route component is reused.
 - Key the customer-detail data-owning child by customer ID. This resets the entire profile/edit/history state and lets the previous component's cleanup invalidate in-flight reads.
 - Apply the same rule to any detail page with mutable form state, not only pages that fetch a record.
+
+
+## 2026-11-26 — Use the CRM membership profile as the staff identity
+
+- Firebase Auth proves who signed in; the `users/{uid}` membership is the CRM profile and role record. Use membership `name` and `email` for staff display and order audit actor attribution, with Firebase Auth fields only as a legacy fallback.
+- This is especially important for linked Google identities: the Google profile display name may differ from the name the shop uses operationally.

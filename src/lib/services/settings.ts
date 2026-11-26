@@ -69,10 +69,13 @@ export function getCurrentUser(): Promise<User | null> {
       const data = snapshot.data();
       if ((data.role !== 'admin' && data.role !== 'staff') ||
           (data.status !== 'active' && data.status !== 'inactive')) return null;
+      const membershipName = typeof data.name === 'string' ? data.name.trim() : '';
+      const membershipEmail = typeof data.email === 'string' ? data.email.trim() : '';
       return {
         id: uid,
-        name: current.displayName || current.phoneNumber || current.email?.split('@')[0] || 'Nhân viên tiệm',
-        email: current.email || current.phoneNumber || '',
+        // The CRM membership profile is the staff identity used in the UI and order audit trail.
+        name: membershipName || current.displayName || current.phoneNumber || current.email?.split('@')[0] || 'Nhân viên tiệm',
+        email: membershipEmail || current.email || current.phoneNumber || '',
         role: data.role,
         status: data.status,
         avatarUrl: current.photoURL || undefined,
