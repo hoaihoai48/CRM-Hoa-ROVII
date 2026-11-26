@@ -545,7 +545,7 @@ export async function updateOrder(id: string, input: UpdateOrderInput): Promise<
         throw new Error(`Không tìm thấy sản phẩm trong cơ sở dữ liệu: ${pReq.productId}`);
       }
       const productData = snap.data() as Product;
-      const isActive = productData.isActive !== false;
+      const isActive = productData.isActive === true;
       const originalItem = originalItemsByProductId.get(pReq.productId);
       if (!isActive && (!originalItem || pReq.quantity > originalItem.quantity)) {
         throw new Error(`Sản phẩm đã ngừng kinh doanh: chỉ được giữ hoặc giảm số lượng đã có trong đơn (${productData.name || pReq.productId}).`);
