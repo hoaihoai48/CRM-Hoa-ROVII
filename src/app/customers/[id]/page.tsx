@@ -38,10 +38,11 @@ function CustomerDetailContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
-  const ignoreRef = useRef(false);
+  const loadRequestRef = useRef(0);
 
   const loadData = () => {
     if (!customerId) return;
+    const requestId = ++loadRequestRef.current;
     setIsLoading(true);
     setLoadError(null);
     setHistoryLoadError(null);
@@ -50,7 +51,7 @@ function CustomerDetailContent() {
     setHasMoreOrders(false);
     Promise.all([getCustomerById(customerId), listOrdersPage(null, 25, customerId)])
       .then(([customer, orderPage]) => {
-        if (ignoreRef.current) return;
+        if (requestId !== loadRequestRef.current) return;
         setInitialCustomer(customer);
         setCustomerOrders(orderPage.items);
         setOrdersCursor(orderPage.nextCursor);
@@ -62,12 +63,12 @@ function CustomerDetailContent() {
         }
       })
       .catch((error) => {
-        if (!ignoreRef.current) {
+        if (requestId === loadRequestRef.current) {
           setLoadError(error instanceof Error ? error.message : 'Không thể tải hồ sơ khách hàng.');
         }
       })
       .finally(() => {
-        if (!ignoreRef.current) {
+        if (requestId === loadRequestRef.current) {
           setIsLoading(false);
         }
       });
@@ -75,30 +76,30 @@ function CustomerDetailContent() {
 
   const loadMoreOrders = async () => {
     if (!customerId || !ordersCursor || !hasMoreOrders || isLoadingMoreOrders) return;
+    const requestId = loadRequestRef.current;
     setIsLoadingMoreOrders(true);
     setHistoryLoadError(null);
     try {
       const page = await listOrdersPage(ordersCursor, 25, customerId);
-      if (ignoreRef.current) return;
+      if (requestId !== loadRequestRef.current) return;
       setCustomerOrders((current) => [...current, ...page.items]);
       setOrdersCursor(page.nextCursor);
       setHasMoreOrders(page.hasMore);
     } catch (error) {
-      if (!ignoreRef.current) {
+      if (requestId === loadRequestRef.current) {
         setHistoryLoadError(error instanceof Error ? error.message : 'Không thể tải thêm lịch sử đơn hàng.');
       }
     } finally {
-      if (!ignoreRef.current) setIsLoadingMoreOrders(false);
+      if (requestId === loadRequestRef.current) setIsLoadingMoreOrders(false);
     }
   };
 
   useEffect(() => {
-    ignoreRef.current = false;
     // External Firestore read — legitimate effect.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData();
     return () => {
-      ignoreRef.current = true;
+      loadRequestRef.current += 1;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId]);
