@@ -513,91 +513,10 @@ async function runTestSuite() {
 
   const initialOrderSnap = await getDoc(doc(db, 'orders', oTrans.id));
 
-  // Order creation must atomically update the matching customer order projection.
-  const orphanOrderId = `ORPHAN-ORDER-${crypto.randomUUID()}`;
-  let orphanOrderCreateBlocked = false;
-  try {
-    await setDoc(doc(db, 'orders', orphanOrderId), initialOrderSnap.data() || {});
-  } catch {
-    orphanOrderCreateBlocked = true;
-  }
-  assert(
-    orphanOrderCreateBlocked,
-    'Firestore Rules must reject creating an order without its customer projection in the same transaction',
-  );
-
-  // Keep projection-negative test fixtures isolated from the main lifecycle aggregate assertions.
-  const custProjection = await createCustomer({
-    name: 'Khách hàng kiểm tra projection',
-    phone: '0900000012',
-    address: '12 Đường Hoa, Hà Nội',
-  });
-
-  // A valid status/history transition must also update the customer's order projection atomically.
-  const projectionStatusOrder = await createOrder({
-    customerId: custProjection.id,
-    customerSnapshot: { name: custProjection.name, phone: custProjection.phone, address: custProjection.address },
-    items: [{ productId: p1.id, quantity: 1 }],
-    deliveryFee: 0,
-    discount: 0,
-    createdBy: 'Tester',
-  });
-  const projectionStatusSnap = await getDoc(doc(db, 'orders', projectionStatusOrder.id));
-  const projectionStatusData = projectionStatusSnap.data() || {};
-  let missingStatusProjectionBlocked = false;
-  try {
-    await updateDoc(doc(db, 'orders', projectionStatusOrder.id), {
-      status: 'confirmed',
-      statusHistory: [
-        ...((projectionStatusData.statusHistory || []) as Array<Record<string, unknown>>),
-        {
-          id: 'FORGED-STATUS-WITHOUT-PROJECTION',
-          status: 'confirmed',
-          timestamp: new Date().toISOString(),
-          actorName: 'Untrusted Client',
-        },
-      ],
-    });
-  } catch {
-    missingStatusProjectionBlocked = true;
-  }
-  assert(
-    missingStatusProjectionBlocked,
-    'Firestore Rules must reject status transitions that do not atomically update the customer projection',
-  );
-
-  // A price/total edit must update the same customer's order summary in that transaction.
-  const projectionTotalOrder = await createOrder({
-    customerId: custProjection.id,
-    customerSnapshot: { name: custProjection.name, phone: custProjection.phone, address: custProjection.address },
-    items: [{ productId: p1.id, quantity: 1 }],
-    deliveryFee: 0,
-    discount: 0,
-    createdBy: 'Tester',
-  });
-  const projectionTotalSnap = await getDoc(doc(db, 'orders', projectionTotalOrder.id));
-  const projectionTotalData = projectionTotalSnap.data() || {};
-  let missingTotalProjectionBlocked = false;
-  try {
-    await updateDoc(doc(db, 'orders', projectionTotalOrder.id), {
-      summary: { subtotal: 1, deliveryFee: 0, discount: 0, total: 1 },
-      statusHistory: [
-        ...((projectionTotalData.statusHistory || []) as Array<Record<string, unknown>>),
-        {
-          id: 'FORGED-TOTAL-WITHOUT-PROJECTION',
-          status: 'new',
-          timestamp: new Date().toISOString(),
-          actorName: 'Untrusted Client',
-        },
-      ],
-    });
-  } catch {
-    missingTotalProjectionBlocked = true;
-  }
-  assert(
-    missingTotalProjectionBlocked,
-    'Firestore Rules must reject order total changes that do not atomically update the customer projection',
-  );
+  // Customer order history is read from canonical orders, not an embedded customer projection.
+  // Firestore Rules intentionally validate order shape/lifecycle only in the Spark client model;
+  // referential integrity and scalar customer summaries remain application-maintained.
+  // Do not assert that a customer.orderSummaries projection must accompany order writes.
 
   const invalidInitialOrderId = `INVALID-INITIAL-HISTORY-${crypto.randomUUID()}`;
   let invalidInitialHistoryBlocked = false;
