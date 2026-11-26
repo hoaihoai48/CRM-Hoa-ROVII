@@ -1,17 +1,19 @@
 # CURRENT HANDOFF — updated 2026-11-26 (Spark-first operating decision)
 
 - Repository: `hoaihoai48/CRM-Hoa-ROVII`; default branch: `main`.
+- Live `main`: `cf42153c4dd3af62fb6cc46b7f9f0ca0521c5144` (includes PR #36).
 - Main includes the order/customer identity fix from [PR #35](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/35), squash merge `550c9c487688a7d7f797a2d040d93fc71c4efa12`.
 - PR #33 ([Admin catalog and staff workflows](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/33)) is **MERGED**. It adds Playwright scenarios for product create/edit/deactivation, customer create/search/profile update, staff membership/provisioning, store settings and staff permission boundaries. The secondary Firebase Auth instance now connects to the configured Auth Emulator.
 - PR #34 ([Spark-first handoff and audit alignment](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/34)) is **MERGED**; it records the Spark-only decision in `HANDOFF.md`, `lessons.md`, and the current Firebase security audit.
-- PR #35 fixes customer identity mismatch during order creation: changing the selected customer's phone clears the old selection/profile, and `createOrder()` validates the selected record's normalized phone before any write. Its E2E regression case is committed but was not run. No open PRs remain.
+- PR #35 fixes customer identity mismatch during order creation: changing the selected customer's phone clears the old selection/profile, and `createOrder()` validates the selected record's normalized phone before any write. Its E2E regression case is committed but was not run.
+- PR #36 ([avoid duplicate product catalog reads](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/36)) is **MERGED** as `cf42153c4dd3af62fb6cc46b7f9f0ca0521c5144`: the products page now performs one collection read on mount and ignores stale async responses after retry/unmount. No open PRs remain.
 - F-01 customer aggregate integrity is **OPEN / ACCEPTED RESIDUAL RISK** under the approved internal-team + Firebase Spark model. Customer scalar aggregates remain client-maintained; Firestore Rules cannot independently prove all client-computed cross-document arithmetic or product-price totals. Canonical `orders/{orderId}` documents remain the evidence for reconciliation. Do not claim authoritative financial integrity.
 - F-02 Storage authorization: **RESOLVED** (PR #22).
 - F-03 product image payload bounds: **RESOLVED** (PR #29).
 - F-04 staff membership identity/immutability: **RESOLVED** (PR #30).
 - F-05 historical audit drift: **DOCUMENTATION-CORRECTED** (PR #31 plus historical-audit notices).
 - Order print view is already implemented on `main`; do not port the stale feature branch.
-- PR #33 and PR #35 E2E coverage is committed, but tests were not manually run for those deliveries. Do not describe the new scenarios as executed or passing.
+- PR #33 and PR #35 E2E coverage is committed, but tests were not manually run for those deliveries. PR #36 is a focused loading-path fix; no tests were run per owner direction. Do not describe unrun scenarios as executed or passing.
 
 ## Approved architecture and delivery direction
 
