@@ -19,8 +19,8 @@ V1 is complete only when the supported daily workflow works end to end across th
 
 | Step | Scope | Status | Completion gate |
 |---|---|---|---|
-| 1 | Baseline, scope and project inventory | **IN PROGRESS** | Reconcile live Git/CI/docs; map every V1 route to its service, rules and existing coverage; record gaps without guessing. |
-| 2 | Authentication, membership and access | PENDING | Login/session/logout and admin/staff route + data permissions agree; no unauthorized UI or service path. |
+| 1 | Baseline, scope and project inventory | **COMPLETE** | V1 routes, service boundaries, Rules and existing coverage have been mapped below. |
+| 2 | Authentication, membership and access | **IN PROGRESS** | Resolve the Google sign-in vs email/password-only staff provisioning mismatch; verify role gates and membership recovery. | Login/session/logout and admin/staff route + data permissions agree; no unauthorized UI or service path. |
 | 3 | Product catalog | PENDING | Admin product create/edit/activate/deactivate, image handling, catalog selection and error/retry states work together. |
 | 4 | Customer management | PENDING | Create/search/profile/history and phone identity are consistent; canonical order history is used. |
 | 5 | Order lifecycle | PENDING | Create, totals, snapshots, edits allowed by lifecycle, transitions, cancellation, history and print are coherent. |
@@ -54,11 +54,38 @@ Resolved items: F-02 Storage authorization (PR #22), F-03 product image payload 
 - Product and settings pages have client-side workflows; inspect service/Rules constraints together before changing their behavior.
 - The main Actions run above is now successful. This verifies the current code snapshot only; it does not complete the remaining product audit.
 
-## Step 1 remaining work
+## V1 route-to-service-to-permission inventory (Step 1 complete)
 
-- Inspect all V1 routes and their service functions, type contracts, Firestore/Storage Rules, and existing Emulator/Playwright coverage.
-- Produce a concise route-to-service-to-permission inventory and prioritize concrete blockers for Steps 2–7.
-- Do not mark Step 1 complete until that inventory is grounded in source files.
+| Route / area | UI entry | Service/data boundary | Access contract | Existing automated coverage |
+|---|---|---|---|---|
+| `/login` | `src/app/login/page.tsx` | `src/lib/firebase/authService.ts`; membership resolved by `AuthProvider` via `getCurrentUser()` | Firebase Auth authenticates; a matching active `users/{uid}` membership is required before any AppShell route renders. | Email login is exercised by Playwright fixtures; no explicit Google onboarding E2E. |
+| Shared protected shell | `src/components/layout/AppShell.tsx`, `AuthProvider.tsx` | `settings.getCurrentUser()`; Firebase auth observer | Requires authenticated UID, matching membership UID, active status and role admin/staff. Firestore Rules independently enforce active membership on business data. | Emulator checks unauthenticated, unprovisioned and inactive access; E2E tests use active memberships. |
+| `/dashboard` | `src/app/dashboard/page.tsx` | `orders.getDashboardOrders()`, `settings.getStoreSettings()` | Active member read access to orders/settings. | Emulator Case P verifies bounded day/recent queries; dashboard UI has no dedicated E2E scenario. |
+| `/orders`, `/orders/new`, `/orders/[id]` | Order list/create/detail pages | `services/orders.ts`, `customers.ts`, `products.ts` | Active members read/create/update according to Firestore order schema and state machine; order delete denied. | `tests/e2e/orders.spec.ts` covers create/edit/complete/print, phone identity change and customer-history pagination. Emulator suite covers totals, atomicity, state transitions, actor attribution, concurrency, canonical history and pagination. |
+| `/customers`, `/customers/[id]` | Customer list/detail pages | `services/customers.ts`, canonical `orders` queries in `services/orders.ts` | Active members read/create/update; phone identity and createdAt immutable in Rules; delete denied. | Admin workflow E2E covers create/search/profile update; Emulator suite covers phone aliases, identity, aggregates and canonical history. |
+| `/products`, `/products/new`, `/products/[id]` | Product list/create/edit pages | `services/products.ts`, `services/storage.ts` | Active members read; admin only create/update; delete denied. Storage image reads public, writes/deletes active-admin only. | Admin workflow E2E covers create/edit/deactivate; Emulator suite covers staff write denial, payload bounds, legacy-safe edits and Storage Rules. |
+| `/staff` | `src/app/staff/page.tsx` | `services/staff.ts`; secondary Firebase Auth instance provisions email/password accounts | Admin only. Rules restrict membership list/create/update to active admins, bind UID to document path and prevent self-demotion/deactivation. | Admin workflow E2E covers provisioning and role/status management; Emulator suite covers membership identity and role boundaries. |
+| `/settings` | `src/app/settings/page.tsx` | `services/settings.ts`, `services/storage.ts` for logo | Active members read; only active admins write settings. | Admin workflow E2E covers save; Emulator suite covers staff read-only/admin write. |
+| Shared media | `ImageUploader`, `MultiImageUploader` | `services/storage.ts` | Product image writes require active admin when Storage is enabled; default Spark path stores bounded Data URLs in product docs. | Storage Rules script and product payload Emulator cases. |
+| Shared navigation | `Sidebar`, `MobileHeader`, `MobileBottomNav` | Uses `AuthProvider` membership | Staff link hidden for non-admin; direct `/staff` route also renders an admin-only message. | E2E verifies staff cannot access staff-management controls. |
+
+### Prioritized findings from the baseline audit
+
+1. **Step 2 — Auth onboarding mismatch:** the login page offers Google sign-in, but the in-app staff provisioning flow creates only email/password accounts. A Google-authenticated identity without a pre-created `users/{uid}` membership is correctly blocked by AppShell, but admins have no in-app way to attach that existing Google identity. Resolve the supported onboarding contract before calling authentication complete; do not weaken membership Rules or auto-grant access to any authenticated user.
+2. **Step 3/4/5 — Dataset-size trade-off:** orders/customers search and order-entry customer/product selection can read full collections. This is explicitly documented as a small-CRM constraint; keep it unless measured operational volume makes it a real problem. Do not add paid infrastructure.
+3. **Step 6 — Dashboard semantics:** the service has bounded date and recent-order queries; verify timezone boundaries and completed-only revenue during the dashboard step.
+4. **Step 7 — UX/reliability:** staff list/settings and several form loaders need a cross-route review for retry/unmount/duplicate-submit behavior. Do not broaden this into unrelated refactors.
+5. **Accepted residual risk:** customer scalar aggregates remain client-maintained under Spark (F-01). The Emulator suite explicitly documents this trust boundary and verifies aggregate reconciliation from canonical orders; this is not a security guarantee against a malicious authenticated client.
+
+### Existing quality gates
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test:emulator` (isolated demo Auth/Firestore/Storage Emulators)
+- `npm run test:e2e` (Playwright against Auth/Firestore Emulators)
+- `npm run build`
+
+The latest exact-main Actions run recorded above passed these gates. No manual test suite was run during this audit.
 
 
 ## Historical handoff archive
