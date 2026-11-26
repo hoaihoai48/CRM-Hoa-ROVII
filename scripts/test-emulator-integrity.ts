@@ -1451,6 +1451,37 @@ async function runTestSuite() {
   });
   assert(orderL.summary.total === 380000, `Case L: initial total 380,000 (got ${orderL.summary.total})`);
 
+  const oversizedItems = Array.from({ length: 101 }, () => ({ productId: p1.id, quantity: 1 }));
+  let oversizedCreateBlocked = false;
+  try {
+    await createOrder({
+      customerId: custL.id,
+      customerSnapshot: { name: custL.name, phone: custL.phone, address: custL.address },
+      items: oversizedItems,
+      deliveryFee: 0,
+      discount: 0,
+      createdBy: 'Tester',
+    });
+  } catch (error) {
+    oversizedCreateBlocked = (error as Error).message.includes('100');
+  }
+  assert(oversizedCreateBlocked, 'Case L: createOrder rejects more than 100 item rows before writing');
+
+  let oversizedUpdateBlocked = false;
+  try {
+    await updateOrder(orderL.id, {
+      items: oversizedItems,
+      deliveryFee: 0,
+      discount: 0,
+      customerName: custL.name,
+      customerAddress: custL.address,
+      actorName: 'Tester',
+    });
+  } catch (error) {
+    oversizedUpdateBlocked = (error as Error).message.includes('100');
+  }
+  assert(oversizedUpdateBlocked, 'Case L: updateOrder rejects more than 100 item rows before writing');
+
   // Edit while 'new': change items + fees + delivery snapshot name/address.
   const editedL = await updateOrder(orderL.id, {
     items: [{ productId: p1.id, quantity: 2 }], // 700,000
@@ -1467,6 +1498,61 @@ async function runTestSuite() {
   assert(editedL.status === 'new', 'Case L: edit does not change status');
   const custLCheck = await getCustomerById(custL.id);
   assert(custLCheck!.totalOrders === 1, 'Case L: totalOrders unchanged by edit');
+
+  // Existing orders may retain/reduce a discontinued product, but cannot add or increase it.
+  const inactiveProductId = 'PROD-INACTIVE-ORDER-EDIT';
+  await signInWithEmailAndPassword(auth, adminEmail, adminPass);
+  await setDoc(doc(db, 'products', inactiveProductId), {
+    name: 'Hoa ngừng bán kiểm thử',
+    price: 420000,
+    unit: 'bó',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+  });
+  await signInWithEmailAndPassword(auth, testStaffEmail, testStaffPass);
+  const inactiveCustomer = await createCustomer({
+    name: 'Khách hàng có hoa ngừng bán',
+    phone: '0900000006',
+    address: 'Địa chỉ khách hàng kiểm thử',
+  });
+  const inactiveOrder = await createOrder({
+    customerId: inactiveCustomer.id,
+    customerSnapshot: { name: inactiveCustomer.name, phone: inactiveCustomer.phone, address: inactiveCustomer.address },
+    items: [{ productId: inactiveProductId, quantity: 2 }],
+    deliveryFee: 0,
+    discount: 0,
+    createdBy: 'Tester',
+  });
+  await signInWithEmailAndPassword(auth, adminEmail, adminPass);
+  await updateDoc(doc(db, 'products', inactiveProductId), { isActive: false, price: 999000 });
+  await signInWithEmailAndPassword(auth, testStaffEmail, testStaffPass);
+
+  const reducedInactiveOrder = await updateOrder(inactiveOrder.id, {
+    items: [{ productId: inactiveProductId, quantity: 1 }],
+    deliveryFee: 0,
+    discount: 0,
+    customerName: inactiveCustomer.name,
+    customerAddress: inactiveCustomer.address,
+    actorName: 'Tester',
+  });
+  assert(reducedInactiveOrder.items[0].quantity === 1, 'Case O: an inactive existing product can be reduced');
+  assert(reducedInactiveOrder.items[0].unitPrice === 420000, 'Case O: inactive product retains the original order price');
+  assert(reducedInactiveOrder.summary.total === 420000, 'Case O: inactive product edit does not reprice the order');
+
+  let inactiveIncreaseBlocked = false;
+  try {
+    await updateOrder(inactiveOrder.id, {
+      items: [{ productId: inactiveProductId, quantity: 3 }],
+      deliveryFee: 0,
+      discount: 0,
+      customerName: inactiveCustomer.name,
+      customerAddress: inactiveCustomer.address,
+      actorName: 'Tester',
+    });
+  } catch {
+    inactiveIncreaseBlocked = true;
+  }
+  assert(inactiveIncreaseBlocked, 'Case O: an inactive existing product quantity cannot be increased');
 
   // Completed orders are immutable.
   await updateOrderStatus(orderL.id, { status: 'confirmed', actorName: 'Tester' });
