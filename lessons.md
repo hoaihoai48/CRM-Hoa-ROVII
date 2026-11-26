@@ -226,3 +226,10 @@ When a new lesson is added:
 - Keep settings loading independent from save state, invalidate stale reads on unmount, and clear delayed success-feedback timers during cleanup.
 - Use the CRM membership profile as the source for the staff name shown in settings; Firebase Auth is the authentication identity, not the editable CRM display profile.
 - For staff management, invalidate list requests when admin access changes or the page unmounts so an old response cannot repopulate stale privileged data.
+
+
+## 2026-11-26 — Keep informational dependency audits out of the functional CI critical path
+
+- `npm audit` depends on registry/advisory network availability and can stall an otherwise healthy lint/typecheck/Emulator/E2E/build pipeline.
+- Run informational dependency audits on a weekly schedule or explicit dispatch, with a bounded timeout and an artifact/summary. Keep the functional PR workflow focused on deterministic quality gates.
+- Do not remove the main-branch push trigger unless required PR checks/branch protection are confirmed; otherwise direct pushes could bypass all automated validation.

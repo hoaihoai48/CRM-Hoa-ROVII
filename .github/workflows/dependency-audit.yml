@@ -1,0 +1,103 @@
+name: Dependency Audit
+
+on:
+  schedule:
+    - cron: '23 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-audit-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Weekly npm vulnerability report
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install web application dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Cloud Functions dependencies
+        run: npm ci --prefix functions --no-audit --no-fund
+
+      - name: Audit both dependency trees with bounded runtime
+        shell: bash
+        run: |
+          set +e
+          timeout 5m npm audit --json > npm-audit-report.json
+          APP_AUDIT_EXIT=$?
+          timeout 5m npm audit --prefix functions --json > functions-npm-audit-report.json
+          FUNCTIONS_AUDIT_EXIT=$?
+          export APP_AUDIT_EXIT FUNCTIONS_AUDIT_EXIT
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          function readReport(path) {
+            try {
+              return JSON.parse(fs.readFileSync(path, 'utf8'));
+            } catch {
+              return { metadata: { vulnerabilities: {} }, vulnerabilities: {}, auditUnavailable: true };
+            }
+          }
+
+          const app = readReport('npm-audit-report.json');
+          const functions = readReport('functions-npm-audit-report.json');
+          const counts = (report) => report.metadata?.vulnerabilities || {};
+          const format = (label, report) => {
+            const c = counts(report);
+            const rows = Object.entries(report.vulnerabilities || {}).map(([name, item]) => {
+              const via = (item.via || []).map((entry) =>
+                typeof entry === 'string' ? entry : entry.name || entry.title || 'advisory'
+              ).join(', ');
+              const fix = item.fixAvailable === true ? 'yes' : item.fixAvailable ? 'review version change' : 'no automatic fix';
+              return `| ${name} | ${item.severity || 'unknown'} | ${item.isDirect ? 'direct' : 'transitive'} | ${fix} | ${via.replaceAll('|', '\\|')} |`;
+            });
+            return [
+              `## ${label}`,
+              '',
+              `Counts: ${c.critical || 0} critical, ${c.high || 0} high, ${c.moderate || 0} moderate, ${c.low || 0} low, ${c.info || 0} info.`,
+              report.auditUnavailable ? 'The JSON report was unavailable or incomplete (registry/network timeout).' : '',
+              '',
+              '| Package | Severity | Dependency | Fix | Advisory/dependency path |',
+              '|---|---|---|---|---|',
+              ...rows,
+            ].filter(Boolean).join(String.fromCharCode(10));
+          };
+
+          const summary = [
+            format('Web application dependency audit', app),
+            '',
+            format('Cloud Functions dependency audit', functions),
+            '',
+            `Audit exit codes: web=${process.env.APP_AUDIT_EXIT || 'unknown'}, functions=${process.env.FUNCTIONS_AUDIT_EXIT || 'unknown'}.`,
+            '',
+            'This report is informational. Do not auto-upgrade dependencies without reviewing direct/transitive impact.'
+          ].join(String.fromCharCode(10));
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary + String.fromCharCode(10));
+          console.log(summary);
+          NODE
+
+      - name: Upload dependency audit reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: dependency-audit-report
+          path: |
+            npm-audit-report.json
+            functions-npm-audit-report.json
+          if-no-files-found: ignore
+          retention-days: 14
