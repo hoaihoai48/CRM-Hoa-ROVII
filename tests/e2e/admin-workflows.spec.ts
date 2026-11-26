@@ -170,19 +170,19 @@ test.describe('Admin daily workflows', () => {
     await expect(page.getByRole('status').getByText(newStaffEmail)).toBeVisible();
     await expect(page.getByRole('row').filter({ hasText: newStaffEmail })).toBeVisible();
 
-    const existingGoogleAccount = await createAuthUser(page, 'rovii-existing-auth');
+    const existingAuthAccount = await createAuthUser(page, 'rovii-existing-auth');
     await page.getByRole('button', { name: 'Liên kết tài khoản đã có' }).click();
-    await page.getByLabel('UID Firebase Auth').fill(existingGoogleAccount.uid);
-    await page.getByLabel('Email tài khoản hiện có').fill(existingGoogleAccount.email);
-    await page.getByLabel('Tên hiển thị nhân viên').fill('Nhân viên Google E2E');
+    await page.getByLabel('UID Firebase Auth').fill(existingAuthAccount.uid);
+    await page.getByLabel('Email tài khoản hiện có').fill(existingAuthAccount.email);
+    await page.getByLabel('Tên hiển thị nhân viên').fill('Nhân viên Auth E2E');
     await page.locator('form').last().locator('select').selectOption('staff');
     await page.getByRole('button', { name: 'Cấp quyền cho tài khoản' }).click();
-    await expect(page.getByRole('status').getByText(existingGoogleAccount.email)).toBeVisible();
+    await expect(page.getByRole('status').getByText(existingAuthAccount.email)).toBeVisible();
 
-    const linkedMembership = await readFirestoreDocument(page, 'users', existingGoogleAccount.uid);
-    expect(linkedMembership.fields.uid.stringValue).toBe(existingGoogleAccount.uid);
-    expect(linkedMembership.fields.email.stringValue).toBe(existingGoogleAccount.email);
-    expect(linkedMembership.fields.name.stringValue).toBe('Nhân viên Google E2E');
+    const linkedMembership = await readFirestoreDocument(page, 'users', existingAuthAccount.uid);
+    expect(linkedMembership.fields.uid.stringValue).toBe(existingAuthAccount.uid);
+    expect(linkedMembership.fields.email.stringValue).toBe(existingAuthAccount.email);
+    expect(linkedMembership.fields.name.stringValue).toBe('Nhân viên Auth E2E');
     expect(linkedMembership.fields.role.stringValue).toBe('staff');
     expect(linkedMembership.fields.status.stringValue).toBe('active');
   });
