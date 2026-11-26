@@ -3,7 +3,7 @@
 **Last verified:** 2026-11-26 07:50 (Asia/Ho_Chi_Minh)  
 **Repository:** `hoaihoai48/CRM-Hoa-ROVII`  
 **Default branch:** `main`  
-**Main SHA:** `867946dc8f1fe0f3fc70bc6b8547173396090e10`  
+**Main SHA:** `46197e0d31207c64509a9ac4ebebfb895664f5aa`  
 **Canonical project memory:** [GOAL.md](GOAL.md) · [lessons.md](lessons.md) · [HANDOFF.md](HANDOFF.md)
 
 > Re-fetch live GitHub state before acting. This handoff records verified state, not a substitute for checking current refs, PRs, Actions and deployment contexts.
@@ -43,11 +43,16 @@
 - Manual final diff/security review found no new blocker in canonical order reads, transaction ordering, status/history invariants or Firestore access rules. The known Spark scalar-aggregate trust boundary remains explicit.
 - No production customer/order records were read or modified; no migration, Firebase configuration or billing change.
 
-### Next implementation branch
+### F-03 — product image payload bounds
 
-- F-03 branch: `security/product-image-payload-bounds-2026-11-26`.
-- Created from main commit `867946dc8f1fe0f3fc70bc6b8547173396090e10`; no implementation commits or PR yet.
-- Scope: enforce encoded Data URL size and product image payload bounds in service code and Firestore Rules, preserving existing HTTPS Storage URLs and allowing unrelated edits to legacy oversized image fields.
+- Branch: `security/product-image-payload-bounds-2026-11-26`.
+- Main base: `46197e0d31207c64509a9ac4ebebfb895664f5aa`.
+- Current branch head before this handoff update: `d86528c4eaf23ed5a8772cc863a4421aeea7ff18`.
+- PR: not opened yet.
+- Changes: service validation for at most five images, Data URLs up to 150,000 characters and HTTPS URLs up to 2,048 characters; progressive browser compression for the zero-cost Firestore fallback; Firestore Rules validate new/changed image payloads and bound note/category fields.
+- Backward compatibility: legacy oversized image references remain readable and unrelated product edits do not rewrite or validate unchanged media fields. Replacing legacy media requires replacing the complete image payload with bounded references.
+- Emulator regression cases were added for allowed small Data URL/HTTPS, oversized Data URL create/update, over-five images, HTTP URLs, oversized remote URLs, note bounds and legacy-safe unrelated edits. Execution status: **NOT RUN manually** per owner direction; wait for automatic PR Actions after opening the PR.
+- No production data, Firebase project configuration, Storage provisioning, billing or deployment changes.
 
 ## Security backlog
 
@@ -55,7 +60,7 @@
 |---|---|---|
 | F-01 — customer aggregate integrity | OPEN / PARTIAL MITIGATION ONLY | Scalar aggregates remain client-maintained under Spark; do not claim authoritative protection from a malicious active staff client. |
 | F-02 — Storage authorization mismatch | RESOLVED | PR #22 merged; Storage writes require active admin, public reads preserved; emulator regression coverage exists. |
-| F-03 — product image Data URL size / payload bounds | OPEN | Bound actual encoded bytes and aggregate payload; do not rely only on a UI limit. |
+| F-03 — product image Data URL size / payload bounds | IN PROGRESS (branch only) | Enforce 150,000-character Data URL limit, five-image/900,000-character worst-case payload, HTTPS URL bounds and legacy-safe unrelated edits. |
 | F-04 — membership identity/immutable fields | OPEN | Review UID/path consistency, createdAt immutability and role/status mutable fields. |
 | F-05 — stale security-audit narrative | OPEN | Align historical documentation with the actual Spark client-transaction architecture. |
 
