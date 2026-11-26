@@ -93,3 +93,10 @@ When a new lesson is added:
 - Five 150,000-character Data URLs plus the duplicated cover field total at most 900,000 ASCII bytes, leaving margin below Firestore's 1 MiB document limit for metadata.
 - Validate at the service boundary and in Firestore Rules. UI file-size checks alone are bypassable.
 - Preserve legacy oversized media on unrelated edits by validating image bounds only when image fields change; require replacement with bounded media before accepting a media edit.
+
+
+## 2026-11-26 — F-03 product image payload bounds merged
+
+- PR #29 merged as `a6b4f7e32a44885eeb2725992c197a38bd2c9e14` after automatic PR Actions and Preview were successful.
+- Post-merge main run [#45732373657](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45732373657) completed SUCCESS on the exact merge SHA, including lint, typecheck, Emulator integration, Playwright E2E and production build.
+- Keep the stored Data URL string limit distinct from decoded image bytes: 150,000 ASCII characters means 150 KB of Firestore string payload, while the decoded base64 image is smaller.
