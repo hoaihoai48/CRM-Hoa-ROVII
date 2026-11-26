@@ -1,6 +1,6 @@
 # HANDOFF — CRM Hoa ROVII
 
-**Last verified:** 2026-11-26 07:40 (Asia/Ho_Chi_Minh)  
+**Last verified:** 2026-11-26 07:42 (Asia/Ho_Chi_Minh)  
 **Repository:** `hoaihoai48/CRM-Hoa-ROVII`  
 **Default branch:** `main`  
 **Main SHA:** `b93d336137be1873623ff461790b18c3231ce8ed`  
@@ -53,8 +53,8 @@ The CRM's operational areas are Dashboard, Products, Customers, Orders, Staff an
 
 ### Preview and review
 
-- Current Vercel Preview for the merge-synced head was reported as **Building** at 2026-11-26 00:37 UTC; confirm latest deployment status before merging.
-- Previous Preview on the immediately preceding tree was Ready, but does not replace checking the current deployment.
+- Current Vercel Preview for the docs-updated PR head is **Ready**: https://tiem-hoa-rovii-git-refactor-simple-customer-orde-48b700-vu-nhim.vercel.app (deployment `9af4WGKAACiu1TJVGzaCZpspp1E2`, updated 2026-11-26 00:38:32 UTC).
+- The current Preview is a deployment of the PR branch; it is not a production deployment.
 - PR review submissions: none. Inline review threads: none.
 - Keep PR #26 Draft until the current Preview is Ready and an adequate code/security review is recorded. Do not merge solely because Actions passed.
 
