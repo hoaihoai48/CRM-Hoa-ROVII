@@ -1,3 +1,7 @@
+> **Historical implementation audit.** This document captures the code and permission state at its original review date. It is not authoritative for current access controls. For current rules and architecture, see [Firebase Security Audit](CRM_HOA_ROVII_FIREBASE_SECURITY_AUDIT_2026-11-22.md), [Source Audit historical notice](CRM_HOA_ROVII_SOURCE_AUDIT_2026-10-16.md), and [HANDOFF](../../HANDOFF.md). The active order/customer write path is Spark-compatible client Firestore transactions; Cloud Functions callables are not the current write boundary. Current notable changes include PR #22 Storage admin-only writes, PR #29 image payload bounds and PR #30 staff membership identity invariants. Product writes are admin-only; staff can read. Do not infer current permissions from the historical table below.
+
+---
+
 # CRM Hoa ROVII — CRUD / Navigation / Role-Permission Audit
 
 - **HEAD ban đầu:** `5eb299b` (`fix(orders): show product thumbnails and center search icon`)
