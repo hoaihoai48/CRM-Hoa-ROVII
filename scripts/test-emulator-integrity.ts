@@ -1181,6 +1181,15 @@ async function runTestSuite() {
   });
   console.log('     ✓ Legacy oversized image remains readable/editable without rewriting media fields');
 
+  await setDocumentAsAdmin('products', 'PROD_LEGACY_LONG_TEXT', {
+    ...imageProductBase,
+    category: 'C'.repeat(101),
+    note: 'N'.repeat(2001),
+  });
+  await updateDoc(doc(db, 'products', 'PROD_LEGACY_LONG_TEXT'), { note: 'Updated legacy note' });
+  await updateDoc(doc(db, 'products', 'PROD_LEGACY_LONG_TEXT'), { category: 'Updated category' });
+  console.log('     ✓ Unchanged legacy text fields do not block unrelated bounded edits');
+
   await updateDoc(doc(db, 'products', p1.id), { note: 'Admin product-write policy test' });
   console.log('     ✓ Admin product update succeeded as expected');
 

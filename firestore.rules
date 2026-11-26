@@ -229,6 +229,14 @@ service cloud.firestore {
         && (data.get('note', null) == null || data.note.size() <= 2000);
     }
 
+    function validProductTextChanges(oldData, newData) {
+      let changedKeys = newData.diff(oldData).affectedKeys();
+      return (
+        (!changedKeys.hasAny(['category']) || newData.get('category', null) == null || newData.category.size() <= 100)
+        && (!changedKeys.hasAny(['note']) || newData.get('note', null) == null || newData.note.size() <= 2000)
+      );
+    }
+
     // Product catalog policy: all active members can read; only admins can create
     // or edit. New/changed image references are bounded while legacy images remain
     // readable and unrelated edits do not force a legacy image rewrite.
@@ -251,7 +259,7 @@ service cloud.firestore {
         )
         && (
           !request.resource.data.diff(resource.data).affectedKeys().hasAny(['category', 'note'])
-          || validProductTextBounds(request.resource.data)
+          || validProductTextChanges(resource.data, request.resource.data)
         );
       allow delete: if false;
     }
