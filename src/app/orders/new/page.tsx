@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   UserCheck, 
@@ -49,6 +49,9 @@ function CreateOrderPageContent() {
   const [orderNote, setOrderNote] = useState('');
   const [deliveryDate, setDeliveryDate] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const prefillRequestRef = useRef(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -78,6 +81,7 @@ function CreateOrderPageContent() {
   }, [customers, normalizedPhone]);
 
   const handleSelectCustomer = (customer: Customer) => {
+    prefillRequestRef.current += 1;
     setSelectedCustomer(customer);
     setPhoneSearch(customer.phone);
     setCustomerName(customer.name);
@@ -85,6 +89,8 @@ function CreateOrderPageContent() {
   };
 
   const handlePhoneChange = (value: string) => {
+    prefillRequestRef.current += 1;
+    setFormError(null);
     if (
       selectedCustomer
       && normalizePhoneIdentity(value) !== normalizePhoneIdentity(selectedCustomer.phoneNormalized || selectedCustomer.phone)
@@ -99,25 +105,32 @@ function CreateOrderPageContent() {
   };
 
   // Prefill customer when navigated from a customer profile (?customerId=...).
+  // A delayed lookup must not overwrite a phone/customer identity entered manually afterwards.
   useEffect(() => {
     if (!prefillCustomerId || selectedCustomer) return;
-    let ignore = false;
+    const requestId = ++prefillRequestRef.current;
+    let cancelled = false;
     getCustomerById(prefillCustomerId)
       .then((customer) => {
-        if (ignore || !customer) return;
+        if (cancelled || requestId !== prefillRequestRef.current || !customer) return;
         setSelectedCustomer(customer);
         setPhoneSearch(customer.phone);
         setCustomerName(customer.name);
         setCustomerAddress(customer.address);
       })
-      .catch(() => {});
+      .catch((error) => {
+        if (cancelled || requestId !== prefillRequestRef.current) return;
+        setFormError(error instanceof Error ? error.message : 'Không thể tải hồ sơ khách hàng được chọn.');
+      });
     return () => {
-      ignore = true;
+      cancelled = true;
+      if (prefillRequestRef.current === requestId) prefillRequestRef.current += 1;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefillCustomerId]);
 
   const handleClearCustomer = () => {
+    prefillRequestRef.current += 1;
     setSelectedCustomer(null);
     setPhoneSearch('');
     setCustomerName('');
@@ -166,11 +179,9 @@ function CreateOrderPageContent() {
   const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const total = Math.max(0, subtotal + Math.max(0, deliveryFee) - Math.min(Math.max(0, discount), subtotal));
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-
   const handleSaveOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setFormError(null);
 
     if (!isValidVNPhone(phoneSearch)) {

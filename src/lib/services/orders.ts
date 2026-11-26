@@ -273,6 +273,9 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
   if (!input.items || input.items.length === 0) {
     throw new Error('Đơn hàng phải có ít nhất một sản phẩm.');
   }
+  if (input.items.length > 100) {
+    throw new Error('Một đơn hàng không được vượt quá 100 dòng sản phẩm.');
+  }
   if (!Number.isFinite(input.deliveryFee) || !Number.isFinite(input.discount) || input.deliveryFee < 0 || input.discount < 0) {
     throw new Error('Phí giao hàng và giảm giá phải là số hợp lệ, không âm.');
   }
@@ -489,6 +492,9 @@ export async function updateOrder(id: string, input: UpdateOrderInput): Promise<
   if (!input.items || input.items.length === 0) {
     throw new Error('Đơn hàng phải có ít nhất một sản phẩm.');
   }
+  if (input.items.length > 100) {
+    throw new Error('Một đơn hàng không được vượt quá 100 dòng sản phẩm.');
+  }
   if (!input.customerName.trim() || !input.customerAddress.trim()) {
     throw new Error('Tên người nhận và địa chỉ giao hoa là bắt buộc.');
   }
@@ -523,10 +529,14 @@ export async function updateOrder(id: string, input: UpdateOrderInput): Promise<
     if (!customerId) {
       throw new Error(`Đơn hàng không có mã khách hàng: ${id}`);
     }
+    const originalItems = Array.isArray(orderData.items) ? orderData.items as OrderItem[] : [];
+    const originalItemsByProductId = new Map(originalItems.map((item) => [item.productId, item]));
 
     const productSnaps = await Promise.all(productRefs.map((p) => tx.get(p.ref)));
 
-    // 2. VALIDATION & CALCULATION (server prices win)
+    // 2. VALIDATION & CALCULATION. Active products use the current catalog price.
+    // An inactive product may remain in an existing order only at its original or lower quantity,
+    // preserving the price/name snapshot that the customer already accepted.
     const validatedItems: OrderItem[] = [];
     for (let i = 0; i < productSnaps.length; i++) {
       const snap = productSnaps[i];
@@ -535,10 +545,12 @@ export async function updateOrder(id: string, input: UpdateOrderInput): Promise<
         throw new Error(`Không tìm thấy sản phẩm trong cơ sở dữ liệu: ${pReq.productId}`);
       }
       const productData = snap.data() as Product;
-      if (!productData.isActive) {
-        throw new Error(`Sản phẩm đã ngừng kinh doanh: ${productData.name}`);
+      const isActive = productData.isActive === true;
+      const originalItem = originalItemsByProductId.get(pReq.productId);
+      if (!isActive && (!originalItem || pReq.quantity > originalItem.quantity)) {
+        throw new Error(`Sản phẩm đã ngừng kinh doanh: chỉ được giữ hoặc giảm số lượng đã có trong đơn (${productData.name || pReq.productId}).`);
       }
-      const unitPrice = Number(productData.price);
+      const unitPrice = isActive ? Number(productData.price) : Number(originalItem!.unitPrice);
       if (!Number.isFinite(unitPrice) || unitPrice < 0) {
         throw new Error(`Giá sản phẩm không hợp lệ: ${productData.name || pReq.productId}`);
       }
@@ -549,10 +561,7 @@ export async function updateOrder(id: string, input: UpdateOrderInput): Promise<
       validatedItems.push({
         id: `${id}-ITEM-${i}`,
         productId: pReq.productId,
-        productSnapshot: {
-          name: productData.name,
-          unit: productData.unit || 'bó',
-        },
+        productSnapshot: isActive ? { name: productData.name, unit: productData.unit || 'bó' } : originalItem!.productSnapshot,
         quantity: pReq.quantity,
         unitPrice,
         subtotal,

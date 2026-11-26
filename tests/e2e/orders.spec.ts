@@ -4,6 +4,8 @@ const projectId = 'demo-crm-hoa-rovii';
 const authEmulator = 'http://127.0.0.1:9099';
 const firestoreEmulator = 'http://127.0.0.1:8080';
 
+test.use({ timezoneId: 'Asia/Ho_Chi_Minh' });
+
 async function signInAsActiveAdmin(page: Page): Promise<string> {
   const email = `rovii-orders-e2e-${crypto.randomUUID()}@example.test`;
   const password = 'RoviiOrdersE2E-2026!';
@@ -69,6 +71,7 @@ test('staff can create, edit and complete an order with consistent totals and hi
   await page.getByLabel('Tên khách hàng').fill('Khách hàng E2E ROVII');
   await page.getByLabel('Địa chỉ giao hoa').fill('123 Đường Hoa, Hà Nội');
   await page.getByLabel('Ghi chú đơn hàng & lời nhắn thiệp').fill('Giao trước 10 giờ, thiệp chúc mừng');
+  await page.getByLabel('Thời gian giao hoa').fill('2026-11-27T15:30');
 
   const productCard = page.getByText(productName, { exact: true }).locator('xpath=../..');
   await productCard.locator('button[title="Tăng"]').click();
@@ -96,6 +99,7 @@ test('staff can create, edit and complete an order with consistent totals and hi
   await page.emulateMedia({ media: 'screen' });
 
   await page.getByRole('button', { name: 'Sửa đơn hàng' }).click();
+  await expect(page.locator('#editDeliveryDate')).toHaveValue('2026-11-27T15:30');
   await page.locator('#editDeliveryFee').fill('25000');
   await page.locator('#editDiscount').fill('20000');
   await page.getByRole('button', { name: 'Lưu thay đổi' }).click();
@@ -133,6 +137,7 @@ test('staff can create, edit and complete an order with consistent totals and hi
   expect(order.fields.createdByUid.stringValue).toBe(staffUid);
   expect(order.fields.summary.mapValue.fields.subtotal.integerValue).toBe('350000');
   expect(order.fields.summary.mapValue.fields.total.integerValue).toBe('350000');
+  expect(order.fields.deliveryDate.stringValue).toBe('2026-11-27T08:30:00.000Z');
   expect(order.fields.statusHistory.arrayValue.values).toHaveLength(6);
   for (const entry of order.fields.statusHistory.arrayValue.values) {
     expect(entry.mapValue.fields.actorUid.stringValue).toBe(staffUid);
@@ -148,6 +153,59 @@ test('staff can create, edit and complete an order with consistent totals and hi
   expect(customer.fields.totalSpent.integerValue).toBe('350000');
 });
 
+
+test('can edit an existing order after its product is deactivated without repricing it', async ({ page }) => {
+  const productId = `PROD-INACTIVE-ORDER-${crypto.randomUUID()}`;
+  const productName = `Hoa ngừng bán ${crypto.randomUUID().slice(0, 8)}`;
+  const phone = `09${String(Math.floor(Math.random() * 100000000)).padStart(8, '0')}`;
+  await seedActiveProduct(page, productId, productName, 350000);
+  await signInAsActiveAdmin(page);
+
+  await page.goto('/orders/new');
+  await page.getByLabel('Số điện thoại').fill(phone);
+  await page.getByLabel('Tên khách hàng').fill('Khách có sản phẩm ngừng bán');
+  await page.getByLabel('Địa chỉ giao hoa').fill('Địa chỉ kiểm thử sản phẩm ngừng bán');
+  const productCard = page.getByText(productName, { exact: true }).locator('xpath=../..');
+  await productCard.locator('button[title="Tăng"]').click();
+  await productCard.locator('button[title="Tăng"]').click();
+  await page.getByRole('button', { name: 'Lưu đơn hàng' }).click();
+  await expect(page).toHaveURL(/\/orders\/DH-/);
+
+  const updateMask = new URLSearchParams();
+  updateMask.append('updateMask.fieldPaths', 'isActive');
+  updateMask.append('updateMask.fieldPaths', 'price');
+  const deactivate = await page.request.patch(
+    `${firestoreEmulator}/v1/projects/${projectId}/databases/(default)/documents/products/${productId}?${updateMask.toString()}`,
+    {
+      headers: { Authorization: 'Bearer owner' },
+      data: { fields: { isActive: { booleanValue: false }, price: { integerValue: '999000' } } },
+    },
+  );
+  expect(deactivate.ok()).toBeTruthy();
+
+  await page.getByRole('button', { name: 'Sửa đơn hàng' }).click();
+  await expect(page.getByText(/Đã ngừng bán/)).toBeVisible();
+  const increaseButton = page.getByRole('button', { name: `Tăng số lượng ${productName}` });
+  const decreaseButton = page.getByRole('button', { name: `Giảm số lượng ${productName}` });
+  await expect(increaseButton).toBeDisabled();
+  await decreaseButton.click();
+  await page.locator('#editDeliveryFee').fill('15000');
+  await page.getByRole('button', { name: 'Lưu thay đổi' }).click();
+  await expect(page.getByText('Đã lưu thay đổi đơn hàng.')).toBeVisible();
+
+  const orderId = new URL(page.url()).pathname.split('/').pop();
+  const orderResponse = await page.request.get(
+    `${firestoreEmulator}/v1/projects/${projectId}/databases/(default)/documents/orders/${orderId}`,
+    { headers: { Authorization: 'Bearer owner' } },
+  );
+  expect(orderResponse.ok()).toBeTruthy();
+  const order = await orderResponse.json();
+  const item = order.fields.items.arrayValue.values[0].mapValue.fields;
+  expect(item.productId.stringValue).toBe(productId);
+  expect(item.quantity.integerValue).toBe('1');
+  expect(item.unitPrice.integerValue).toBe('350000');
+  expect(order.fields.summary.mapValue.fields.total.integerValue).toBe('365000');
+});
 
 test('changing the phone after selecting a customer clears the old customer identity', async ({ page }) => {
   const productId = `PROD-PHONE-IDENTITY-${crypto.randomUUID()}`;

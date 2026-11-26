@@ -19,13 +19,11 @@ import { ZaloButton } from '@/components/common/ZaloButton';
 import { Input, Textarea } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { getOrderById, listActiveProducts, updateOrder, updateOrderStatus } from '@/lib/services';
-import { formatDate, formatVND } from '@/lib/utils/format';
+import { formatDate, formatVND, toDateTimeLocalInput } from '@/lib/utils/format';
 import { OrderStatus, Product } from '@/types';
 import { getNextOrderStatuses, canTransitionOrderStatus } from '@/lib/utils/order-status';
 
-function OrderDetailContent() {
-  const params = useParams();
-  const orderId = params?.id as string;
+function OrderDetailContentForId({ orderId }: { orderId: string }) {
   const { membership: currentUser, membershipUserId } = useAuth();
 
   const [initialOrder, setInitialOrder] = useState<Awaited<ReturnType<typeof getOrderById>> | null>(null);
@@ -147,7 +145,7 @@ function OrderDetailContent() {
     setEditNote(initialOrder.note || '');
     setEditDeliveryFee(initialOrder.summary.deliveryFee);
     setEditDiscount(initialOrder.summary.discount);
-    setEditDeliveryDate(initialOrder.deliveryDate ? initialOrder.deliveryDate.slice(0, 16) : '');
+    setEditDeliveryDate(toDateTimeLocalInput(initialOrder.deliveryDate));
     const quantities: Record<string, number> = {};
     for (const item of initialOrder.items) {
       quantities[item.productId] = item.quantity;
@@ -156,8 +154,30 @@ function OrderDetailContent() {
     setIsEditing(true);
     try {
       const activeProducts = await listActiveProducts();
-      setProducts(activeProducts);
+      const activeIds = new Set(activeProducts.map((product) => product.id));
+      const inactiveExistingProducts = new Map<string, Product>();
+      for (const item of initialOrder.items) {
+        if (!activeIds.has(item.productId)) {
+          inactiveExistingProducts.set(item.productId, {
+            id: item.productId,
+            name: item.productSnapshot.name,
+            price: item.unitPrice,
+            unit: item.productSnapshot.unit,
+            isActive: false,
+            createdAt: initialOrder.createdAt,
+          });
+        }
+      }
+      setProducts([...activeProducts, ...inactiveExistingProducts.values()]);
     } catch (error) {
+      setProducts(initialOrder.items.map((item) => ({
+        id: item.productId,
+        name: item.productSnapshot.name,
+        price: item.unitPrice,
+        unit: item.productSnapshot.unit,
+        isActive: false,
+        createdAt: initialOrder.createdAt,
+      })));
       setSaveError(error instanceof Error ? error.message : 'Không thể tải danh sách sản phẩm để sửa.');
     }
   };
@@ -283,7 +303,7 @@ function OrderDetailContent() {
                   name: item.productSnapshot.name,
                   price: item.unitPrice,
                   unit: item.productSnapshot.unit,
-                  isActive: true,
+                  isActive: false,
                 } as Product))
             ).map((product) => {
               const qty = editQuantities[product.id] || 0;
@@ -292,12 +312,14 @@ function OrderDetailContent() {
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-stone-900 truncate">{product.name}</p>
                     <p className="text-[11px] text-stone-500">{formatVND(product.price)} / {product.unit}</p>
+                    {!product.isActive && <p className="text-[10px] font-medium text-amber-700">Đã ngừng bán · chỉ giữ hoặc giảm số lượng</p>}
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
                       onClick={() => updateEditQuantity(product.id, -1)}
                       disabled={qty === 0 || isSaving}
+                      aria-label={`Giảm số lượng ${product.name}`}
                       className="w-7 h-7 rounded-md flex items-center justify-center text-stone-600 hover:bg-stone-100 disabled:opacity-30 cursor-pointer"
                     >
                       −
@@ -306,8 +328,9 @@ function OrderDetailContent() {
                     <button
                       type="button"
                       onClick={() => updateEditQuantity(product.id, 1)}
-                      disabled={isSaving}
-                      className="w-7 h-7 rounded-md flex items-center justify-center bg-rose-50 text-rose-700 hover:bg-rose-100 cursor-pointer"
+                      disabled={isSaving || !product.isActive}
+                      aria-label={`Tăng số lượng ${product.name}`}
+                      className="w-7 h-7 rounded-md flex items-center justify-center bg-rose-50 text-rose-700 hover:bg-rose-100 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                     >
                       +
                     </button>
@@ -576,6 +599,12 @@ function OrderDetailContent() {
     
     </>
   );
+}
+
+function OrderDetailContent() {
+  const params = useParams();
+  const orderId = params?.id as string;
+  return <OrderDetailContentForId key={orderId} orderId={orderId} />;
 }
 
 function OrderDetailPageContent() {
