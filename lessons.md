@@ -136,3 +136,12 @@ When a new lesson is added:
 - Do not start manual test suites, rerun CI, or hold delivery waiting for test results unless the owner later asks.
 - Distinguish committed test coverage from executed verification. Never imply tests passed when they were not run.
 - Prioritize the working implementation, preserve production/billing boundaries, and address defects reported during actual use.
+
+## 2026-11-26 — Keep the internal CRM on Firebase Spark
+
+- The owner confirmed the CRM is an internal tool and should use free resources rather than be engineered as a large public product.
+- Keep the Firebase project on Spark. Do not introduce Blaze billing, Cloud Functions, or paid infrastructure to close F-01.
+- Accept the remaining trust boundary: active authenticated clients can potentially alter customer scalar aggregates, and Firestore Rules cannot independently prove every client-computed cross-document total.
+- Treat canonical `orders/{orderId}` documents as the durable order history and reconciliation evidence; customer scalar aggregates are display/cache values.
+- Do not add a restrictive profile-only customer rule unless every valid create/edit/status/cancel transaction is preserved and the rule can actually prove the intended invariant. A superficial restriction is worse than a clearly documented accepted risk.
+- Continue implementation-first delivery: no manual test runs or incremental reports unless requested; fix concrete defects observed during real use.

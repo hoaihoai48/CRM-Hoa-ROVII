@@ -154,3 +154,14 @@ This dated audit remains a historical snapshot; use this addendum and the live s
 3. Review the order-print feature branch against current main before porting any still-missing functionality; do not merge the old divergent branch wholesale.
 
 No production records, Firebase configuration, billing, migrations or deployment were changed by this audit correction.
+
+## Current operating decision — 2026-11-26 (after PR #33)
+
+The owner has reaffirmed that this is an internal CRM and the architecture should remain on free Firebase resources. The accepted F-01 limitation is not a trigger to introduce Blaze, Cloud Functions, or a paid trusted backend.
+
+- **F-01: OPEN / ACCEPTED RESIDUAL RISK.** Customer `totalOrders`, `totalSpent`, and `lastOrderDate` remain client-maintained summaries. They are not authoritative financial records against a modified active staff client. Use canonical `orders/{orderId}` documents as the order-history evidence and reconcile summaries from those records when an operational discrepancy is identified.
+- Do not add a broad profile-only customer update allowlist or cross-document Rules protocol as a cosmetic fix. It must preserve every supported customer/order transaction and be demonstrably enforceable within Firestore Rules limits; otherwise leave the limitation explicit.
+- **Firebase plan: Spark.** No billing link, Blaze upgrade, Cloud Functions dependency, or paid backend is approved for this internal CRM.
+- **F-02, F-03, F-04:** resolved by their merged changes (PRs #22, #29, #30).
+- **Admin workflow coverage:** PR #33 merged as `db8de85e373242cc960e4abc19ac84e281307280`, adding browser scenarios for catalog, customer, staff and store-settings workflows. These scenarios were committed but not manually executed for this delivery, in accordance with the owner's instruction.
+- Prior recommendations in this historical audit to move F-01 writes to callable Cloud Functions or to introduce a paid trusted backend are superseded by this explicit decision.
