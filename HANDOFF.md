@@ -1,3 +1,21 @@
+# CURRENT HANDOFF — verified 2026-11-26 (supersedes stale status below)
+
+- Repository: `hoaihoai48/CRM-Hoa-ROVII`; default branch: `main`.
+- Live main SHA: `ec2d74115a61fc01f13e0124ffdd2aece0f252ff`.
+- PR #30 (F-04 staff membership identity invariants) is **MERGED**, not open/draft. Main Actions run [#45735593396](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45735593396) completed **SUCCESS** on this exact SHA. PR #30 head Actions [#45735493508](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45735493508) also completed SUCCESS.
+- PR #22 / F-02 Storage admin-only writes: RESOLVED.
+- PR #29 / F-03 product image payload bounds: RESOLVED.
+- PR #30 / F-04 staff membership identity: RESOLVED.
+- F-05 stale audit narrative: documentation correction prepared in this branch; pending PR review/merge.
+- F-01 customer aggregate integrity: OPEN. Under Firebase Spark, scalar customer aggregates remain client-maintained. No trusted server can be introduced without changing the approved hosting/billing architecture. A Firestore Rules-only solution must prove all valid order transaction cases and stay within Rules evaluation/access-call limits; do not ship a superficial restriction that breaks normal orders.
+- Other backlog: broader Playwright coverage for Products, Customers, Staff, Settings and responsive workflows; verify/port order-print feature only after reviewing its old divergent branch.
+
+## Operating constraints
+
+Use GitHub connector only for this repo. Preserve Firebase Spark. Do not access/mutate production customer/order records, deploy/promote production, change Firebase project configuration/billing, or perform migrations without explicit approval. Do not manually run broad test suites unless requested; rely on automatically triggered Actions and report exact-head results. Update this handoff and lessons after every meaningful milestone. Keep one active code PR at a time and commit cohesive feature changes together.
+
+---
+
 # HANDOFF — CRM Hoa ROVII
 
 **Last verified:** 2026-11-26 08:18 (Asia/Ho_Chi_Minh)  
