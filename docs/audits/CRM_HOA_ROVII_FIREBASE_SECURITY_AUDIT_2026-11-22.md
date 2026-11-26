@@ -135,3 +135,22 @@ The intended simplification is to stop depending on or maintaining `orderSummari
 No production data, billing, deployment, Firebase configuration or migration is authorized.
 
 **Implementation status (2026-11-26):** PR #26 is open and Draft at head `61f2db1f217991589d9f2076de40a843e1fe70a9`. Its application-code tree passed the automatically triggered Actions run [#45729703091](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45729703091): lint, TypeScript, Auth/Firestore/Storage Emulator integration, Playwright E2E and production build all PASS. The Vercel Preview for the latest head is Ready. No PR review submissions or inline review threads are recorded; do not merge until an adequate code/security review is completed. F-01 remains OPEN / PARTIAL MITIGATION ONLY because scalar aggregate tampering remains possible under the Spark trusted-client model.
+
+
+## Current-state correction — 2026-11-26
+
+This dated audit remains a historical snapshot; use this addendum and the live source before making security claims.
+
+- **F-02 RESOLVED:** PR #22 merged; active admins only can write/delete product Storage objects; public reads remain intentional. Storage Emulator coverage exists.
+- **F-03 RESOLVED:** PR #29 merged; product image count, Data URL/HTTPS URL lengths and total payload bounds are enforced in services and Firestore Rules.
+- **F-04 RESOLVED:** PR #30 merged on 2026-11-26 as part of main commit [ec2d74115a61fc01f13e0124ffdd2aece0f252ff](https://github.com/hoaihoai48/CRM-Hoa-ROVII/commit/ec2d74115a61fc01f13e0124ffdd2aece0f252ff). Membership UID must match the document path; email/name/createdAt are immutable; role/status enums are constrained; self role/status changes are denied. Main Actions [#45735593396](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45735593396) completed SUCCESS on that exact SHA.
+- **F-05 RESOLVED (documentation):** the historical 2026-10-16 Source Audit and CRUD permission audit are explicitly marked as historical and point to this current Spark architecture decision. Callable Cloud Functions are not the active order/customer write boundary.
+- **F-01 OPEN / ACCEPTED TRUST-BOUNDARY RISK:** customer scalar summaries remain client-maintained in the Spark model. Active authenticated staff clients can potentially tamper with those fields, and Rules cannot prove all cross-document arithmetic or product-price totals. The canonical `orders/{orderId}` documents are the evidence for reconciliation. Do not claim authoritative financial integrity. Closing this against a malicious/compromised client requires a trusted write backend (not available on Spark) or a rigorously proven Rules design that preserves every valid order transaction; no unsafe superficial allowlist is acceptable.
+
+### Current implementation priorities
+
+1. Design and prove the narrowest possible Rules guard for direct scalar-only customer tampering without breaking create/edit/status/cancel transactions. If that cannot be proven within Rules expression/access-call limits, document F-01 as an explicit accepted Spark limitation rather than shipping a broken rule.
+2. Expand E2E coverage for product, customer, staff, settings and responsive workflows.
+3. Review the order-print feature branch against current main before porting any still-missing functionality; do not merge the old divergent branch wholesale.
+
+No production records, Firebase configuration, billing, migrations or deployment were changed by this audit correction.
