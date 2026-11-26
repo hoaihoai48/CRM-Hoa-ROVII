@@ -52,7 +52,7 @@ function assertValidProductImagePayload(imageUrls: string[], cover?: string | nu
   }
   const references = [...imageUrls, ...(cover ? [cover] : [])];
   if (references.some((reference) => !isValidProductImageReference(reference))) {
-    throw new Error('Ảnh sản phẩm không hợp lệ hoặc vượt giới hạn khoảng 110KB sau nén. Hãy chọn ảnh khác hoặc giảm kích thước.');
+    throw new Error('Ảnh sản phẩm không hợp lệ hoặc vượt giới hạn 150KB của Data URL lưu trong Firestore. Hãy chọn ảnh khác hoặc giảm kích thước.');
   }
 }
 

@@ -192,7 +192,7 @@ export function MultiImageUploader({
                 Nhấn để chọn ảnh hoặc kéo thả vào đây
               </p>
               <p className="text-[11px] text-stone-400 mt-1">
-                Hỗ trợ JPG, PNG, WebP (file gốc tối đa 10MB, {maxImages} ảnh/sản phẩm). Khi lưu Data URL, ảnh được nén tối đa khoảng 110KB/ảnh. Ảnh đầu tiên là ảnh bìa.
+                Hỗ trợ JPG, PNG, WebP (file gốc tối đa 10MB, {maxImages} ảnh/sản phẩm). Khi lưu Data URL, Data URL lưu trong Firestore tối đa 150KB/ảnh. Ảnh đầu tiên là ảnh bìa.
               </p>
             </>
           )}
