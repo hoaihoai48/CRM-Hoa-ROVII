@@ -1132,6 +1132,34 @@ async function runTestSuite() {
   }
   assert(insecureImageUrlBlocked, 'Firestore Rules must reject non-HTTPS remote product image URLs');
 
+  const validHttpsImageUrl = 'https://cdn.example.com/flowers/rose.jpg';
+  await setDoc(doc(db, 'products', 'PROD_IMAGE_HTTPS_VALID'), {
+    ...imageProductBase,
+    imageUrl: validHttpsImageUrl,
+    imageUrls: [validHttpsImageUrl],
+  });
+
+  let oversizedRemoteImageUrlBlocked = false;
+  try {
+    const oversizedRemoteImageUrl = `https://cdn.example.com/${'a'.repeat(2048)}`;
+    await setDoc(doc(db, 'products', 'PROD_IMAGE_URL_TOO_LONG'), {
+      ...imageProductBase,
+      imageUrl: oversizedRemoteImageUrl,
+      imageUrls: [oversizedRemoteImageUrl],
+    });
+  } catch {
+    oversizedRemoteImageUrlBlocked = true;
+  }
+  assert(oversizedRemoteImageUrlBlocked, 'Firestore Rules must reject remote image URLs longer than 2,048 characters');
+
+  let oversizedNoteBlocked = false;
+  try {
+    await updateDoc(doc(db, 'products', 'PROD_IMAGE_VALID'), { note: 'N'.repeat(2001) });
+  } catch {
+    oversizedNoteBlocked = true;
+  }
+  assert(oversizedNoteBlocked, 'Firestore Rules must bound product notes to protect document payload size');
+
   let oversizedImageUpdateBlocked = false;
   try {
     await updateDoc(doc(db, 'products', 'PROD_IMAGE_VALID'), {
