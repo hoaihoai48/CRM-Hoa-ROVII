@@ -43,6 +43,7 @@ jobs:
           timeout 5m npm audit --prefix functions --json > functions-npm-audit-report.json
           FUNCTIONS_AUDIT_EXIT=$?
           export APP_AUDIT_EXIT FUNCTIONS_AUDIT_EXIT
+          set -e
           node <<'NODE'
           const fs = require('node:fs');
 
