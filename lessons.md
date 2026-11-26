@@ -184,3 +184,11 @@ When a new lesson is added:
 
 
 - After an admin grants the membership, an authenticated employee should be able to retry membership resolution in the same session instead of being forced to sign out and back in. The retry invalidates the cached membership attempt and re-reads the current UID's membership.
+
+
+## 2026-11-26 — Bind product edit state to the dynamic route identity
+
+- A dynamic detail page must never reuse the previously loaded entity's form state with a newly changed route ID. Ignore flags prevent stale responses, but they do not prevent old data from remaining visible while the new request is loading.
+- Key the data-owning child component by the route ID so its loading, error and form state are reset together when the entity changes.
+- Keep service-side field bounds aligned with Firestore Rules. UI required fields alone do not protect direct service callers or oversized values.
+- Treat deactivate and save as separate in-flight operations; disable repeated actions while either operation is running.

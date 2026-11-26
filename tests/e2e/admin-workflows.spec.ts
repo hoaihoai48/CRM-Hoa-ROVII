@@ -98,6 +98,12 @@ test.describe('Admin daily workflows', () => {
     expect(product.fields.unit.stringValue).toBe('giỏ');
     expect(product.fields.category.stringValue).toBe('Hoa giỏ');
     expect(product.fields.isActive.booleanValue).toBe(false);
+
+    // The service should reject values that Firestore Rules would reject, with a useful form error.
+    await page.goto('/products/new');
+    await page.getByLabel('Tên mẫu hoa / sản phẩm').fill('A'.repeat(201));
+    await page.getByRole('button', { name: 'Lưu sản phẩm' }).click();
+    await expect(page.getByText('Tên sản phẩm không được vượt quá 200 ký tự.')).toBeVisible();
   });
 
   test('creates, searches and edits a customer profile without changing its phone identity', async ({ page }) => {
@@ -258,5 +264,30 @@ test.describe('Admin daily workflows', () => {
     await page.goto('/settings');
     await expect(page.getByText(/Tài khoản nhân viên chỉ được xem cài đặt/)).toBeVisible();
     await expect(page.getByRole('button', { name: 'Lưu cài đặt' })).toHaveCount(0);
+
+    await page.goto('/products/new');
+    await expect(page.getByRole('alert').getByText(/Chỉ quản trị viên đang hoạt động/)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Lưu sản phẩm' })).toHaveCount(0);
+
+    const productId = 'PROD-STAFF-DIRECT-ACCESS';
+    const seedProduct = await page.request.patch(
+      firestoreEmulator + '/v1/projects/' + projectId + '/databases/(default)/documents/products/' + productId,
+      {
+        headers: { Authorization: 'Bearer owner' },
+        data: {
+          fields: {
+            name: { stringValue: 'Sản phẩm kiểm tra quyền staff' },
+            price: { integerValue: '100000' },
+            unit: { stringValue: 'bó' },
+            isActive: { booleanValue: true },
+            createdAt: { stringValue: new Date().toISOString() },
+          },
+        },
+      },
+    );
+    expect(seedProduct.ok()).toBeTruthy();
+    await page.goto('/products/' + productId);
+    await expect(page.getByRole('alert').getByText(/Chỉ quản trị viên đang hoạt động/)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Lưu thay đổi' })).toHaveCount(0);
   });
 });

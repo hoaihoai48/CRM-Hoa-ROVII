@@ -18,6 +18,20 @@ function assertValidPrice(price: unknown): asserts price is number {
   }
 }
 
+function normalizeProductName(value: string): string {
+  const name = value.trim();
+  if (!name) throw new Error('Tên sản phẩm không được để trống.');
+  if (name.length > 200) throw new Error('Tên sản phẩm không được vượt quá 200 ký tự.');
+  return name;
+}
+
+function normalizeProductUnit(value: string): string {
+  const unit = value.trim();
+  if (!unit) throw new Error('Đơn vị tính không được để trống.');
+  if (unit.length > 40) throw new Error('Đơn vị tính không được vượt quá 40 ký tự.');
+  return unit;
+}
+
 /** Product image references are bounded so duplicated cover/list fields stay below Firestore's 1 MiB document limit. */
 export const MAX_PRODUCT_IMAGES = 5;
 export const MAX_PRODUCT_IMAGE_DATA_URL_LENGTH = 150_000;
@@ -107,9 +121,9 @@ export async function listActiveProducts(): Promise<Product[]> {
 }
 
 export async function createProduct(input: CreateProductInput): Promise<Product> {
-  if (!input.name.trim()) throw new Error('Tên sản phẩm không được để trống.');
+  const cleanName = normalizeProductName(input.name);
   assertValidPrice(input.price);
-  if (!input.unit.trim()) throw new Error('Đơn vị tính không được để trống.');
+  const cleanUnit = normalizeProductUnit(input.unit);
 
   const productId = `PROD-${crypto.randomUUID()}`;
   const now = new Date().toISOString();
@@ -118,9 +132,9 @@ export async function createProduct(input: CreateProductInput): Promise<Product>
   assertValidProductTextBounds(input.category, input.note);
 
   const productData = {
-    name: input.name.trim(),
+    name: cleanName,
     price: input.price,
-    unit: input.unit.trim(),
+    unit: cleanUnit,
     isActive: input.isActive ?? true,
     category: input.category?.trim() || null,
     imageUrl: cleanImageUrls[0] || null,
@@ -153,12 +167,12 @@ export async function updateProduct(id: string, changes: Partial<Omit<Product, '
   if (!docSnap.exists()) throw new Error('Không tìm thấy sản phẩm.');
 
   const updateData: Record<string, unknown> = {};
-  if (changes.name !== undefined) updateData.name = changes.name.trim();
+  if (changes.name !== undefined) updateData.name = normalizeProductName(changes.name);
   if (changes.price !== undefined) {
     assertValidPrice(changes.price);
     updateData.price = changes.price;
   }
-  if (changes.unit !== undefined) updateData.unit = changes.unit.trim();
+  if (changes.unit !== undefined) updateData.unit = normalizeProductUnit(changes.unit);
   if (changes.isActive !== undefined) updateData.isActive = Boolean(changes.isActive);
   if (changes.category !== undefined) {
     assertValidProductTextBounds(changes.category, undefined);
