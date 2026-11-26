@@ -166,3 +166,10 @@ When a new lesson is added:
 - A boolean mounted/ignore ref is insufficient when a client component is reused across dynamic route IDs: the next route effect can set the same ref back to active before the previous route's request resolves.
 - Give each load a monotonically increasing request identity; only the latest identity may update data, errors or loading state. Invalidate it during route-effect cleanup.
 - Apply the same identity check to pagination requests so a prior customer's/order's history cannot append to the newly opened profile.
+
+
+## 2026-11-26 — Keep React effect bodies free of synchronous state updates
+
+- When an effect needs to start an async Firestore load through a helper that sets loading/error state, defer invocation with a microtask and guard it with an effect-local cancellation flag.
+- Cleanup must cancel a not-yet-started invocation and invalidate any request already started. This satisfies the hooks lint rule without losing stale-response protection.
+- A merged change that triggers CI must be treated as a delivery defect even when CI was not explicitly requested to be run; inspect the automatic workflow result and fix regressions caused by the patch.
