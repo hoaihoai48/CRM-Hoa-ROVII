@@ -73,10 +73,10 @@ npm run test:emulator
 
 ## Giới hạn đã biết
 
-- Các quy tắc Firestore hiện cho phép active member ghi trực tiếp tài liệu `orders`, `customers` và `products`. Điều này có nghĩa validation ở client/service chưa phải ranh giới bảo mật; xem [Source Audit 2026-10-16](docs/audits/CRM_HOA_ROVII_SOURCE_AUDIT_2026-10-16.md) trước khi đưa hệ thống vào production.
-- Số điện thoại hợp lệ được chuẩn hóa về dạng quốc gia `0...`; tra cứu vẫn hỗ trợ hồ sơ cũ dạng `84...` để hạn chế trùng khách hàng.
-- Cần phân trang danh sách khi dữ liệu tăng.
-- Lưu Data URL trong Firestore chỉ phù hợp với catalog nhỏ và cần kiểm tra kích thước document.
+- Firestore Rules yêu cầu active membership để đọc/ghi dữ liệu nghiệp vụ; quyền ghi sản phẩm chỉ dành cho admin. Với mô hình Firebase Spark, order/customer transactions vẫn chạy từ client, vì vậy Rules không thể tự chứng minh mọi phép tính tổng tiền hoặc customer aggregate. F-01 là giới hạn trust-boundary đã được chấp nhận cho CRM nội bộ; xem [Firebase Security Audit](docs/audits/CRM_HOA_ROVII_FIREBASE_SECURITY_AUDIT_2026-11-22.md) và [Spark write-boundary decision](docs/security/FIRESTORE_BUSINESS_WRITE_BOUNDARY_PLAN.md).
+- Số điện thoại hợp lệ được chuẩn hóa về dạng quốc gia `0...`; tra cứu vẫn hỗ trợ hồ sơ cũ dạng `84...` để hạn chế trùng khách hàng. Khi tạo đơn, ID khách hàng được kiểm tra khớp với số điện thoại trong cùng Firestore transaction.
+- Danh sách đơn hàng và khách hàng hỗ trợ cursor pagination khi duyệt thông thường. Tìm kiếm chuỗi con hiện vẫn tải toàn bộ tập dữ liệu; danh mục sản phẩm và gợi ý khách hàng trên form tạo đơn cũng tải toàn bộ collection. Cách này phù hợp với quy mô CRM nội bộ nhỏ; nếu dữ liệu tăng đáng kể, cần bổ sung tìm kiếm/phân trang có index.
+- Data URL lưu trong Firestore được giới hạn kích thước và số ảnh ở service lẫn Firestore Rules; phù hợp với catalog nhỏ. Firebase Storage chỉ dùng khi project đã được cấu hình tương ứng.
 
 ## Tài liệu
 
