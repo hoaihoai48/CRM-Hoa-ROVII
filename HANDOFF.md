@@ -31,6 +31,8 @@ Preserve Firebase Spark. Do not access or mutate production customer/order recor
 
 - Product catalog page duplicate-read defect fixed in [PR #36](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/36) once merged: initial mount previously issued two identical full product collection reads; it now shares one request path for initial load/retry and ignores stale in-flight responses after unmount or a newer retry.
 
+- Customer and order detail pages now invalidate route-bound Firestore reads on navigation/retry, preventing a slower response for the previous record from replacing the currently opened record (PR #37).
+
 ## Historical handoff archive
 
 The previous handoff snapshots are retained below for audit history only. Their PR states and next actions are superseded by the current-state section above.

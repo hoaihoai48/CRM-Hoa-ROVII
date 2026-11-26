@@ -159,3 +159,10 @@ When a new lesson is added:
 - Keep a single loading path for both initial page load and manual retry; do not leave a second direct collection read in the mount effect alongside a reusable loader.
 - Use a monotonically increasing request token so a slow earlier request cannot overwrite a later retry, and invalidate pending requests when the page unmounts.
 - On Firebase Spark, redundant collection reads consume the same limited free read quota without improving the UI.
+
+
+## 2026-11-26 — Guard detail-page reads by request identity
+
+- A boolean mounted/ignore ref is insufficient when a client component is reused across dynamic route IDs: the next route effect can set the same ref back to active before the previous route's request resolves.
+- Give each load a monotonically increasing request identity; only the latest identity may update data, errors or loading state. Invalidate it during route-effect cleanup.
+- Apply the same identity check to pagination requests so a prior customer's/order's history cannot append to the newly opened profile.

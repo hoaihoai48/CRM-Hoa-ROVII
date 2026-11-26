@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { 
@@ -33,6 +33,7 @@ function OrderDetailContent() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const loadRequestRef = useRef(0);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   // Order edit state (only for status new/confirmed)
   const [isEditing, setIsEditing] = useState(false);
@@ -49,10 +50,12 @@ function OrderDetailContent() {
 
   const loadOrder = () => {
     if (!orderId) return;
+    const requestId = ++loadRequestRef.current;
     setIsLoading(true);
     setLoadError(null);
     getOrderById(orderId)
       .then((order) => {
+        if (requestId !== loadRequestRef.current) return;
         setInitialOrder(order);
         if (order) setCurrentStatus(order.status);
         if (!order) {
@@ -62,10 +65,11 @@ function OrderDetailContent() {
         }
       })
       .catch((error) => {
+        if (requestId !== loadRequestRef.current) return;
         setLoadError(error instanceof Error ? error.message : 'Không thể tải đơn hàng.');
       })
       .finally(() => {
-        setIsLoading(false);
+        if (requestId === loadRequestRef.current) setIsLoading(false);
       });
   };
 
@@ -73,6 +77,9 @@ function OrderDetailContent() {
     // External Firestore read — legitimate effect.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadOrder();
+    return () => {
+      loadRequestRef.current += 1;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
 
