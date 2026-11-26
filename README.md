@@ -67,9 +67,10 @@ npm run lint
 npm run typecheck
 npm run build
 npm run test:emulator
+npm run test:e2e
 ```
 
-`npm run test:emulator` khởi chạy Firebase Auth và Firestore Emulator. Bộ test tạo dữ liệu kiểm thử trong emulator, không dùng dữ liệu production. GitHub Actions chạy các bước này trên runner sạch cho pull request và push vào `main`.
+`npm run test:emulator` khởi chạy Firebase Auth và Firestore Emulator. `npm run test:e2e` chạy Playwright trên Auth/Firestore Emulator. Bộ test chỉ tạo dữ liệu giả lập, không dùng dữ liệu production. GitHub Actions chạy lint, typecheck, Emulator, E2E và production build trên pull request và push vào `main`. Dependency audit được tách thành workflow riêng chạy hàng tuần hoặc khi được gọi thủ công, tránh chặn các lần CI chức năng bằng truy vấn advisory network.
 
 ## Giới hạn đã biết
 
