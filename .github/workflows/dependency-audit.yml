@@ -70,7 +70,7 @@ jobs:
               `## ${label}`,
               '',
               `Counts: ${c.critical || 0} critical, ${c.high || 0} high, ${c.moderate || 0} moderate, ${c.low || 0} low, ${c.info || 0} info.`,
-              report.auditUnavailable ? 'The JSON report was unavailable or incomplete (registry/network timeout).' : '',
+              (report.auditUnavailable || report.error) ? 'The JSON report was unavailable or incomplete (registry/network timeout).' : '',
               '',
               '| Package | Severity | Dependency | Fix | Advisory/dependency path |',
               '|---|---|---|---|---|',
