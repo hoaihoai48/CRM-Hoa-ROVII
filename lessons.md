@@ -218,3 +218,11 @@ When a new lesson is added:
 
 - A date-bounded Firestore query can still grow without limit. Cap today's order snapshot and expose a visible truncation warning rather than silently reading every order or silently presenting partial totals as exact.
 - Dashboard KPI values should not look like zero while the first request is pending. Keep prior values during refresh, provide a retry path on failure, and guard overlapping requests by identity.
+
+
+## 2026-11-26 — Do not allow settings edits after a failed initial read
+
+- Store settings are business-critical shared configuration. If the initial read fails, never leave an editable form populated with empty defaults; hide it until a successful read and provide a retry path.
+- Keep settings loading independent from save state, invalidate stale reads on unmount, and clear delayed success-feedback timers during cleanup.
+- Use the CRM membership profile as the source for the staff name shown in settings; Firebase Auth is the authentication identity, not the editable CRM display profile.
+- For staff management, invalidate list requests when admin access changes or the page unmounts so an old response cannot repopulate stale privileged data.

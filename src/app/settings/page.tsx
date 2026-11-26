@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
@@ -12,7 +12,8 @@ import {
   MessageCircle, 
   LogOut, 
   Check,
-  ImagePlus
+  ImagePlus,
+  RefreshCw
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/common/Cards';
@@ -36,39 +37,87 @@ function SettingsPageContent() {
   const [isSaved, setIsSaved] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoadedSettings, setHasLoadedSettings] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const loadRequestRef = useRef(0);
+  const saveRequestRef = useRef(0);
+  const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const canEditSettings = currentUser?.role === 'admin' && currentUser.status === 'active';
 
-  useEffect(() => {
+  const loadSettings = useCallback(() => {
+    const requestId = ++loadRequestRef.current;
+    setIsLoading(true);
+    setErrorMessage(null);
     getStoreSettings()
       .then((settings) => {
+        if (requestId !== loadRequestRef.current) return;
         setStoreName(settings.storeName);
         setStorePhone(settings.phone);
         setStoreAddress(settings.address);
         setZaloUrl(settings.zaloUrl);
         setLogoUrl(settings.logoUrl);
+        setHasLoadedSettings(true);
       })
-      .catch((error) => setErrorMessage(error instanceof Error ? error.message : 'Không thể tải cài đặt.'))
-      .finally(() => setIsLoading(false));
+      .catch((error) => {
+        if (requestId === loadRequestRef.current) {
+          setErrorMessage(error instanceof Error ? error.message : 'Không thể tải cài đặt.');
+        }
+      })
+      .finally(() => {
+        if (requestId === loadRequestRef.current) setIsLoading(false);
+      });
   }, []);
 
-  const handleSave = (e: React.FormEvent) => {
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) loadSettings();
+    });
+    return () => {
+      cancelled = true;
+      loadRequestRef.current += 1;
+      saveRequestRef.current += 1;
+      if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current);
+    };
+  }, [loadSettings]);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canEditSettings || isSaving) return;
+    if (!canEditSettings || !hasLoadedSettings || isSaving) return;
+    const requestId = ++saveRequestRef.current;
     setErrorMessage(null);
+    setIsSaved(false);
     setIsSaving(true);
-    updateStoreSettings({ storeName, phone: storePhone, address: storeAddress, zaloUrl, logoUrl: logoUrl.trim() })
-      .then(() => {
-        setIsSaved(true);
-        setTimeout(() => setIsSaved(false), 2500);
-      })
-      .catch((error) => setErrorMessage(error instanceof Error ? error.message : 'Không thể lưu cài đặt.'))
-      .finally(() => setIsSaving(false));
+    try {
+      await updateStoreSettings({ storeName, phone: storePhone, address: storeAddress, zaloUrl, logoUrl: logoUrl.trim() });
+      if (requestId !== saveRequestRef.current) return;
+      setIsSaved(true);
+      if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current);
+      savedTimeoutRef.current = setTimeout(() => {
+        if (requestId === saveRequestRef.current) setIsSaved(false);
+        savedTimeoutRef.current = null;
+      }, 2500);
+    } catch (error) {
+      if (requestId === saveRequestRef.current) {
+        setErrorMessage(error instanceof Error ? error.message : 'Không thể lưu cài đặt.');
+      }
+    } finally {
+      if (requestId === saveRequestRef.current) setIsSaving(false);
+    }
   };
 
   const handleLogout = async () => {
-    await logout();
-    router.push('/login');
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    setErrorMessage(null);
+    try {
+      await logout();
+      router.push('/login');
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Không thể đăng xuất.');
+      setIsLoggingOut(false);
+    }
   };
 
   return (
@@ -76,6 +125,18 @@ function SettingsPageContent() {
       <PageHeader
         title="Cài đặt hệ thống"
         subtitle="Thông tin cửa hàng, tài khoản nhân viên và liên kết mạng xã hội"
+        action={
+          <button
+            type="button"
+            onClick={loadSettings}
+            disabled={isLoading || isSaving}
+            aria-label="Làm mới cài đặt"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 px-3 py-2 text-xs font-semibold text-stone-700 transition-colors hover:bg-stone-50 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            {isLoading ? 'Đang tải...' : 'Làm mới'}
+          </button>
+        }
       />
 
       {errorMessage && (
@@ -108,7 +169,7 @@ function SettingsPageContent() {
         </div>
       )}
 
-      <form onSubmit={handleSave} className="space-y-6 max-w-3xl">
+      {hasLoadedSettings && <form onSubmit={handleSave} className="space-y-6 max-w-3xl">
         {/* Section 1: Store Information */}
         <div className="bg-white rounded-xl border border-stone-200/80 p-4 sm:p-6 shadow-2xs">
           <h2 className="text-base font-bold text-stone-900 pb-3 mb-4 border-b border-stone-100 flex items-center gap-2">
@@ -184,7 +245,7 @@ function SettingsPageContent() {
               label="Tên nhân viên"
               value={currentUser?.name || ''}
               disabled
-              hint="Tên tài khoản lấy từ Firebase Authentication; không thể thay đổi tại màn hình này"
+              hint="Tên hiển thị lấy từ hồ sơ nhân viên trong CRM; không thể thay đổi tại màn hình này"
             />
             <Input
               label="Email đăng nhập"
@@ -204,10 +265,11 @@ function SettingsPageContent() {
             <button
               type="button"
               onClick={handleLogout}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 border border-red-200 transition-colors cursor-pointer"
+              disabled={isLoggingOut}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 border border-red-200 transition-colors disabled:opacity-50 cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
-              <span>Đăng xuất</span>
+              <span>{isLoggingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}</span>
             </button>
           </div>
         </div>
@@ -215,12 +277,15 @@ function SettingsPageContent() {
         {/* Action Button */}
         {canEditSettings && (
           <div className="flex justify-end">
-            <Button type="submit" disabled={isLoading || isSaving} variant="primary" size="lg" rightIcon={<Check className="w-4 h-4" />}>
+            <Button type="submit" disabled={isLoading || isSaving || !hasLoadedSettings} variant="primary" size="lg" rightIcon={<Check className="w-4 h-4" />}>
               {isSaving ? "Đang lưu..." : "Lưu cài đặt"}
             </Button>
           </div>
         )}
-      </form>
+      </form>}
+      {!hasLoadedSettings && !isLoading && errorMessage && (
+        <p className="mb-6 text-xs text-stone-500">Chưa thể hiển thị biểu mẫu vì dữ liệu cài đặt chưa tải thành công. Hãy thử tải lại trước khi chỉnh sửa.</p>
+      )}
     
     </>
   );

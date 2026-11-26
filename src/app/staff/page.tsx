@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { UserPlus, ShieldCheck, ShieldOff } from 'lucide-react';
+import { UserPlus, ShieldCheck, ShieldOff, RefreshCw } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { PageHeader, EmptyState } from '@/components/common/Cards';
@@ -35,21 +35,36 @@ function StaffPageContent() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actingUid, setActingUid] = useState<string | null>(null);
+  const loadRequestRef = useRef(0);
 
   const loadStaff = useCallback(() => {
+    const requestId = ++loadRequestRef.current;
     setIsLoading(true);
     setLoadError(null);
     listStaff()
-      .then(setStaff)
-      .catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải danh sách nhân viên.'))
-      .finally(() => setIsLoading(false));
+      .then((data) => {
+        if (requestId === loadRequestRef.current) setStaff(data);
+      })
+      .catch((error) => {
+        if (requestId === loadRequestRef.current) {
+          setLoadError(error instanceof Error ? error.message : 'Không thể tải danh sách nhân viên.');
+        }
+      })
+      .finally(() => {
+        if (requestId === loadRequestRef.current) setIsLoading(false);
+      });
   }, []);
 
   useEffect(() => {
     if (membershipLoading || !isAdmin) return;
-    // External Firestore read — legitimate effect.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadStaff();
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) loadStaff();
+    });
+    return () => {
+      cancelled = true;
+      loadRequestRef.current += 1;
+    };
   }, [membershipLoading, isAdmin, loadStaff]);
 
   if (!membershipLoading && !isAdmin) {
@@ -148,6 +163,16 @@ function StaffPageContent() {
         backHref="/dashboard"
         action={
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={loadStaff}
+              disabled={isLoading || isCreating || isLinking || Boolean(actingUid)}
+              aria-label="Làm mới danh sách nhân viên"
+              className="inline-flex items-center gap-1.5 px-3 py-2 border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 rounded-lg text-xs sm:text-sm font-semibold transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <span>Làm mới</span>
+            </button>
             <button
               type="button"
               onClick={() => { setLinkError(null); setShowLinkForm((shown) => !shown); }}
