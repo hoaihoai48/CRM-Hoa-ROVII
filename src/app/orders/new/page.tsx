@@ -50,6 +50,8 @@ function CreateOrderPageContent() {
   const [deliveryDate, setDeliveryDate] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const prefillRequestRef = useRef(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -176,9 +178,6 @@ function CreateOrderPageContent() {
 
   const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const total = Math.max(0, subtotal + Math.max(0, deliveryFee) - Math.min(Math.max(0, discount), subtotal));
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
 
   const handleSaveOrder = async (e: React.FormEvent) => {
     e.preventDefault();
