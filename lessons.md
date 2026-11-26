@@ -85,3 +85,11 @@ When a new lesson is added:
 - A passing PR check is not a substitute for the push-triggered main workflow. Verify the exact main SHA and post-merge Actions run before pushing another code scope.
 - Main run [#45730525536](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45730525536) completed SUCCESS on the exact merge commit, including lint, typecheck, Emulator, Playwright and production build.
 - Record Vercel's GitHub status context separately; do not infer deployment type or manually promote a production deployment.
+
+
+## 2026-11-26 — Bound Firestore image payloads including duplicated cover fields
+
+- Product documents store the cover in both `imageUrl` and `imageUrls[0]`; per-image limits must account for this duplicate when calculating worst-case document size.
+- Five 150,000-character Data URLs plus the duplicated cover field total at most 900,000 ASCII bytes, leaving margin below Firestore's 1 MiB document limit for metadata.
+- Validate at the service boundary and in Firestore Rules. UI file-size checks alone are bypassable.
+- Preserve legacy oversized media on unrelated edits by validating image bounds only when image fields change; require replacement with bounded media before accepting a media edit.
