@@ -137,7 +137,7 @@ test.describe('Admin daily workflows', () => {
     expect(customer.fields.note.stringValue).toContain('Khách VIP');
   });
 
-  test('manages memberships, provisions email/password staff and links existing Auth identities', async ({ page }) => {
+  test('manages memberships, provisions email/password staff and links an existing Firebase Auth identity', async ({ page }) => {
     await signInAsActiveAdmin(page);
 
     const fixture = await createAuthUser(page, 'rovii-staff-fixture');
@@ -170,12 +170,12 @@ test.describe('Admin daily workflows', () => {
     await expect(page.getByRole('status').getByText(newStaffEmail)).toBeVisible();
     await expect(page.getByRole('row').filter({ hasText: newStaffEmail })).toBeVisible();
 
-    const existingGoogleAccount = await createAuthUser(page, 'rovii-existing-google');
+    const existingGoogleAccount = await createAuthUser(page, 'rovii-existing-auth');
     await page.getByRole('button', { name: 'Liên kết tài khoản đã có' }).click();
     await page.getByLabel('UID Firebase Auth').fill(existingGoogleAccount.uid);
     await page.getByLabel('Email tài khoản hiện có').fill(existingGoogleAccount.email);
     await page.getByLabel('Tên hiển thị nhân viên').fill('Nhân viên Google E2E');
-    await page.locator('form').filter({ has: page.getByLabel('UID Firebase Auth') }).locator('select').selectOption('staff');
+    await page.locator('form').last().locator('select').selectOption('staff');
     await page.getByRole('button', { name: 'Cấp quyền cho tài khoản' }).click();
     await expect(page.getByRole('status').getByText(existingGoogleAccount.email)).toBeVisible();
 
