@@ -1,62 +1,53 @@
 # HANDOFF — CRM Hoa ROVII
 
-**Last verified:** 2026-11-26 07:46 (Asia/Ho_Chi_Minh)  
+**Last verified:** 2026-11-26 07:50 (Asia/Ho_Chi_Minh)  
 **Repository:** `hoaihoai48/CRM-Hoa-ROVII`  
 **Default branch:** `main`  
-**Main SHA:** `b93d336137be1873623ff461790b18c3231ce8ed`  
+**Main SHA:** `867946dc8f1fe0f3fc70bc6b8547173396090e10`  
 **Canonical project memory:** [GOAL.md](GOAL.md) · [lessons.md](lessons.md) · [HANDOFF.md](HANDOFF.md)
 
-> Re-fetch live GitHub state before acting. This file is a handoff, not a substitute for checking refs, PRs, Actions, reviews and Preview status.
+> Re-fetch live GitHub state before acting. This handoff records verified state, not a substitute for checking current refs, PRs, Actions and deployment contexts.
 
 ## Owner operating direction
 
 - Prioritize completing implementation. Do not proactively initiate manual test suites or repeated CI runs.
 - GitHub Actions may run automatically after pushes; report only observed results and never claim an unrun check passed.
-- Continue to preserve production, billing and Firebase Spark safety boundaries.
+- Preserve Firebase Spark and production-data safety. No production data access/mutation, destructive migration, Firebase configuration or billing changes without approval.
 
 ## Executive status
 
-**In progress — PR #26 has passing automated checks but is not ready to merge until review and current Preview are confirmed.**
+**PR #26 merged successfully.** Customer history now uses canonical order documents; the Spark scalar-aggregate limitation remains explicitly open. Next implementation priority is F-03 product image payload bounds.
 
-The CRM's operational areas are Dashboard, Products, Customers, Orders, Staff and Store Settings. Active delivery work simplifies customer order history around canonical order documents.
-
-## Repository and PR state
+## Repository and delivery state
 
 ### Main
 
-- Live `main`: `b93d336137be1873623ff461790b18c3231ce8ed`.
-- PR #27's project-memory foundation is merged; `AGENTS.md`, `GOAL.md`, `lessons.md` and `HANDOFF.md` are present on main.
-- PR #25 is closed without merge and superseded by PR #26.
+- Live `main`: `867946dc8f1fe0f3fc70bc6b8547173396090e10`.
+- PR #27 project-memory foundation remains on main: `AGENTS.md`, `GOAL.md`, `lessons.md`, `HANDOFF.md`.
+- PR #25 closed without merge; superseded by PR #26.
 
 ### PR #26 — canonical customer order history
 
 - URL: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/26
-- Branch: `refactor/simple-customer-order-source-2026-11-23`
-- Exact current head: `ddffcfb9248de233e1f2d64e6a3a65a3c61baec9`
-- State: open, Draft, mergeable; branch is synchronized with main (0 commits behind).
-- Goal: use `orders/{orderId}` as the only canonical customer history source; remove runtime dependence on embedded `customers.orderSummaries` and its bounded projection/refill/fingerprint protocol; retain the three scalar UI summaries.
-- Legacy `orderSummaries` values are tolerated and left untouched. No production migration is included.
-- This is a complexity reduction, **not** a fix for customer scalar aggregate tampering.
+- State: **MERGED** (squash) into main.
+- Merge commit: `867946dc8f1fe0f3fc70bc6b8547173396090e10`.
+- Implementation: `orders/{orderId}` is the sole canonical customer order-history source; removed runtime dependence on embedded `customers.orderSummaries` and its bounded projection/refill/fingerprint protocol. Retained scalar UI summaries.
+- Legacy `orderSummaries` fields are tolerated and left untouched. No production migration or data cleanup.
+- This is a complexity reduction, **not** a security fix for scalar aggregate tampering.
 
-### Latest automatic GitHub Actions result
+### PR and post-merge verification
 
-- Run: https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45729703091
-- Result: **completed / SUCCESS**.
-- The run executed against synthetic PR merge commit `f2cecde899028c68ea9aa98860254bf0d04d1610`; its tree SHA `bf3d97e5b954fa3875befa5f41510eab7871d050` is identical to the current branch head tree at `df3fdb9a4d54a2b2d41d966ad72e1a2f2090eb13`.
-- Lint: **PASS**.
-- TypeScript: **PASS**.
-- Firebase Auth/Firestore/Storage Emulator integration: **PASS**.
-- Playwright E2E against Emulators: **PASS**.
-- Production build: **PASS**.
-- This was an automatically triggered workflow after the branch commit; no manual test command or manual rerun was initiated.
-- The earlier failed run #45647601442 exposed a second stale assertion requiring customer order projections. Commit `d0ca98f145b0250534a958a18c685b435b490451` removed those obsolete assertions; run #45729703091 then passed all stages.
+- PR Actions run: https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45729703091 — **SUCCESS** on the same application-code tree: lint, TypeScript, Firebase Emulator integration, Playwright E2E and production build all PASS.
+- Post-merge main Actions run: https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45730525536 — **SUCCESS** on exact main commit `867946dc8f1fe0f3fc70bc6b8547173396090e10`. Dependency vulnerability report, MCP syntax/smoke checks, lint, TypeScript, Firebase Emulator, Playwright E2E and production build all completed successfully.
+- Main commit Vercel status context: **SUCCESS**. The merge was owner-authorized; no manual production deployment or promotion was initiated.
+- Manual final diff/security review found no new blocker in canonical order reads, transaction ordering, status/history invariants or Firestore access rules. The known Spark scalar-aggregate trust boundary remains explicit.
+- No production customer/order records were read or modified; no migration, Firebase configuration or billing change.
 
-### Preview and review
+### Next implementation branch
 
-- Vercel Preview is **Ready** for the unchanged application-code tree (deployment `4s6kjPM4kwYW2XpA5ZF7Zi7a79cC`, updated 2026-11-26 00:39:48 UTC). Commits after the verified application-code tree only update delivery/audit Markdown; no runtime code changed.
-- Preview URL: https://tiem-hoa-rovii-git-refactor-simple-customer-orde-48b700-vu-nhim.vercel.app. This is a PR Preview, not a production deployment.
-- PR review submissions: none. Inline review threads: none.
-- Keep PR #26 Draft until the current Preview is Ready and an adequate code/security review is recorded. Do not merge solely because Actions passed.
+- F-03 branch: `security/product-image-payload-bounds-2026-11-26`.
+- Created from main commit `867946dc8f1fe0f3fc70bc6b8547173396090e10`; no implementation commits or PR yet.
+- Scope: enforce encoded Data URL size and product image payload bounds in service code and Firestore Rules, preserving existing HTTPS Storage URLs and allowing unrelated edits to legacy oversized image fields.
 
 ## Security backlog
 
@@ -81,11 +72,11 @@ Do not start these unrelated suites while PR #26 is blocked on its current requi
 
 ## Next actions — in order
 
-1. Confirm the Vercel Preview for head `df3fdb9a4d54a2b2d41d966ad72e1a2f2090eb13` is Ready.
-2. Complete a fresh code/security review on the synchronized PR head; resolve any findings and keep F-01's Spark limitation explicit.
-3. Do not run manual tests unless the owner asks. The latest automatic PR Actions run already passed on a tree identical to the current head.
-4. Only after Preview and review are clear, mark PR #26 ready and merge if all repository merge requirements are satisfied.
-5. After PR #26 is resolved, handle F-03, F-04 and F-05 in separate small scopes.
+1. Complete F-03 product image Data URL and total payload bounds in a focused branch/PR.
+2. Then address F-04 membership UID/path consistency, immutable identity fields and role/status update constraints.
+3. Update stale F-05 security-audit narrative to match the actual Spark client-transaction architecture and accepted trust boundary.
+4. Keep one active code PR at a time. Do not manually run tests unless the owner asks; observe automatically triggered Actions and report exact results.
+5. Add focused product/staff browser coverage only as a separate later UX/E2E scope.
 
 ## Delivery and safety rules
 
@@ -94,7 +85,7 @@ Do not start these unrelated suites while PR #26 is blocked on its current requi
 - Do not push while the previous exact-head Actions run is still running.
 - Do not merge failed, pending, stale or inadequately reviewed changes.
 - Preserve Firebase Spark; no paid Firebase service or billing changes.
-- No production deployment, production customer/order access or mutation, destructive migration, Firebase project configuration change or billing change without explicit approval.
+- Do not manually create/promote a production deployment. An owner-authorized merge may trigger the repository's configured automatic Vercel deployment; never manually promote/alias it without approval. No production customer/order access or mutation, destructive migration, Firebase project configuration change or billing change without explicit approval.
 - Keep reports clear about what is merged into main versus what remains on a branch/PR.
 - Update this file after every meaningful milestone, including exact SHA, PR/Actions URLs, PASS/FAIL/SKIPPED states, review/Preview state, risks and next action.
 - Add reusable failures and corrections to [lessons.md](lessons.md). Change [GOAL.md](GOAL.md) only when product objectives or priorities materially change.
