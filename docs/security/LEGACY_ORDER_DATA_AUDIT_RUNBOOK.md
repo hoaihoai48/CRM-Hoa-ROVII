@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The new order callables and Firestore rules prevent future client-side corruption paths, but they do not retroactively validate documents written before the rules were tightened. Run this audit against the intended Firebase project before production approval.
+The current order workflow uses Spark-compatible client Firestore transactions in `src/lib/services/orders.ts`; routine order/customer writes do not depend on callable Cloud Functions. Firestore Rules enforce membership, order schema/lifecycle/history and access boundaries, but cannot independently prove all client-computed product-price or customer aggregate arithmetic. This read-only audit does not prevent future client-side corruption; it detects historical inconsistencies in canonical order/customer records. Run it against the intended Firebase project before any separately approved production repair.
 
 ## Safety guarantees
 
@@ -25,7 +25,7 @@ From the repository root, install the Functions dependencies first. Then authent
 ```bash
 gcloud auth application-default login
 export FIREBASE_PROJECT_ID="YOUR_EXPLICIT_FIREBASE_PROJECT_ID"
-npm run audit:legacy-orders --prefix functions
+node functions/audit-legacy-orders.js
 ```
 
 Do not paste credentials into a command, commit a service-account key, or run the command against an unspecified project. Confirm the printed project ID before interpreting results.
