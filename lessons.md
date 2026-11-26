@@ -152,3 +152,10 @@ When a new lesson is added:
 - Clear the selected customer and the prefilled name/address when the identity phone changes; let the operator select the newly matched customer or enter a new profile.
 - Enforce the same invariant inside `createOrder()`: an explicitly selected customer must still exist and its normalized phone must match the order snapshot before any writes are committed.
 - UI guards are not sufficient by themselves; validate identity at the Firestore transaction boundary as well.
+
+
+## 2026-11-26 — Avoid duplicate Firestore reads on catalog mount
+
+- Keep a single loading path for both initial page load and manual retry; do not leave a second direct collection read in the mount effect alongside a reusable loader.
+- Use a monotonically increasing request token so a slow earlier request cannot overwrite a later retry, and invalidate pending requests when the page unmounts.
+- On Firebase Spark, redundant collection reads consume the same limited free read quota without improving the UI.
