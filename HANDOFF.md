@@ -1,6 +1,6 @@
 # HANDOFF — CRM Hoa ROVII
 
-**Last verified:** 2026-11-26 08:05 (Asia/Ho_Chi_Minh)  
+**Last verified:** 2026-11-26 08:10 (Asia/Ho_Chi_Minh)  
 **Repository:** `hoaihoai48/CRM-Hoa-ROVII`  
 **Default branch:** `main`  
 **Main SHA:** `a6b4f7e32a44885eeb2725992c197a38bd2c9e14`  
@@ -60,8 +60,13 @@
 ### F-04 — staff membership identity/immutability
 
 - Branch: `security/staff-membership-identity-immutability-2026-11-26`.
-- Base: `a6b4f7e32a44885eeb2725992c197a38bd2c9e14`.
-- No implementation commits or PR yet. Scope: enforce `users/{uid}` path/field identity, immutable email/name/createdAt, role/status enum constraints, and prevent self role/status changes in Firestore Rules; make the service write the path UID so legacy records can be repaired on update.
+- Base: `f32814c65204a53d89a3502c09420235f3353f6b`.
+- Implementation head before this handoff update: `01abf401bde45a58ac9f5a4d3e8d95b01f48d8e0`.
+- PR: not opened yet.
+- Firestore Rules now require `users/{uid}` path/field UID consistency on create/update; keep email, name and createdAt immutable; constrain role/status enums; and prevent users from changing their own role/status. Admins may still update another member.
+- Staff service writes the document path UID on updates, allowing legacy records without a UID field to be repaired without changing their identity fields. New staff name/email lengths are aligned with Rules.
+- Emulator regression cases cover mismatched path UID on create/update, immutable email/name/createdAt, self-demotion/deactivation denial, allowed status changes, and repair of a legacy membership without UID. Execution status: **NOT RUN manually** per owner direction; automatic PR Actions expected after opening.
+- No production data, Firebase project configuration, billing or deployment changes.
 
 ## Security backlog
 
@@ -70,7 +75,7 @@
 | F-01 — customer aggregate integrity | OPEN / PARTIAL MITIGATION ONLY | Scalar aggregates remain client-maintained under Spark; do not claim authoritative protection from a malicious active staff client. |
 | F-02 — Storage authorization mismatch | RESOLVED | PR #22 merged; Storage writes require active admin, public reads preserved; emulator regression coverage exists. |
 | F-03 — product image Data URL size / payload bounds | RESOLVED (PR #29) | 150,000-character Data URL cap, five-image/900,000-character worst-case payload, HTTPS URL bounds and legacy-safe unrelated edits; PR and post-merge Actions PASS. |
-| F-04 — membership identity/immutable fields | IN PROGRESS (branch only) | Enforce UID/path match, immutable email/name/createdAt, role/status enums and no self role/status changes. |
+| F-04 — membership identity/immutable fields | IN PROGRESS (implementation branch) | UID/path match, immutable email/name/createdAt, role/status enums, no self role/status changes and legacy UID repair. |
 | F-05 — stale security-audit narrative | OPEN | Align historical documentation with the actual Spark client-transaction architecture. |
 
 ## Product test coverage gap
