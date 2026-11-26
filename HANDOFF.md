@@ -1,21 +1,30 @@
-# CURRENT HANDOFF — updated 2026-11-26 (PR #33 delivery)
+# CURRENT HANDOFF — updated 2026-11-26 (Spark-first operating decision)
 
 - Repository: `hoaihoai48/CRM-Hoa-ROVII`; default branch: `main`.
-- Main base before this delivery: `abd9e8f37396dae8a0699ad6f46fdf1420fcbdfe`.
-- PR #33: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/33 — `test: cover admin catalog and staff workflows`; implementation head `bcaf58dabe6642f5fbd14d581f1a5c3c6a23b575`; merge is the next delivery action.
-- PR #33 adds browser-level coverage for product create/edit/deactivation, customer create/search/profile update, staff membership changes/provisioning, store settings, and staff-role permission boundaries.
-- Staff provisioning's secondary Firebase Auth instance now connects to the configured Auth Emulator when the emulator host is set, preventing the secondary instance from bypassing the demo Auth Emulator.
-- Owner direction: do not manually run test suites or spend time waiting on test reports; finish implementation and merge for use. The added E2E cases are committed but are not represented as manually executed or verified.
-- No production data/configuration was changed, no Firebase billing plan was changed, and no manual production deployment/promotion was initiated.
-- F-01 customer aggregate integrity remains OPEN / accepted Firebase Spark trust-boundary risk. Do not claim it is solved by this delivery.
-- F-02 Storage authorization, F-03 product image payload bounds, and F-04 staff membership identity invariants remain resolved by their prior merged work.
-- Order print view is already implemented on main; do not port the stale feature branch.
+- Live `main`: `db8de85e373242cc960e4abc19ac84e281307280` ([PR #33 merge](https://github.com/hoaihoai48/CRM-Hoa-ROVII/commit/db8de85e373242cc960e4abc19ac84e281307280)).
+- PR #33 ([Admin catalog and staff workflows](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/33)) is **MERGED**. It adds Playwright scenarios for product create/edit/deactivation, customer create/search/profile update, staff membership/provisioning, store settings and staff permission boundaries. The secondary Firebase Auth instance now connects to the configured Auth Emulator.
+- No open PRs were found at this handoff refresh.
+- F-01 customer aggregate integrity is **OPEN / ACCEPTED RESIDUAL RISK** under the approved internal-team + Firebase Spark model. Customer scalar aggregates remain client-maintained; Firestore Rules cannot independently prove all client-computed cross-document arithmetic or product-price totals. Canonical `orders/{orderId}` documents remain the evidence for reconciliation. Do not claim authoritative financial integrity.
+- F-02 Storage authorization: **RESOLVED** (PR #22).
+- F-03 product image payload bounds: **RESOLVED** (PR #29).
+- F-04 staff membership identity/immutability: **RESOLVED** (PR #30).
+- F-05 historical audit drift: **DOCUMENTATION-CORRECTED** (PR #31 plus historical-audit notices).
+- Order print view is already implemented on `main`; do not port the stale feature branch.
+- PR #33's E2E coverage is committed, but no tests were manually run for that delivery. Do not describe the new scenarios as executed or passing.
 
-## Operating constraints
+## Approved architecture and delivery direction
 
-Use the GitHub connector for this repository. Preserve Firebase Spark. Do not access/mutate production customer/order records, change Firebase project configuration/billing, run destructive migrations, or manually deploy/promote production without explicit approval. Follow the owner's implementation-first direction: no manual test runs or incremental reports; fix defects discovered during real use. Keep commits cohesive rather than one commit per file, and update this handoff and `lessons.md` at meaningful milestones.
+- Keep Firebase on **Spark**. Do not link billing, move to Blaze, introduce Cloud Functions, or add paid infrastructure for this internal CRM.
+- Continue using the existing client-side Firestore transactions for routine order/customer workflows. Treat customer scalar aggregates as display/cache summaries, not an independently trusted financial ledger.
+- Use canonical order documents for order history and as the source from which customer summaries can be reconciled if an operational discrepancy is reported.
+- Do not add a superficial Firestore Rules restriction for F-01: it could break legitimate order create/edit/status/cancel transactions without solving every arithmetic trust issue.
+- Prioritize practical reliability in daily operations. Fix concrete defects reported during actual use; avoid speculative architecture work.
+- Owner direction: do not manually run test suites, rerun CI, or wait for test reports unless explicitly requested. Be honest about what was and was not executed.
+- Use the GitHub connector for this repository. Keep related changes in cohesive commits, not one commit per file. Update this handoff and `lessons.md` at meaningful milestones.
 
----
+## Safety boundaries
+
+Preserve Firebase Spark. Do not access or mutate production customer/order records, perform destructive migrations, change Firebase project configuration/billing, or manually deploy/promote production without explicit approval. An owner-authorized merge may trigger the repository's configured automatic deployment; do not manually promote it.
 
 ## Historical handoff archive
 
