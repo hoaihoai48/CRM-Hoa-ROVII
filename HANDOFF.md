@@ -1,6 +1,6 @@
 # HANDOFF — CRM Hoa ROVII
 
-**Last verified:** 2026-11-26 07:42 (Asia/Ho_Chi_Minh)  
+**Last verified:** 2026-11-26 07:46 (Asia/Ho_Chi_Minh)  
 **Repository:** `hoaihoai48/CRM-Hoa-ROVII`  
 **Default branch:** `main`  
 **Main SHA:** `b93d336137be1873623ff461790b18c3231ce8ed`  
@@ -32,7 +32,7 @@ The CRM's operational areas are Dashboard, Products, Customers, Orders, Staff an
 
 - URL: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/26
 - Branch: `refactor/simple-customer-order-source-2026-11-23`
-- Exact current head: `61f2db1f217991589d9f2076de40a843e1fe70a9`
+- Exact current head: `ddffcfb9248de233e1f2d64e6a3a65a3c61baec9`
 - State: open, Draft, mergeable; branch is synchronized with main (0 commits behind).
 - Goal: use `orders/{orderId}` as the only canonical customer history source; remove runtime dependence on embedded `customers.orderSummaries` and its bounded projection/refill/fingerprint protocol; retain the three scalar UI summaries.
 - Legacy `orderSummaries` values are tolerated and left untouched. No production migration is included.
@@ -53,8 +53,8 @@ The CRM's operational areas are Dashboard, Products, Customers, Orders, Staff an
 
 ### Preview and review
 
-- Current Vercel Preview for head `61f2db1f217991589d9f2076de40a843e1fe70a9` is **Ready**: https://tiem-hoa-rovii-git-refactor-simple-customer-orde-48b700-vu-nhim.vercel.app (deployment `4s6kjPM4kwYW2XpA5ZF7Zi7a79cC`, updated 2026-11-26 00:39:48 UTC).
-- The current Preview is a deployment of the PR branch; it is not a production deployment.
+- Vercel Preview is **Ready** for the unchanged application-code tree (deployment `4s6kjPM4kwYW2XpA5ZF7Zi7a79cC`, updated 2026-11-26 00:39:48 UTC). Commits after the verified application-code tree only update delivery/audit Markdown; no runtime code changed.
+- Preview URL: https://tiem-hoa-rovii-git-refactor-simple-customer-orde-48b700-vu-nhim.vercel.app. This is a PR Preview, not a production deployment.
 - PR review submissions: none. Inline review threads: none.
 - Keep PR #26 Draft until the current Preview is Ready and an adequate code/security review is recorded. Do not merge solely because Actions passed.
 
