@@ -77,3 +77,11 @@ When a new lesson is added:
 - Those assertions no longer represented the intended Spark architecture and caused the latest-head Emulator stage to fail even though order lifecycle and actor-history invariants remained valid.
 - When removing a duplicated data representation, search the complete test suite and remove or redesign every assertion that enforces the retired contract; preserve tests for the invariants that still apply (document schema, identity, lifecycle, history and atomic application workflows).
 - Corrected in commit `d0ca98f145b0250534a958a18c685b435b490451`; automatic Actions run [#45729703091](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45729703091) completed successfully. Do not call this a security fix for Spark client-maintained customer scalar aggregates.
+
+
+## 2026-11-26 — Verify post-merge state before starting the next delivery scope
+
+- PR #26 was squash-merged as `867946dc8f1fe0f3fc70bc6b8547173396090e10` after its automatic PR Actions and Preview were successful.
+- A passing PR check is not a substitute for the push-triggered main workflow. Verify the exact main SHA and post-merge Actions run before pushing another code scope.
+- Main run [#45730525536](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45730525536) completed SUCCESS on the exact merge commit, including lint, typecheck, Emulator, Playwright and production build.
+- Record Vercel's GitHub status context separately; do not infer deployment type or manually promote a production deployment.
