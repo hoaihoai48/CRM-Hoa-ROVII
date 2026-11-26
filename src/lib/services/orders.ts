@@ -307,7 +307,7 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
     if (customerSnap.exists()) {
       const customerData = customerSnap.data() || {};
       const storedPhone = normalizePhoneIdentity(String(customerData.phoneNormalized || customerData.phone || ''));
-      if (storedPhone && storedPhone !== phoneNormalized) {
+      if (storedPhone !== phoneNormalized) {
         throw new Error('Số điện thoại không khớp với hồ sơ khách hàng đã chọn. Vui lòng chọn lại khách hàng.');
       }
     }
