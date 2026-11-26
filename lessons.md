@@ -121,3 +121,10 @@ When a new lesson is added:
 - HANDOFF documents can lag behind merges; always verify PR state and exact main SHA before acting. PR #30 was already merged at `ec2d74115a61fc01f13e0124ffdd2aece0f252ff` even though the prior HANDOFF still described it as Draft.
 - Historical audit documents must be visibly marked as snapshots when architecture changes. In this repo, callable Cloud Functions descriptions are obsolete for routine writes; Spark-compatible client transactions are current.
 - Do not promise F-01 can be fully secured against a malicious authenticated client while retaining the Spark-only trusted-client architecture. A Rules-only guard must be proven against all transaction paths and Firestore Rules limits; otherwise explicitly record the residual accepted risk.
+
+
+## 2026-11-26 — Verify feature branches against live main before calling functionality incomplete
+
+- The old `feat/order-print-view` branch was 43 commits behind main, but the print button, print-only A4 layout and Playwright print assertions were already present on current main.
+- Before porting or reimplementing an old branch, compare its exact changed files and behavior with current main. A stale branch is not proof that a feature is missing.
+- Keep audit runbooks aligned with the active Firebase Spark client-transaction architecture; historical callable-Functions guidance must not be presented as the current operational procedure.

@@ -1,3 +1,29 @@
+# CURRENT HANDOFF — verified 2026-11-26 (post-PR #31)
+
+- Repository: `hoaihoai48/CRM-Hoa-ROVII`; default branch: `main`.
+- Live main SHA: `cb591e65dbed0bf86c5052cf36a174888e056e4a` (PR #31 docs reconciliation merged).
+- PR #30 / F-04 membership identity invariants: MERGED in main ancestor `ec2d74115a61fc01f13e0124ffdd2aece0f252ff`; exact-main Actions run #45735593396 SUCCESS on that code commit.
+- PR #31 / F-05 audit and handoff drift: MERGED as `cb591e65dbed0bf86c5052cf36a174888e056e4a`. Docs-only; workflow paths-ignore excludes Markdown/docs, so no Actions PASS is claimed for PR #31.
+- F-02 Storage admin-only writes: RESOLVED (PR #22).
+- F-03 product image payload bounds: RESOLVED (PR #29).
+- F-04 staff membership identity: RESOLVED (PR #30).
+- Order print view: IMPLEMENTED on current main. The order detail route has an “In đơn hàng” action, print-only A4 layout/CSS, and Playwright assertions for the print action and print media visibility in `tests/e2e/orders.spec.ts`. The old branch `feat/order-print-view` is 43 commits behind and must not be merged wholesale; its functional change is already present on main.
+- F-01 customer aggregate integrity: OPEN / ACCEPTED SPARK TRUST-BOUNDARY RISK. Customer scalar summaries remain client-maintained. Firestore Rules cannot prove all cross-document arithmetic or product-price correctness. Do not claim authoritative financial integrity. A Rules-only guard must be proven against all valid create/edit/status/cancel/repair paths and Firestore Rules evaluation/access-call limits before implementation. A trusted backend would require an architecture/hosting/billing decision, which is not authorized.
+- Remaining product-quality backlog: broader E2E coverage for Products, Customers, Staff, Settings and responsive daily workflows. Existing E2E coverage is strongest for authentication/order lifecycle, customer history pagination and order printing.
+- The legacy order audit runbook is being corrected to remove obsolete callable-Functions instructions; it remains read-only and no production records are accessed or changed.
+
+## Operating constraints
+
+Use GitHub connector only for this repo. Preserve Firebase Spark. Do not access/mutate production customer/order records, deploy/promote production, change Firebase project configuration/billing, or perform migrations without explicit approval. Do not manually run broad test suites unless requested; rely on automatically triggered Actions and report exact-head results. Update this handoff and lessons after every meaningful milestone. Keep one active code PR at a time and commit cohesive feature changes together.
+
+---
+
+## Historical handoff archive
+
+The previous handoff snapshots are retained below for audit history only. Their PR states and next actions are superseded by the current-state section above.
+
+---
+
 # CURRENT HANDOFF — verified 2026-11-26 (supersedes stale status below)
 
 - Repository: `hoaihoai48/CRM-Hoa-ROVII`; default branch: `main`.
