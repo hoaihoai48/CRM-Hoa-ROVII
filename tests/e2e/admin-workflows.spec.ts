@@ -245,6 +245,7 @@ test.describe('Admin daily workflows', () => {
     await seedMembership(page, account.uid, account.email, 'staff', 'Nhân viên vừa được cấp quyền');
     await page.getByRole('button', { name: 'Kiểm tra lại quyền truy cập' }).click();
     await expect(page.getByRole('heading', { name: 'Tổng quan' })).toBeVisible();
+    await expect(page.getByText('Nhân viên vừa được cấp quyền', { exact: true })).toBeVisible();
   });
 
   test('keeps admin-only staff controls unavailable to a regular staff member', async ({ page }) => {
