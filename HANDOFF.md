@@ -1,12 +1,13 @@
 # CURRENT HANDOFF — 2026-11-26 (sequential V1 completion plan)
 
 - Repository: `hoaihoai48/CRM-Hoa-ROVII`; default branch: `main`.
-- Verified main commit: `27ccb99a4544daf3a2126b67b8739a7967d6ef25` (PR #41 merge).
+- Verified main commit: `ef12886a1c6fecfd0ad5a032367b828dfb99913e` (PR #42 merge).
 - PR #38 is **MERGED**. It fixes the product-page React effect lint regression.
 - PR #39 and PR #40 are **MERGED** documentation-only updates that establish the sequential V1 plan and route/access inventory.
 - PR #41 is **MERGED** as `27ccb99a4544daf3a2126b67b8739a7967d6ef25`; it adds admin-mediated linking for existing Firebase Auth identities and in-session membership retry.
+- PR #42 is **MERGED** as `ef12886a1c6fecfd0ad5a032367b828dfb99913e`; it binds product editor state to product route identity and aligns service input bounds with Firestore Rules.
 - PR #38 Actions run [#45844772182](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45844772182): **SUCCESS** — lint, typecheck, Firebase Emulator integration, Playwright E2E and production build all passed.
-- Main push Actions run [#45844801586](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45844801586): **SUCCESS** on the pre-auth main code snapshot. Post-merge main run for PR #41: **IN PROGRESS** at the time this handoff snapshot was written.
+- Main push Actions run [#45844801586](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45844801586): **SUCCESS** on the pre-auth main code snapshot. Post-merge main run for PR #41 [#45848032410](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45848032410): **SUCCESS**. Post-merge main run for PR #42 [#45849201494](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45849201494): **IN PROGRESS** at the time this handoff snapshot was written.
 - No open PRs were found at the start of this delivery.
 - Vercel status context on the main commit: **SUCCESS**. No manual deployment or promotion was initiated.
 - The previous handoff header contained stale SHAs and duplicated current-state entries. This header supersedes them; older snapshots remain below for historical audit only.
@@ -23,8 +24,8 @@ V1 is complete only when the supported daily workflow works end to end across th
 |---|---|---|---|
 | 1 | Baseline, scope and project inventory | **COMPLETE** | V1 routes, service boundaries, Rules and existing coverage have been mapped below. |
 | 2 | Authentication, membership and access | **COMPLETE** | Existing Firebase identities can be linked by an active admin after verifying the UID/email shown to the signed-in employee; membership retry works without sign-out; Firestore Rules remain admin-only. PR #41 and its PR Actions run succeeded. |
-| 3 | Product catalog | **IMPLEMENTED IN PR #42** | Admin create/edit/activate/deactivate, image handling, catalog selection and error/retry states work together. Product edit state is keyed to route identity; service validation mirrors Firestore name/unit bounds; duplicate submit/deactivate is guarded; staff direct-route denial is covered. Await delivery outcome before marking complete. |
-| 4 | Customer management | PENDING | Create/search/profile/history and phone identity are consistent; canonical order history is used. |
+| 3 | Product catalog | **COMPLETE** | Admin create/edit/activate/deactivate, image handling, catalog selection and error/retry states work together. Product editor state is keyed to route identity; service validation mirrors Firestore name/unit bounds; duplicate submit/deactivate is guarded; staff direct-route denial is covered. PR #42 and its PR Actions run succeeded. |
+| 4 | Customer management | **IMPLEMENTED IN PR #43** | Create/search/profile/history and phone identity are consistent; canonical order history is used. Customer detail state (profile edit form, save state and order-history pagination) is keyed to customer ID so a route change cannot reuse the previous customer's form data. Await delivery outcome before marking complete. |
 | 5 | Order lifecycle | PENDING | Create, totals, snapshots, edits allowed by lifecycle, transitions, cancellation, history and print are coherent. |
 | 6 | Dashboard and operational summaries | PENDING | Date/status metrics reconcile to canonical orders; cancelled orders are excluded from completed revenue. |
 | 7 | Cross-module UX and reliability | PENDING | Desktop/mobile navigation, loading/empty/error states, duplicate submission and stale-response cases are addressed. |
@@ -74,11 +75,12 @@ Resolved items: F-02 Storage authorization (PR #22), F-03 product image payload 
 ### Prioritized findings from the baseline audit
 
 1. **Step 2 — Auth onboarding resolved in PR #41:** an authenticated but unprovisioned user can now provide their UID/email to an admin; the admin can create a membership for that existing Auth UID. The service uses a create-only transaction, and Firestore Rules still require an active admin. Admin must verify UID/email with the employee; the client cannot independently query Firebase Auth user records.
-2. **Step 3 — Product route identity and input bounds addressed in PR #42:** product edit state is remounted per product ID so old product data cannot be submitted against a newly navigated ID; service-side name/unit bounds now mirror Firestore Rules. Admin-only direct routes are covered in E2E.
-3. **Step 3/4/5 — Dataset-size trade-off:** orders/customers search and order-entry customer/product selection can read full collections. This is explicitly documented as a small-CRM constraint; keep it unless measured operational volume makes it a real problem. Do not add paid infrastructure.
-4. **Step 6 — Dashboard semantics:** the service has bounded date and recent-order queries; verify timezone boundaries and completed-only revenue during the dashboard step.
-5. **Step 7 — UX/reliability:** staff list/settings and several form loaders need a cross-route review for retry/unmount/duplicate-submit behavior. Do not broaden this into unrelated refactors.
-6. **Accepted residual risk:** customer scalar aggregates remain client-maintained under Spark (F-01). The Emulator suite explicitly documents this trust boundary and verifies aggregate reconciliation from canonical orders; this is not a security guarantee against a malicious authenticated client.
+2. **Step 3 — Product catalog completed in PR #42:** product edit state is remounted per product ID so old product data cannot be submitted against a newly navigated ID; service-side name/unit bounds mirror Firestore Rules. Admin-only direct routes are covered in E2E.
+3. **Step 4 — Customer detail route identity addressed in PR #43:** route-keyed state resets edit fields, save feedback and history pagination when opening another customer, in addition to the existing request-identity guard against stale reads.
+4. **Step 3/4/5 — Dataset-size trade-off:** orders/customers search and order-entry customer/product selection can read full collections. This is explicitly documented as a small-CRM constraint; keep it unless measured operational volume makes it a real problem. Do not add paid infrastructure.
+5. **Step 6 — Dashboard semantics:** the service has bounded date and recent-order queries; verify timezone boundaries and completed-only revenue during the dashboard step.
+6. **Step 7 — UX/reliability:** staff list/settings and several form loaders need a cross-route review for retry/unmount/duplicate-submit behavior. Do not broaden this into unrelated refactors.
+7. **Accepted residual risk:** customer scalar aggregates remain client-maintained under Spark (F-01). The Emulator suite explicitly documents this trust boundary and verifies aggregate reconciliation from canonical orders; this is not a security guarantee against a malicious authenticated client.
 
 ### Existing quality gates
 
@@ -88,7 +90,7 @@ Resolved items: F-02 Storage authorization (PR #22), F-03 product image payload 
 - `npm run test:e2e` (Playwright against Auth/Firestore Emulators)
 - `npm run build`
 
-PR #41's latest-head Actions run [#45847415721](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45847415721) completed SUCCESS across lint, typecheck, Emulator, Playwright E2E and production build. The post-merge main run was still in progress when this snapshot was written. No manual test suite was run.
+PR #41's latest-head Actions run [#45847415721](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45847415721) and post-merge main run [#45848032410](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45848032410) completed SUCCESS across lint, typecheck, Emulator, Playwright E2E and production build. PR #42's latest-head Actions run [#45848683257](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45848683257) completed SUCCESS; its post-merge main run was still in progress when this snapshot was written. No manual test suite was run.
 
 
 ## Historical handoff archive
