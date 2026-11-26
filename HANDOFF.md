@@ -53,7 +53,7 @@ The CRM's operational areas are Dashboard, Products, Customers, Orders, Staff an
 
 ### Preview and review
 
-- Current Vercel Preview for the docs-updated PR head is **Ready**: https://tiem-hoa-rovii-git-refactor-simple-customer-orde-48b700-vu-nhim.vercel.app (deployment `9af4WGKAACiu1TJVGzaCZpspp1E2`, updated 2026-11-26 00:38:32 UTC).
+- Current Vercel Preview for head `61f2db1f217991589d9f2076de40a843e1fe70a9` is **Ready**: https://tiem-hoa-rovii-git-refactor-simple-customer-orde-48b700-vu-nhim.vercel.app (deployment `4s6kjPM4kwYW2XpA5ZF7Zi7a79cC`, updated 2026-11-26 00:39:48 UTC).
 - The current Preview is a deployment of the PR branch; it is not a production deployment.
 - PR review submissions: none. Inline review threads: none.
 - Keep PR #26 Draft until the current Preview is Ready and an adequate code/security review is recorded. Do not merge solely because Actions passed.
