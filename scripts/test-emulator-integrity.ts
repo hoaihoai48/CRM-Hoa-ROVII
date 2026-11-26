@@ -1079,6 +1079,117 @@ async function runTestSuite() {
     status: 'active',
   });
   await signInWithEmailAndPassword(auth, adminEmail, adminPass);
+
+  console.log('  0. Testing bounded product image payloads and legacy-safe edits...');
+  const tinyPngDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/9ioAAAAASUVORK5CYII=';
+  const imageProductBase = {
+    name: 'Product Image Rule Test',
+    price: 1000,
+    unit: 'bó',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+  };
+  await setDoc(doc(db, 'products', 'PROD_IMAGE_VALID'), {
+    ...imageProductBase,
+    imageUrl: tinyPngDataUrl,
+    imageUrls: [tinyPngDataUrl],
+  });
+
+  const oversizedImageDataUrl = `data:image/jpeg;base64,${'A'.repeat(150_000)}`;
+  let oversizedImageCreateBlocked = false;
+  try {
+    await setDoc(doc(db, 'products', 'PROD_IMAGE_OVERSIZED'), {
+      ...imageProductBase,
+      imageUrl: oversizedImageDataUrl,
+      imageUrls: [oversizedImageDataUrl],
+    });
+  } catch {
+    oversizedImageCreateBlocked = true;
+  }
+  assert(oversizedImageCreateBlocked, 'Firestore Rules must reject oversized Data URL product images');
+
+  let tooManyImagesBlocked = false;
+  try {
+    await setDoc(doc(db, 'products', 'PROD_IMAGE_COUNT_OVERFLOW'), {
+      ...imageProductBase,
+      imageUrl: tinyPngDataUrl,
+      imageUrls: Array(6).fill(tinyPngDataUrl),
+    });
+  } catch {
+    tooManyImagesBlocked = true;
+  }
+  assert(tooManyImagesBlocked, 'Firestore Rules must reject more than five product images');
+
+  let insecureImageUrlBlocked = false;
+  try {
+    await setDoc(doc(db, 'products', 'PROD_IMAGE_HTTP'), {
+      ...imageProductBase,
+      imageUrl: 'http://example.com/flower.jpg',
+      imageUrls: ['http://example.com/flower.jpg'],
+    });
+  } catch {
+    insecureImageUrlBlocked = true;
+  }
+  assert(insecureImageUrlBlocked, 'Firestore Rules must reject non-HTTPS remote product image URLs');
+
+  const validHttpsImageUrl = 'https://cdn.example.com/flowers/rose.jpg';
+  await setDoc(doc(db, 'products', 'PROD_IMAGE_HTTPS_VALID'), {
+    ...imageProductBase,
+    imageUrl: validHttpsImageUrl,
+    imageUrls: [validHttpsImageUrl],
+  });
+
+  let oversizedRemoteImageUrlBlocked = false;
+  try {
+    const oversizedRemoteImageUrl = `https://cdn.example.com/${'a'.repeat(2048)}`;
+    await setDoc(doc(db, 'products', 'PROD_IMAGE_URL_TOO_LONG'), {
+      ...imageProductBase,
+      imageUrl: oversizedRemoteImageUrl,
+      imageUrls: [oversizedRemoteImageUrl],
+    });
+  } catch {
+    oversizedRemoteImageUrlBlocked = true;
+  }
+  assert(oversizedRemoteImageUrlBlocked, 'Firestore Rules must reject remote image URLs longer than 2,048 characters');
+
+  let oversizedNoteBlocked = false;
+  try {
+    await updateDoc(doc(db, 'products', 'PROD_IMAGE_VALID'), { note: 'N'.repeat(2001) });
+  } catch {
+    oversizedNoteBlocked = true;
+  }
+  assert(oversizedNoteBlocked, 'Firestore Rules must bound product notes to protect document payload size');
+
+  let oversizedImageUpdateBlocked = false;
+  try {
+    await updateDoc(doc(db, 'products', 'PROD_IMAGE_VALID'), {
+      imageUrl: oversizedImageDataUrl,
+      imageUrls: [oversizedImageDataUrl],
+    });
+  } catch {
+    oversizedImageUpdateBlocked = true;
+  }
+  assert(oversizedImageUpdateBlocked, 'Firestore Rules must reject oversized product image updates');
+
+  await setDocumentAsAdmin('products', 'PROD_LEGACY_OVERSIZED_IMAGE', {
+    ...imageProductBase,
+    imageUrl: oversizedImageDataUrl,
+    imageUrls: [oversizedImageDataUrl],
+  });
+  await updateDoc(doc(db, 'products', 'PROD_LEGACY_OVERSIZED_IMAGE'), {
+    note: 'Legacy image remains untouched during unrelated edits',
+  });
+  console.log('     ✓ Legacy oversized image remains readable/editable without rewriting media fields');
+
+  await setDocumentAsAdmin('products', 'PROD_LEGACY_LONG_TEXT', {
+    ...imageProductBase,
+    category: 'C'.repeat(101),
+    note: 'N'.repeat(2001),
+  });
+  await updateDoc(doc(db, 'products', 'PROD_LEGACY_LONG_TEXT'), { note: 'Updated legacy note' });
+  await updateDoc(doc(db, 'products', 'PROD_LEGACY_LONG_TEXT'), { category: 'Updated category' });
+  console.log('     ✓ Unchanged legacy text fields do not block unrelated bounded edits');
+
   await updateDoc(doc(db, 'products', p1.id), { note: 'Admin product-write policy test' });
   console.log('     ✓ Admin product update succeeded as expected');
 

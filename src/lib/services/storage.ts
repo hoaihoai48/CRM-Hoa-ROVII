@@ -1,15 +1,16 @@
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/lib/firebase/config';
+import { MAX_PRODUCT_IMAGE_DATA_URL_LENGTH } from './products';
 
 /**
- * Tự động nén ảnh trên trình duyệt về kích thước tối ưu cho web (Full HD / max 1200px, JPEG chất lượng 80%)
- * và chuyển thành DataURL (chuỗi base64 nhẹ ~80-150KB) để lưu trữ an toàn trong Firestore
+ * Tự động nén ảnh trên trình duyệt về kích thước tối ưu cho web (tối đa 1000px, JPEG chất lượng linh hoạt)
+ * và chuyển thành DataURL để lưu trữ trong Firestore khi Storage chưa được bật
  * hoặc tải lên Storage khi có cấu hình.
  * 
  * Ưu điểm:
  * 1. Hoàn toàn MIỄN PHÍ, KHÔNG cần thẻ thanh toán (Blaze Plan)
  * 2. Lưu trực tiếp cùng document sản phẩm, tải cực nhanh
- * 3. Dung lượng siêu nhẹ (~100KB), không chạm trần 1MB của Firestore
+ * 3. Data URL được giới hạn tối đa 150KB để chừa dung lượng an toàn cho document Firestore
  */
 export async function compressImageToDataUrl(
   file: File,
@@ -43,17 +44,33 @@ export async function compressImageToDataUrl(
         }
 
         const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-
         const ctx = canvas.getContext('2d');
         if (!ctx) {
           return reject(new Error('Không thể xử lý ảnh trên trình duyệt.'));
         }
 
-        // Vẽ ảnh và nén JPEG
-        ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        // Reduce quality first, then dimensions, until the Firestore fallback fits its cap.
+        let outputWidth = width;
+        let outputHeight = height;
+        let outputQuality = quality;
+        let dataUrl = '';
+        for (let attempt = 0; attempt < 10; attempt++) {
+          canvas.width = outputWidth;
+          canvas.height = outputHeight;
+          ctx.drawImage(img, 0, 0, outputWidth, outputHeight);
+          dataUrl = canvas.toDataURL('image/jpeg', outputQuality);
+          if (dataUrl.length <= MAX_PRODUCT_IMAGE_DATA_URL_LENGTH) break;
+
+          if (outputQuality > 0.52) {
+            outputQuality = Math.max(0.52, outputQuality - 0.08);
+            continue;
+          }
+
+          if (outputWidth <= 320 && outputHeight <= 320) break;
+          outputWidth = Math.max(1, Math.floor(outputWidth * 0.85));
+          outputHeight = Math.max(1, Math.floor(outputHeight * 0.85));
+          outputQuality = 0.64;
+        }
         resolve(dataUrl);
       };
 
@@ -70,7 +87,7 @@ export async function compressImageToDataUrl(
  * Hàm upload ảnh thông minh:
  * - Đầu tiên: Nén ảnh tối ưu trên client.
  * - Thử upload lên Firebase Storage nếu dự án đã cấu hình Bucket.
- * - Nếu Firebase Storage chưa kích hoạt (bị đòi thẻ Blaze / 404), tự động fallback sang lưu Data URL nén (~80KB).
+ * - Nếu Firebase Storage chưa kích hoạt (bị đòi thẻ Blaze / 404), tự động fallback sang lưu Data URL nén (tối đa 150KB).
  * => Giúp tính năng chạy ngay lập tức 100% mà người dùng không gặp bất kỳ lỗi nào và không cần nhập thẻ Visa!
  */
 export async function uploadProductImage(
@@ -84,15 +101,22 @@ export async function uploadProductImage(
   // Nén ảnh trước để tối ưu dung lượng và tốc độ
   if (onProgress) onProgress(30);
   const compressedDataUrl = await compressImageToDataUrl(file);
+  const getBoundedFallback = () => {
+    if (compressedDataUrl.length > MAX_PRODUCT_IMAGE_DATA_URL_LENGTH) {
+      throw new Error('Data URL sau nén vẫn vượt giới hạn 150KB. Hãy chọn ảnh nhỏ hơn hoặc dùng ảnh ít chi tiết hơn.');
+    }
+    return compressedDataUrl;
+  };
   if (onProgress) onProgress(60);
 
   // Zero-cost mode (default): Firebase Storage on new projects requires the
   // Blaze plan. Skip the upload entirely and store the compressed Data URL
-  // (~80-150KB) in Firestore. Set NEXT_PUBLIC_FIREBASE_STORAGE_ENABLED=true
+  // (bounded to 150KB) in Firestore. Set NEXT_PUBLIC_FIREBASE_STORAGE_ENABLED=true
   // only after a Storage bucket is provisioned (and CORS configured).
   if (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_ENABLED !== 'true') {
+    const fallback = getBoundedFallback();
     if (onProgress) onProgress(100);
-    return compressedDataUrl;
+    return fallback;
   }
 
   const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
@@ -143,8 +167,9 @@ export async function uploadProductImage(
     });
   } catch {
     // Fallback: Khi Firebase Storage chưa kích hoạt gói Blaze, sử dụng ảnh nén client
-    // Ảnh nén ~100KB hoàn toàn hợp lệ và hiển thị hoàn hảo trên giao diện
+    // Chỉ fallback khi Data URL nằm trong giới hạn Firestore đã cấu hình.
+    const fallback = getBoundedFallback();
     if (onProgress) onProgress(100);
-    return compressedDataUrl;
+    return fallback;
   }
 }
