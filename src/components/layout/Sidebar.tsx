@@ -27,7 +27,7 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { user: firebaseUser, membership, logout } = useAuth();
+  const { membership, logout } = useAuth();
   const storeLogoUrl = useStoreLogo();
   const isAdmin = membership?.role === 'admin' && membership?.status === 'active';
 
