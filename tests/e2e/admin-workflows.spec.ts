@@ -60,7 +60,7 @@ async function readFirestoreDocument(page: Page, collectionName: string, documen
     { headers: { Authorization: 'Bearer owner' } },
   );
   expect(response.ok()).toBeTruthy();
-  return await response.json() as { fields: Record<string, any> };
+  return await response.json() as { fields: Record<string, { stringValue?: string; integerValue?: string; doubleValue?: string; booleanValue?: boolean }> };
 }
 
 test.describe('Admin daily workflows', () => {
