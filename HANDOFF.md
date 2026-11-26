@@ -1,9 +1,9 @@
 # HANDOFF — CRM Hoa ROVII
 
-**Last verified:** 2026-11-26 07:58 (Asia/Ho_Chi_Minh)  
+**Last verified:** 2026-11-26 08:05 (Asia/Ho_Chi_Minh)  
 **Repository:** `hoaihoai48/CRM-Hoa-ROVII`  
 **Default branch:** `main`  
-**Main SHA:** `46197e0d31207c64509a9ac4ebebfb895664f5aa`  
+**Main SHA:** `a6b4f7e32a44885eeb2725992c197a38bd2c9e14`  
 **Canonical project memory:** [GOAL.md](GOAL.md) · [lessons.md](lessons.md) · [HANDOFF.md](HANDOFF.md)
 
 > Re-fetch live GitHub state before acting. This handoff records verified state, not a substitute for checking current refs, PRs, Actions and deployment contexts.
@@ -16,13 +16,13 @@
 
 ## Executive status
 
-**PR #26 merged successfully.** Customer history now uses canonical order documents; the Spark scalar-aggregate limitation remains explicitly open. Next implementation priority is F-03 product image payload bounds.
+**PR #26 and PR #29 merged successfully.** Customer history now uses canonical order documents, and product image payload bounds are enforced in code and Firestore Rules. The Spark scalar-aggregate limitation remains explicitly open. Next implementation priority is F-04 staff membership identity/immutability.
 
 ## Repository and delivery state
 
 ### Main
 
-- Live `main`: `867946dc8f1fe0f3fc70bc6b8547173396090e10`.
+- Live `main`: `a6b4f7e32a44885eeb2725992c197a38bd2c9e14`.
 - PR #27 project-memory foundation remains on main: `AGENTS.md`, `GOAL.md`, `lessons.md`, `HANDOFF.md`.
 - PR #25 closed without merge; superseded by PR #26.
 
@@ -43,18 +43,25 @@
 - Manual final diff/security review found no new blocker in canonical order reads, transaction ordering, status/history invariants or Firestore access rules. The known Spark scalar-aggregate trust boundary remains explicit.
 - No production customer/order records were read or modified; no migration, Firebase configuration or billing change.
 
-### F-03 — product image payload bounds
+### PR #29 — product image payload bounds (F-03)
 
-- Branch: `security/product-image-payload-bounds-2026-11-26`.
-- Main base: `46197e0d31207c64509a9ac4ebebfb895664f5aa`.
-- PR #29: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/29 — **OPEN / DRAFT**, mergeable, 0 commits behind main.
-- Latest PR head before this handoff update: `51b2d468e165e8454d01eebd3c8fd63a98ed605c`. Application logic and Rules are at `99c0c48bb04e9680d213492754383789da7f9ee2`; the latest commit only corrects the user-facing description of stored Data URL size from 110KB to 150KB.
-- Changes: service validation for at most five images, Data URLs up to 150,000 characters (150 KB stored text) and HTTPS URLs up to 2,048 characters; progressive browser compression for the zero-cost Firestore fallback; Firestore Rules validate new/changed image payloads and bound changed note/category fields.
-- Backward compatibility: legacy oversized image references remain readable and unrelated product edits do not rewrite or validate unchanged media fields. Replacing legacy media requires replacing the complete image payload with bounded references.
-- Emulator regression cases cover allowed small Data URL/HTTPS, oversized Data URL create/update, over-five images, HTTP URLs, oversized remote URLs, note bounds and legacy-safe unrelated edits.
-- Automatic Actions run [#45731819337](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45731819337) completed **SUCCESS** on implementation head `99c0c48bb04e9680d213492754383789da7f9ee2`: dependency audit, MCP checks, lint, TypeScript, Emulator integration, Playwright E2E and production build all PASS. The latest head adds only wording/comments, no validation or Rules logic changes.
-- Current Vercel Preview is **Ready**: https://tiem-hoa-rovii-git-security-product-image-payloa-81f187-vu-nhim.vercel.app (deployment `9Dm68TNJWqXLsBFfKfRRwcsM2az3`).
-- No manual test command, production data access/mutation, migration, Firebase project configuration, Storage provisioning, billing or manual deployment.
+- URL: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/29
+- State: **MERGED** (squash) into main.
+- Merge commit: `a6b4f7e32a44885eeb2725992c197a38bd2c9e14`.
+- Enforces at most five images/product, Data URLs up to 150,000 characters (150 KB stored text), HTTPS URLs up to 2,048 characters, and changed note/category bounds.
+- The cover is duplicated in `imageUrl` and `imageUrls[0]`; five images plus the duplicate cover are capped at 900,000 ASCII bytes, below Firestore's 1 MiB document limit.
+- The zero-cost Firestore fallback progressively compresses image quality/dimensions and returns a clear error if the stored Data URL still exceeds the cap. Firebase Storage HTTPS URLs remain supported.
+- Firestore Rules enforce the same bounds on create and image-field updates. Unchanged legacy oversized image/text values remain readable; unrelated edits do not rewrite or validate unchanged fields.
+- PR Actions run [#45731819337](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45731819337) — **SUCCESS**: dependency audit, MCP checks, lint, TypeScript, Emulator integration, Playwright E2E and production build.
+- Post-merge main Actions run [#45732373657](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45732373657) — **SUCCESS** on exact merge SHA `a6b4f7e32a44885eeb2725992c197a38bd2c9e14`.
+- Main Vercel status context: **SUCCESS**. No manual production deployment, Firebase Storage provisioning, billing change or production data mutation.
+- No manual test command was initiated; Actions ran automatically after the owner-authorized merge.
+
+### F-04 — staff membership identity/immutability
+
+- Branch: `security/staff-membership-identity-immutability-2026-11-26`.
+- Base: `a6b4f7e32a44885eeb2725992c197a38bd2c9e14`.
+- No implementation commits or PR yet. Scope: enforce `users/{uid}` path/field identity, immutable email/name/createdAt, role/status enum constraints, and prevent self role/status changes in Firestore Rules; make the service write the path UID so legacy records can be repaired on update.
 
 ## Security backlog
 
@@ -62,8 +69,8 @@
 |---|---|---|
 | F-01 — customer aggregate integrity | OPEN / PARTIAL MITIGATION ONLY | Scalar aggregates remain client-maintained under Spark; do not claim authoritative protection from a malicious active staff client. |
 | F-02 — Storage authorization mismatch | RESOLVED | PR #22 merged; Storage writes require active admin, public reads preserved; emulator regression coverage exists. |
-| F-03 — product image Data URL size / payload bounds | IN PROGRESS (PR #29) | 150,000-character Data URL limit, five-image/900,000-character worst-case payload, HTTPS URL bounds and legacy-safe unrelated edits; Actions PASS and Preview Ready. |
-| F-04 — membership identity/immutable fields | OPEN | Review UID/path consistency, createdAt immutability and role/status mutable fields. |
+| F-03 — product image Data URL size / payload bounds | RESOLVED (PR #29) | 150,000-character Data URL cap, five-image/900,000-character worst-case payload, HTTPS URL bounds and legacy-safe unrelated edits; PR and post-merge Actions PASS. |
+| F-04 — membership identity/immutable fields | IN PROGRESS (branch only) | Enforce UID/path match, immutable email/name/createdAt, role/status enums and no self role/status changes. |
 | F-05 — stale security-audit narrative | OPEN | Align historical documentation with the actual Spark client-transaction architecture. |
 
 ## Product test coverage gap
@@ -79,11 +86,10 @@ Do not start these unrelated suites while PR #26 is blocked on its current requi
 
 ## Next actions — in order
 
-1. Complete F-03 product image Data URL and total payload bounds in a focused branch/PR.
-2. Then address F-04 membership UID/path consistency, immutable identity fields and role/status update constraints.
-3. Update stale F-05 security-audit narrative to match the actual Spark client-transaction architecture and accepted trust boundary.
-4. Keep one active code PR at a time. Do not manually run tests unless the owner asks; observe automatically triggered Actions and report exact results.
-5. Add focused product/staff browser coverage only as a separate later UX/E2E scope.
+1. Complete F-04 staff membership UID/path consistency, immutable identity fields and role/status update constraints.
+2. Then close F-05 by aligning the historical Firebase security-audit narrative with the actual Spark client-transaction architecture and accepted trust boundary.
+3. Keep one active code PR at a time. Do not manually run tests unless the owner asks; observe automatically triggered Actions and report exact results.
+4. Add focused product/staff browser coverage only as a separate later UX/E2E scope.
 
 ## Delivery and safety rules
 
