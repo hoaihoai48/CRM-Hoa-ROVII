@@ -8,6 +8,7 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } f
 import { db, auth } from '../src/lib/firebase/config';
 import { createCustomer, findCustomerByPhone, getCustomerById, listCustomersPage, updateCustomer } from '../src/lib/services/customers';
 import { createOrder, getDashboardOrders, getOrderById, listOrdersPage, syncCustomerAggregates, updateOrder, updateOrderStatus } from '../src/lib/services/orders';
+import { updateStaffMembership } from '../src/lib/services/staff';
 import { Product } from '../src/types';
 
 const DEMO_PROJECT_ID = 'demo-crm-hoa-rovii';
@@ -1237,9 +1238,92 @@ async function runTestSuite() {
   });
   console.log('     ✓ Admin created staff membership doc');
 
+  // A membership's UID must match its document path.
+  let mismatchedMembershipCreateBlocked = false;
+  try {
+    await setDoc(doc(db, 'users', 'wrong-membership-path'), {
+      uid: mStaffCred.user.uid,
+      name: 'Wrong Path',
+      email: 'wrong.path@cuatiemhoa.vn',
+      role: 'staff',
+      status: 'active',
+      createdAt: nowM,
+      updatedAt: nowM,
+    });
+  } catch {
+    mismatchedMembershipCreateBlocked = true;
+  }
+  assert(mismatchedMembershipCreateBlocked, 'Case M: membership UID must match the users/{uid} document path');
+
+  // The active admin must not change their own role or status.
+  let selfRoleChangeBlocked = false;
+  try {
+    await updateDoc(doc(db, 'users', adminUid), { uid: adminUid, role: 'staff', updatedAt: nowM });
+  } catch {
+    selfRoleChangeBlocked = true;
+  }
+  assert(selfRoleChangeBlocked, 'Case M: admin cannot demote their own membership');
+
+  let selfStatusChangeBlocked = false;
+  try {
+    await updateDoc(doc(db, 'users', adminUid), { uid: adminUid, status: 'inactive', updatedAt: nowM });
+  } catch {
+    selfStatusChangeBlocked = true;
+  }
+  assert(selfStatusChangeBlocked, 'Case M: admin cannot deactivate their own membership');
+
+  // UID, email, name and createdAt cannot be changed away from the path/identity.
+  let mismatchedUidUpdateBlocked = false;
+  try {
+    await updateDoc(doc(db, 'users', mStaffCred.user.uid), { uid: 'forged-uid', updatedAt: nowM });
+  } catch {
+    mismatchedUidUpdateBlocked = true;
+  }
+  assert(mismatchedUidUpdateBlocked, 'Case M: admin cannot change membership UID away from its document path');
+
+  let emailMutationBlocked = false;
+  try {
+    await updateDoc(doc(db, 'users', mStaffCred.user.uid), { email: 'forged@cuatiemhoa.vn', updatedAt: nowM });
+  } catch {
+    emailMutationBlocked = true;
+  }
+  assert(emailMutationBlocked, 'Case M: membership email is immutable');
+
+  let nameMutationBlocked = false;
+  try {
+    await updateDoc(doc(db, 'users', mStaffCred.user.uid), { name: 'Forged Name', updatedAt: nowM });
+  } catch {
+    nameMutationBlocked = true;
+  }
+  assert(nameMutationBlocked, 'Case M: membership name is immutable');
+
+  let membershipCreatedAtMutationBlocked = false;
+  try {
+    await updateDoc(doc(db, 'users', mStaffCred.user.uid), { createdAt: '2000-01-01T00:00:00.000Z', updatedAt: nowM });
+  } catch {
+    membershipCreatedAtMutationBlocked = true;
+  }
+  assert(membershipCreatedAtMutationBlocked, 'Case M: membership createdAt is immutable');
+
+  // Existing memberships without uid can be repaired by the normal admin service update.
+  const legacyStaffEmail = 'legacy.staff@cuatiemhoa.vn';
+  const legacyStaffCred = await createUserWithEmailAndPassword(auth, legacyStaffEmail, 'Password123!');
+  await signInWithEmailAndPassword(auth, adminEmail, adminPass);
+  await setDocumentAsAdmin('users', legacyStaffCred.user.uid, {
+    email: legacyStaffEmail,
+    role: 'staff',
+    status: 'active',
+    createdAt: nowM,
+    updatedAt: nowM,
+  });
+  await updateStaffMembership(legacyStaffCred.user.uid, { status: 'inactive' });
+  const repairedLegacyMembership = await getDoc(doc(db, 'users', legacyStaffCred.user.uid));
+  assert(repairedLegacyMembership.data()?.uid === legacyStaffCred.user.uid, 'Case M: admin service repairs missing membership UID');
+  await updateStaffMembership(legacyStaffCred.user.uid, { status: 'active' });
+
   // Admin deactivates then reactivates.
   await signInWithEmailAndPassword(auth, adminEmail, adminPass);
-  await updateDoc(doc(db, 'users', mStaffCred.user.uid), { status: 'inactive', updatedAt: nowM });
+  await updateDoc(doc(db, 'users', mStaffCred.user.uid), { uid: mStaffCred.user.uid, status: 'inactive', updatedAt: nowM });
   let deactivatedReadBlocked = false;
   try {
     await signInWithEmailAndPassword(auth, mStaffEmail, 'Password123!');
@@ -1249,7 +1333,7 @@ async function runTestSuite() {
   }
   assert(deactivatedReadBlocked, 'Case M: deactivated staff must be denied business reads');
   await signInWithEmailAndPassword(auth, adminEmail, adminPass);
-  await updateDoc(doc(db, 'users', mStaffCred.user.uid), { status: 'active', updatedAt: nowM });
+  await updateDoc(doc(db, 'users', mStaffCred.user.uid), { uid: mStaffCred.user.uid, status: 'active', updatedAt: nowM });
   await signInWithEmailAndPassword(auth, mStaffEmail, 'Password123!');
   const reactivatedRead = await getCustomerById(custA.id);
   assert(reactivatedRead !== null, 'Case M: reactivated staff can read again');
@@ -1265,7 +1349,7 @@ async function runTestSuite() {
   assert(staffListBlocked, 'Case M: staff must not list memberships');
   let staffSelfEscalateBlocked = false;
   try {
-    await updateDoc(doc(db, 'users', mStaffCred.user.uid), { role: 'admin', updatedAt: nowM });
+    await updateDoc(doc(db, 'users', mStaffCred.user.uid), { uid: mStaffCred.user.uid, role: 'admin', updatedAt: nowM });
   } catch {
     staffSelfEscalateBlocked = true;
   }

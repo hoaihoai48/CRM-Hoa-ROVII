@@ -102,7 +102,7 @@ export async function updateStaffMembership(
   uid: string,
   changes: { role?: UserRole; status?: MembershipStatus }
 ): Promise<void> {
-  if (!uid) throw new Error('Mã nhân viên không hợp lệ.');
+  if (!uid || uid.length > 128) throw new Error('Mã nhân viên không hợp lệ.');
   if (changes.role !== undefined && changes.role !== 'admin' && changes.role !== 'staff') {
     throw new Error('Vai trò không hợp lệ.');
   }
@@ -113,6 +113,7 @@ export async function updateStaffMembership(
     throw new Error('Không có thay đổi nào để lưu.');
   }
   await updateDoc(doc(db, 'users', uid), {
+    uid,
     ...changes,
     updatedAt: new Date().toISOString(),
   });
