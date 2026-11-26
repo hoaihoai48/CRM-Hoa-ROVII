@@ -20,7 +20,7 @@ V1 is complete only when the supported daily workflow works end to end across th
 | Step | Scope | Status | Completion gate |
 |---|---|---|---|
 | 1 | Baseline, scope and project inventory | **COMPLETE** | V1 routes, service boundaries, Rules and existing coverage have been mapped below. |
-| 2 | Authentication, membership and access | **IMPLEMENTED IN PR #41** | Existing Firebase identities can be linked by an active admin after verifying the UID/email shown to the signed-in employee; membership creation remains admin-only. Await delivery outcome before marking complete. |
+| 2 | Authentication, membership and access | **IMPLEMENTED IN PR #41** | Existing Firebase identities can be linked by an active admin after verifying the UID/email shown to the signed-in employee; the employee can refresh membership without signing out. Membership creation remains admin-only. Await delivery outcome before marking complete. |
 | 3 | Product catalog | PENDING | Admin product create/edit/activate/deactivate, image handling, catalog selection and error/retry states work together. |
 | 4 | Customer management | PENDING | Create/search/profile/history and phone identity are consistent; canonical order history is used. |
 | 5 | Order lifecycle | PENDING | Create, totals, snapshots, edits allowed by lifecycle, transitions, cancellation, history and print are coherent. |

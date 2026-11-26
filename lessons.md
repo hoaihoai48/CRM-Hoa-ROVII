@@ -181,3 +181,6 @@ When a new lesson is added:
 - Keep authentication and CRM authorization separate: signing in never grants CRM access automatically. Show the authenticated user's own UID/email on the blocked screen; require an active admin to verify both with the employee and create the membership.
 - Use a create-only Firestore transaction for linking. Do not overwrite an existing membership, trust a client-provided role, or weaken the `users/{uid}` create Rule. The existing Rules remain the authorization boundary.
 - The client SDK cannot independently prove that an arbitrary UID belongs to the supplied email; this remains an explicit admin verification step, not an automated identity assertion.
+
+
+- After an admin grants the membership, an authenticated employee should be able to retry membership resolution in the same session instead of being forced to sign out and back in. The retry invalidates the cached membership attempt and re-reads the current UID's membership.

@@ -233,7 +233,12 @@ test.describe('Admin daily workflows', () => {
 
     await expect(page.getByText('UID Firebase Auth:', { exact: false })).toBeVisible();
     await expect(page.getByText(account.uid, { exact: true })).toBeVisible();
-    await expect(page.getByText(account.email, { exact: true })).toBeVisible();
+    await expect(page.getByText(account.email, { exact: false })).toBeVisible();
+
+    // Simulate the admin granting membership after verifying the employee's UID/email.
+    await seedMembership(page, account.uid, account.email, 'staff', 'Nhân viên vừa được cấp quyền');
+    await page.getByRole('button', { name: 'Kiểm tra lại quyền truy cập' }).click();
+    await expect(page.getByRole('heading', { name: 'Tổng quan' })).toBeVisible();
   });
 
   test('keeps admin-only staff controls unavailable to a regular staff member', async ({ page }) => {

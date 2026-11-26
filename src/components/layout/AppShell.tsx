@@ -67,7 +67,10 @@ export function AppShell({ children }: AppShellProps) {
           <code className="mt-1 block select-all break-all rounded bg-white p-2 text-[11px] text-stone-800">{user.uid}</code>
           <p className="mt-2">Gửi email và UID này cho quản trị viên. Admin cần xác minh hai thông tin với bạn trước khi cấp quyền CRM.</p>
         </div>
-        <button type="button" onClick={() => logout().then(() => router.replace('/login'))} className="mt-5 rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Đăng xuất</button>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <button type="button" onClick={retryMembership} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">Kiểm tra lại quyền truy cập</button>
+          <button type="button" onClick={() => logout().then(() => router.replace('/login'))} className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Đăng xuất</button>
+        </div>
       </div>
     </div>
   );
