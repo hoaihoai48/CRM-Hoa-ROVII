@@ -1,3 +1,7 @@
+> **Historical audit — superseded architecture and status.** This document records findings from 2026-10-16 and must not be used as the current implementation or security baseline. In particular, the section below titled “Security remediation progress — trusted order mutation callables” is historical/obsolete: routine order/customer writes currently use Spark-compatible client Firestore transactions in `src/lib/services/orders.ts`, not callable Cloud Functions. Current source of truth: [Firebase Security & Access-Control Audit](CRM_HOA_ROVII_FIREBASE_SECURITY_AUDIT_2026-11-22.md), [Spark write-boundary decision](../security/FIRESTORE_BUSINESS_WRITE_BOUNDARY_PLAN.md), and root [HANDOFF.md](../../HANDOFF.md). Current controls include active-membership checks, order lifecycle/history validation, admin-only product writes, admin-only Storage writes/deletes, product image payload bounds, and staff membership identity invariants. The accepted Spark trust boundary remains: Firestore Rules do not prove client-computed product-price or customer aggregate arithmetic.
+
+---
+
 # CRM Hoa ROVII — Source Audit & CI Baseline
 
 - **Repository:** `hoaihoai48/CRM-Hoa-ROVII`
