@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { 
   PlusCircle, 
@@ -21,41 +21,34 @@ function ProductsPageContent() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const loadRequestRef = useRef(0);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   const loadProducts = useCallback(() => {
+    const requestId = ++loadRequestRef.current;
     setIsLoading(true);
     setLoadError(null);
     listProducts()
-      .then(setProducts)
-      .catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải danh sách sản phẩm.'))
-      .finally(() => setIsLoading(false));
-  }, []);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
-
-  useEffect(() => {
-    let ignore = false;
-    listProducts()
       .then((data) => {
-        if (!ignore) {
-          setProducts(data);
-          setLoadError(null);
-        }
+        if (requestId === loadRequestRef.current) setProducts(data);
       })
       .catch((error) => {
-        if (!ignore) {
+        if (requestId === loadRequestRef.current) {
           setLoadError(error instanceof Error ? error.message : 'Không thể tải danh sách sản phẩm.');
         }
       })
       .finally(() => {
-        if (!ignore) {
-          setIsLoading(false);
-        }
+        if (requestId === loadRequestRef.current) setIsLoading(false);
       });
-
-    return () => {
-      ignore = true;
-    };
   }, []);
+
+  useEffect(() => {
+    loadProducts();
+    return () => {
+      // Ignore any in-flight request after this page unmounts.
+      loadRequestRef.current += 1;
+    };
+  }, [loadProducts]);
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {

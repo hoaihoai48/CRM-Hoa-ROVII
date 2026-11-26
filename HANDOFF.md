@@ -27,6 +27,8 @@
 
 Preserve Firebase Spark. Do not access or mutate production customer/order records, perform destructive migrations, change Firebase project configuration/billing, or manually deploy/promote production without explicit approval. An owner-authorized merge may trigger the repository's configured automatic deployment; do not manually promote it.
 
+- Product catalog page duplicate-read defect fixed in [PR #36](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/36) once merged: initial mount previously issued two identical full product collection reads; it now shares one request path for initial load/retry and ignores stale in-flight responses after unmount or a newer retry.
+
 ## Historical handoff archive
 
 The previous handoff snapshots are retained below for audit history only. Their PR states and next actions are superseded by the current-state section above.
