@@ -18,15 +18,51 @@ function assertValidPrice(price: unknown): asserts price is number {
   }
 }
 
-/** Max images per product: keeps Data-URL docs safely under the 1 MiB limit. */
+/** Product image references are bounded so duplicated cover/list fields stay below Firestore's 1 MiB document limit. */
 export const MAX_PRODUCT_IMAGES = 5;
+export const MAX_PRODUCT_IMAGE_DATA_URL_LENGTH = 150_000;
+const MAX_PRODUCT_IMAGE_REMOTE_URL_LENGTH = 2_048;
+const MAX_PRODUCT_NOTE_LENGTH = 2_000;
+const MAX_PRODUCT_CATEGORY_LENGTH = 100;
 
-function normalizeImageUrls(value: unknown, fallbackCover?: string): string[] {
+function normalizeImageUrls(value: unknown, fallbackCover?: string, strict = false): string[] {
   const list = Array.isArray(value)
     ? value.map((v) => String(v).trim()).filter(Boolean)
     : [];
   if (list.length === 0 && fallbackCover) list.push(fallbackCover);
+  if (strict && list.length > MAX_PRODUCT_IMAGES) {
+    throw new Error(`Mỗi sản phẩm chỉ được có tối đa ${MAX_PRODUCT_IMAGES} ảnh.`);
+  }
   return list.slice(0, MAX_PRODUCT_IMAGES);
+}
+
+function isValidProductImageReference(value: string): boolean {
+  const isBoundedDataUrl =
+    value.length <= MAX_PRODUCT_IMAGE_DATA_URL_LENGTH
+    && /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(value);
+  const isBoundedHttpsUrl =
+    value.length <= MAX_PRODUCT_IMAGE_REMOTE_URL_LENGTH
+    && /^https:\/\/\S+$/.test(value);
+  return isBoundedDataUrl || isBoundedHttpsUrl;
+}
+
+function assertValidProductImagePayload(imageUrls: string[], cover?: string | null): void {
+  if (imageUrls.length > MAX_PRODUCT_IMAGES) {
+    throw new Error(`Mỗi sản phẩm chỉ được có tối đa ${MAX_PRODUCT_IMAGES} ảnh.`);
+  }
+  const references = [...imageUrls, ...(cover ? [cover] : [])];
+  if (references.some((reference) => !isValidProductImageReference(reference))) {
+    throw new Error('Ảnh sản phẩm không hợp lệ hoặc vượt giới hạn khoảng 110KB sau nén. Hãy chọn ảnh khác hoặc giảm kích thước.');
+  }
+}
+
+function assertValidProductTextBounds(category?: string | null, note?: string | null): void {
+  if ((category?.trim().length || 0) > MAX_PRODUCT_CATEGORY_LENGTH) {
+    throw new Error(`Danh mục không được vượt quá ${MAX_PRODUCT_CATEGORY_LENGTH} ký tự.`);
+  }
+  if ((note?.trim().length || 0) > MAX_PRODUCT_NOTE_LENGTH) {
+    throw new Error(`Ghi chú không được vượt quá ${MAX_PRODUCT_NOTE_LENGTH} ký tự.`);
+  }
 }
 
 function mapDocToProduct(id: string, data: Record<string, unknown>): Product {
@@ -77,7 +113,9 @@ export async function createProduct(input: CreateProductInput): Promise<Product>
 
   const productId = `PROD-${crypto.randomUUID()}`;
   const now = new Date().toISOString();
-  const cleanImageUrls = normalizeImageUrls(input.imageUrls, input.imageUrl?.trim() || undefined);
+  const cleanImageUrls = normalizeImageUrls(input.imageUrls, input.imageUrl?.trim() || undefined, true);
+  assertValidProductImagePayload(cleanImageUrls, cleanImageUrls[0] || null);
+  assertValidProductTextBounds(input.category, input.note);
 
   const productData = {
     name: input.name.trim(),
@@ -122,15 +160,35 @@ export async function updateProduct(id: string, changes: Partial<Omit<Product, '
   }
   if (changes.unit !== undefined) updateData.unit = changes.unit.trim();
   if (changes.isActive !== undefined) updateData.isActive = Boolean(changes.isActive);
-  if (changes.category !== undefined) updateData.category = changes.category?.trim() || null;
-  if (changes.imageUrls !== undefined) {
-    const clean = normalizeImageUrls(changes.imageUrls, changes.imageUrl?.trim() || undefined);
-    updateData.imageUrls = clean;
-    updateData.imageUrl = clean[0] || null;
-  } else if (changes.imageUrl !== undefined) {
-    updateData.imageUrl = changes.imageUrl?.trim() || null;
+  if (changes.category !== undefined) {
+    assertValidProductTextBounds(changes.category, undefined);
+    updateData.category = changes.category?.trim() || null;
   }
-  if (changes.note !== undefined) updateData.note = changes.note?.trim() || null;
+  const existingData = docSnap.data();
+  const existingImageUrls = normalizeImageUrls(
+    existingData.imageUrls,
+    existingData.imageUrl ? String(existingData.imageUrl).trim() : undefined,
+  );
+  if (changes.imageUrls !== undefined) {
+    const clean = normalizeImageUrls(changes.imageUrls, changes.imageUrl?.trim() || undefined, true);
+    if (clean.length !== existingImageUrls.length || clean.some((url, index) => url !== existingImageUrls[index])) {
+      assertValidProductImagePayload(clean, clean[0] || null);
+      updateData.imageUrls = clean;
+      updateData.imageUrl = clean[0] || null;
+    }
+  } else if (changes.imageUrl !== undefined) {
+    const nextCover = changes.imageUrl?.trim() || '';
+    const nextImages = nextCover
+      ? [nextCover, ...existingImageUrls.filter((url) => url !== nextCover)]
+      : existingImageUrls.slice(1);
+    assertValidProductImagePayload(nextImages, nextCover || null);
+    updateData.imageUrls = nextImages;
+    updateData.imageUrl = nextCover || null;
+  }
+  if (changes.note !== undefined) {
+    assertValidProductTextBounds(undefined, changes.note);
+    updateData.note = changes.note?.trim() || null;
+  }
 
   await updateDoc(docRef, updateData);
 

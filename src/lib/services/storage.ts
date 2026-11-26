@@ -1,9 +1,10 @@
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/lib/firebase/config';
+import { MAX_PRODUCT_IMAGE_DATA_URL_LENGTH } from './products';
 
 /**
  * Tự động nén ảnh trên trình duyệt về kích thước tối ưu cho web (Full HD / max 1200px, JPEG chất lượng 80%)
- * và chuyển thành DataURL (chuỗi base64 nhẹ ~80-150KB) để lưu trữ an toàn trong Firestore
+ * và chuyển thành DataURL để lưu trữ trong Firestore khi Storage chưa được bật
  * hoặc tải lên Storage khi có cấu hình.
  * 
  * Ưu điểm:
@@ -43,17 +44,33 @@ export async function compressImageToDataUrl(
         }
 
         const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-
         const ctx = canvas.getContext('2d');
         if (!ctx) {
           return reject(new Error('Không thể xử lý ảnh trên trình duyệt.'));
         }
 
-        // Vẽ ảnh và nén JPEG
-        ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        // Reduce quality first, then dimensions, until the Firestore fallback fits its cap.
+        let outputWidth = width;
+        let outputHeight = height;
+        let outputQuality = quality;
+        let dataUrl = '';
+        for (let attempt = 0; attempt < 10; attempt++) {
+          canvas.width = outputWidth;
+          canvas.height = outputHeight;
+          ctx.drawImage(img, 0, 0, outputWidth, outputHeight);
+          dataUrl = canvas.toDataURL('image/jpeg', outputQuality);
+          if (dataUrl.length <= MAX_PRODUCT_IMAGE_DATA_URL_LENGTH) break;
+
+          if (outputQuality > 0.52) {
+            outputQuality = Math.max(0.52, outputQuality - 0.08);
+            continue;
+          }
+
+          if (outputWidth <= 320 && outputHeight <= 320) break;
+          outputWidth = Math.max(1, Math.floor(outputWidth * 0.85));
+          outputHeight = Math.max(1, Math.floor(outputHeight * 0.85));
+          outputQuality = 0.64;
+        }
         resolve(dataUrl);
       };
 
@@ -84,6 +101,12 @@ export async function uploadProductImage(
   // Nén ảnh trước để tối ưu dung lượng và tốc độ
   if (onProgress) onProgress(30);
   const compressedDataUrl = await compressImageToDataUrl(file);
+  const getBoundedFallback = () => {
+    if (compressedDataUrl.length > MAX_PRODUCT_IMAGE_DATA_URL_LENGTH) {
+      throw new Error('Ảnh sau nén vẫn vượt giới hạn khoảng 110KB. Hãy chọn ảnh nhỏ hơn hoặc dùng ảnh ít chi tiết hơn.');
+    }
+    return compressedDataUrl;
+  };
   if (onProgress) onProgress(60);
 
   // Zero-cost mode (default): Firebase Storage on new projects requires the
@@ -91,8 +114,9 @@ export async function uploadProductImage(
   // (~80-150KB) in Firestore. Set NEXT_PUBLIC_FIREBASE_STORAGE_ENABLED=true
   // only after a Storage bucket is provisioned (and CORS configured).
   if (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_ENABLED !== 'true') {
+    const fallback = getBoundedFallback();
     if (onProgress) onProgress(100);
-    return compressedDataUrl;
+    return fallback;
   }
 
   const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
@@ -144,7 +168,8 @@ export async function uploadProductImage(
   } catch {
     // Fallback: Khi Firebase Storage chưa kích hoạt gói Blaze, sử dụng ảnh nén client
     // Ảnh nén ~100KB hoàn toàn hợp lệ và hiển thị hoàn hảo trên giao diện
+    const fallback = getBoundedFallback();
     if (onProgress) onProgress(100);
-    return compressedDataUrl;
+    return fallback;
   }
 }

@@ -196,22 +196,79 @@ service cloud.firestore {
         && (data.get('category', null) == null || data.category is string)
         && (data.get('imageUrl', null) == null || data.imageUrl is string)
         && data.get('imageUrls', []) is list
-        && data.get('imageUrls', []).size() <= 5
         && (data.get('note', null) == null || data.note is string);
     }
 
+    function validProductImageReference(value) {
+      return value is string
+        && (
+          (value.size() <= 150000
+            && value.matches('^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}
+
+    match /settings/{settingId} {
+      allow read: if isActiveMember();
+      allow create, update, delete: if isAdmin();
+    }
+  }
+}
+))
+          || (value.size() <= 2048 && value.matches('^https://[^\\s]+
+
+    match /settings/{settingId} {
+      allow read: if isActiveMember();
+      allow create, update, delete: if isAdmin();
+    }
+  }
+}
+))
+        );
+    }
+
+    function validProductImageList(images) {
+      // Five 150,000-character images plus a duplicated cover field is at most 900,000 bytes.
+      return images is list
+        && images.size() <= 5
+        && (images.size() < 1 || validProductImageReference(images[0]))
+        && (images.size() < 2 || validProductImageReference(images[1]))
+        && (images.size() < 3 || validProductImageReference(images[2]))
+        && (images.size() < 4 || validProductImageReference(images[3]))
+        && (images.size() < 5 || validProductImageReference(images[4]));
+    }
+
+    function validProductImagePayload(data) {
+      return (data.get('imageUrl', null) == null || validProductImageReference(data.imageUrl))
+        && validProductImageList(data.get('imageUrls', []));
+    }
+
+    function validProductTextBounds(data) {
+      return (data.get('category', null) == null || data.category.size() <= 100)
+        && (data.get('note', null) == null || data.note.size() <= 2000);
+    }
+
     // Product catalog policy: all active members can read; only admins can create
-    // or edit. createdAt is immutable and delete is disabled to preserve order history.
+    // or edit. New/changed image references are bounded while legacy images remain
+    // readable and unrelated edits do not force a legacy image rewrite.
     match /products/{productId} {
       allow read: if isActiveMember();
-      allow create: if isAdmin() && validProduct(request.resource.data);
+      allow create: if isAdmin()
+        && validProduct(request.resource.data)
+        && validProductImagePayload(request.resource.data)
+        && validProductTextBounds(request.resource.data);
       allow update: if isAdmin()
         && validProduct(request.resource.data)
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'name', 'price', 'unit', 'isActive', 'category',
           'imageUrl', 'imageUrls', 'note'
-        ]);
+        ])
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['imageUrl', 'imageUrls'])
+          || validProductImagePayload(request.resource.data)
+        )
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['category', 'note'])
+          || validProductTextBounds(request.resource.data)
+        );
       allow delete: if false;
     }
 
