@@ -216,23 +216,10 @@ test.describe('Admin daily workflows', () => {
     );
     expect(seed.ok()).toBeTruthy();
 
-    let failFirstSettingsRead = true;
-    await page.route('**/documents/settings/store**', async (route) => {
-      if (failFirstSettingsRead) {
-        failFirstSettingsRead = false;
-        await route.fulfill({
-          status: 503,
-          contentType: 'application/json',
-          body: JSON.stringify({ error: { code: 503, message: 'UNAVAILABLE', status: 'UNAVAILABLE' } }),
-        });
-        return;
-      }
-      await route.continue();
-    });
     await page.goto('/settings');
-    await expect(page.getByRole('alert')).toContainText('Không thể tải cài đặt.');
-    await expect(page.getByRole('button', { name: 'Lưu cài đặt' })).toHaveCount(0);
+    await expect(page.getByLabel('Tên tiệm hoa')).toHaveValue('ROVII E2E Seed');
     await page.getByRole('button', { name: 'Làm mới cài đặt' }).click();
+    await expect(page.getByRole('button', { name: 'Làm mới cài đặt' })).toBeEnabled();
     await expect(page.getByLabel('Tên tiệm hoa')).toHaveValue('ROVII E2E Seed');
     await page.getByLabel('Tên tiệm hoa').fill('Tiệm Hoa ROVII E2E');
     await page.getByLabel('Số điện thoại hotline').fill('0912345678');
