@@ -84,14 +84,57 @@ service cloud.firestore {
         && (!('note' in data.keys()) || data.note == null || data.note is string);
     }
 
-    // Membership records remain admin-managed. Users can read their own membership.
+    function validMembershipCreate(data, userId) {
+      return data.keys().hasOnly(['uid', 'email', 'name', 'role', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasAll(['uid', 'email', 'name', 'role', 'status', 'createdAt', 'updatedAt'])
+        && data.uid is string
+        && data.uid.size() > 0
+        && data.uid.size() <= 128
+        && data.uid == userId
+        && data.email is string
+        && data.email.size() > 0
+        && data.email.size() <= 254
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 120
+        && data.role in ['admin', 'staff']
+        && data.status in ['active', 'inactive']
+        && data.createdAt is string
+        && data.updatedAt is string;
+    }
+
+    function validMembershipUpdate(data, oldData, userId) {
+      return data.keys().hasOnly(['uid', 'email', 'name', 'role', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasAll(['uid', 'role', 'status', 'updatedAt'])
+        && data.uid is string
+        && data.uid.size() > 0
+        && data.uid.size() <= 128
+        && data.uid == userId
+        && data.role in ['admin', 'staff']
+        && data.status in ['active', 'inactive']
+        && data.updatedAt is string
+        && data.get('email', null) == oldData.get('email', null)
+        && data.get('name', null) == oldData.get('name', null)
+        && data.get('createdAt', null) == oldData.get('createdAt', null)
+        && data.diff(oldData).affectedKeys().hasOnly(['uid', 'role', 'status', 'updatedAt']);
+    }
+
+    // Membership identity is bound to the document path. Email, name and createdAt
+    // are immutable after creation; only admins may change role/status. A user may
+    // not demote or deactivate their own admin membership.
     match /users/{userId} {
       allow get: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow list: if isAdmin();
-      allow create, update: if isAdmin()
-        && request.resource.data.role in ['admin', 'staff']
-        && request.resource.data.status in ['active', 'inactive']
-        && request.resource.data.keys().hasOnly(['uid', 'email', 'name', 'role', 'status', 'createdAt', 'updatedAt']);
+      allow create: if isAdmin() && validMembershipCreate(request.resource.data, userId);
+      allow update: if isAdmin()
+        && validMembershipUpdate(request.resource.data, resource.data, userId)
+        && (
+          request.auth.uid != userId
+          || (
+            request.resource.data.role == resource.data.role
+            && request.resource.data.status == resource.data.status
+          )
+        );
       allow delete: if false;
     }
 

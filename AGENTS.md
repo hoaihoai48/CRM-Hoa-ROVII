@@ -34,6 +34,7 @@ Agent files are guidance, not proof that their named tools, hooks, or external p
 ### Required delivery workflow
 1. Inspect the current branch/HEAD, working-tree changes, relevant route, service, types, Firebase rules/indexes, and existing tests before editing.
 2. State the actual defect/risk and make the smallest complete fix. Do not perform unrelated refactors or overwrite unrelated user changes.
+3. Commit by coherent task-sized change, not by file. Include all tightly coupled implementation, rules, regression-test and documentation files in the same commit when they form one functional change. Split work by independent functional milestones; never create one commit per file merely to keep each edit small.
 3. Add or update a regression/security test for behavior changes where practical. For Firestore authorization changes, test allowed and denied cases in the emulator.
 4. Run the applicable checks. For a complete CRM release/final verification, run all four:
    - `npm run test:emulator`
