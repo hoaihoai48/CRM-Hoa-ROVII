@@ -203,24 +203,8 @@ service cloud.firestore {
       return value is string
         && (
           (value.size() <= 150000
-            && value.matches('^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}
-
-    match /settings/{settingId} {
-      allow read: if isActiveMember();
-      allow create, update, delete: if isAdmin();
-    }
-  }
-}
-))
-          || (value.size() <= 2048 && value.matches('^https://[^\\s]+
-
-    match /settings/{settingId} {
-      allow read: if isActiveMember();
-      allow create, update, delete: if isAdmin();
-    }
-  }
-}
-))
+            && value.matches('^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$'))
+          || (value.size() <= 2048 && value.matches('^https://[^\\s]+$'))
         );
     }
 
