@@ -212,3 +212,9 @@ When a new lesson is added:
 - Store delivery timestamps as ISO UTC, but convert them to/from the browser's local wall-clock value for `datetime-local` inputs. Slicing a UTC ISO string directly shifts delivery time outside UTC.
 - Deactivating a catalog product must block new orders, not silently reprice or make an already accepted order impossible to edit. Existing orders may retain/reduce that product at the original snapshot price; they may not add or increase it.
 - Keep service-side item-count bounds aligned with Firestore Rules and guard delayed customer prefill so it cannot overwrite a phone identity entered by the operator.
+
+
+## 2026-11-26 — Keep dashboard reads bounded and make partial metrics explicit
+
+- A date-bounded Firestore query can still grow without limit. Cap today's order snapshot and expose a visible truncation warning rather than silently reading every order or silently presenting partial totals as exact.
+- Dashboard KPI values should not look like zero while the first request is pending. Keep prior values during refresh, provide a retry path on failure, and guard overlapping requests by identity.

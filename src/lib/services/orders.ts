@@ -213,7 +213,7 @@ export async function listOrders(): Promise<Order[]> {
 export async function getDashboardOrders(
   dayStartInclusive: string,
   dayEndExclusive: string
-): Promise<{ todayOrders: Order[]; recentOrders: Order[] }> {
+): Promise<{ todayOrders: Order[]; recentOrders: Order[]; todayOrdersTruncated: boolean }> {
   if (!dayStartInclusive || !dayEndExclusive || dayStartInclusive >= dayEndExclusive) {
     throw new Error('Khoảng thời gian dashboard không hợp lệ.');
   }
@@ -224,13 +224,15 @@ export async function getDashboardOrders(
       ordersRef,
       where('createdAt', '>=', dayStartInclusive),
       where('createdAt', '<', dayEndExclusive),
-      orderBy('createdAt', 'desc')
+      orderBy('createdAt', 'desc'),
+      limit(201)
     )),
     getDocs(query(ordersRef, orderBy('createdAt', 'desc'), limit(6))),
   ]);
 
   return {
-    todayOrders: todaySnapshot.docs.map((docSnap) => mapDocToOrder(docSnap.id, docSnap.data())),
+    todayOrders: todaySnapshot.docs.slice(0, 200).map((docSnap) => mapDocToOrder(docSnap.id, docSnap.data())),
+    todayOrdersTruncated: todaySnapshot.docs.length > 200,
     recentOrders: recentSnapshot.docs.map((docSnap) => mapDocToOrder(docSnap.id, docSnap.data())),
   };
 }

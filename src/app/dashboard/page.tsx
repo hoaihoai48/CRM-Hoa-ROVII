@@ -12,7 +12,8 @@ import {
   Users, 
   Flower2, 
   ArrowRight,
-  Phone
+  Phone,
+  RefreshCw
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader, StatCard } from '@/components/common/Cards';
@@ -26,22 +27,54 @@ import { formatDate } from '@/lib/utils/format';
 
 function DashboardContent() {
   const [todayOrders, setTodayOrders] = React.useState<Order[]>([]);
+  const [todayOrdersTruncated, setTodayOrdersTruncated] = React.useState(false);
   const [recentOrders, setRecentOrders] = React.useState<Order[]>([]);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [storeZaloUrl, setStoreZaloUrl] = React.useState('');
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [hasLoaded, setHasLoaded] = React.useState(false);
+  const loadRequestRef = React.useRef(0);
 
-  React.useEffect(() => {
+  const loadDashboard = React.useCallback(async () => {
+    const requestId = ++loadRequestRef.current;
+    setIsLoading(true);
+    setLoadError(null);
     const now = new Date();
     const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
     const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
-    getDashboardOrders(dayStart, dayEnd)
-      .then((result) => {
-        setTodayOrders(result.todayOrders);
-        setRecentOrders(result.recentOrders);
-      })
-      .catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải dữ liệu tổng quan.'));
-    getStoreSettings().then((settings) => setStoreZaloUrl(settings.zaloUrl)).catch(() => {});
+
+    try {
+      const ordersResult = await getDashboardOrders(dayStart, dayEnd);
+      if (requestId !== loadRequestRef.current) return;
+      setTodayOrders(ordersResult.todayOrders);
+      setTodayOrdersTruncated(ordersResult.todayOrdersTruncated);
+      setRecentOrders(ordersResult.recentOrders);
+      setHasLoaded(true);
+      // Store settings are secondary to the order KPIs; do not block the dashboard on this read.
+      void getStoreSettings()
+        .then((settings) => {
+          if (requestId === loadRequestRef.current) setStoreZaloUrl(settings.zaloUrl);
+        })
+        .catch(() => {});
+    } catch (error) {
+      if (requestId === loadRequestRef.current) {
+        setLoadError(error instanceof Error ? error.message : 'Không thể tải dữ liệu tổng quan.');
+      }
+    } finally {
+      if (requestId === loadRequestRef.current) setIsLoading(false);
+    }
   }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) void loadDashboard();
+    });
+    return () => {
+      cancelled = true;
+      loadRequestRef.current += 1;
+    };
+  }, [loadDashboard]);
 
   const newOrders = todayOrders.filter((order) => order.status === 'new');
   const processingOrders = todayOrders.filter(
@@ -58,6 +91,17 @@ function DashboardContent() {
         subtitle="Tình hình đơn hàng và hoạt động của tiệm hôm nay"
         action={
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              aria-label="Làm mới tổng quan"
+              title="Làm mới tổng quan"
+              onClick={() => { void loadDashboard(); }}
+              disabled={isLoading}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 disabled:opacity-50 text-sm font-semibold transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <span>{isLoading ? 'Đang tải...' : 'Làm mới'}</span>
+            </button>
             <Link
               href="/orders/new"
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-brand hover:bg-brand-hover text-brand-text rounded-lg text-sm font-semibold shadow-xs transition-colors"
@@ -69,34 +113,36 @@ function DashboardContent() {
         }
       />
 
-      {loadError && <div className="mb-6 p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs">{loadError}</div>}
+      {loadError && <div role="alert" className="mb-6 p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs">Không thể tải dữ liệu tổng quan: {loadError}. Bạn có thể thử lại bằng nút Làm mới.</div>}
+      {!hasLoaded && isLoading && <p role="status" className="mb-4 text-xs text-stone-500">Đang tải dữ liệu tổng quan...</p>}
+      {hasLoaded && todayOrdersTruncated && <div role="status" className="mb-6 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs">Có hơn 200 đơn phát sinh hôm nay. Các chỉ số đang tính trên 200 đơn mới nhất để giới hạn số lượt đọc; dữ liệu có thể chưa bao gồm toàn bộ đơn trong ngày.</div>}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-8">
         <StatCard
           title="Đơn hôm nay"
-          value={todayOrders.length}
+          value={hasLoaded ? todayOrders.length : '—'}
           subtitle="Đơn phát sinh hôm nay"
           icon={ShoppingBag}
           iconBgColor="bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300"
         />
         <StatCard
           title="Đơn mới"
-          value={newOrders.length}
+          value={hasLoaded ? newOrders.length : '—'}
           subtitle="Cần xác nhận ngay"
           icon={Sparkles}
           iconBgColor="bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"
         />
         <StatCard
           title="Đang xử lý"
-          value={processingOrders.length}
+          value={hasLoaded ? processingOrders.length : '—'}
           subtitle="Đã xác nhận hoặc đang giao"
           icon={Clock}
           iconBgColor="bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300"
         />
         <StatCard
           title="Hoàn tất"
-          value={completedOrders.length}
+          value={hasLoaded ? completedOrders.length : '—'}
           subtitle="Đã giao thành công"
           icon={CheckCircle2}
           iconBgColor="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
@@ -104,7 +150,7 @@ function DashboardContent() {
         <div className="col-span-2 lg:col-span-1">
           <StatCard
             title="Doanh thu hôm nay"
-            value={`${todayRevenue.toLocaleString("vi-VN")}đ`}
+            value={hasLoaded ? `${todayRevenue.toLocaleString("vi-VN")}đ` : '—'}
             subtitle="Doanh thu từ đơn hoàn tất"
             icon={Banknote}
             iconBgColor="bg-rose-100/70 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200"
@@ -204,7 +250,11 @@ function DashboardContent() {
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 dark:divide-stone-800/80 text-sm">
-              {recentOrders.map((order) => (
+              {!hasLoaded ? (
+                <tr><td colSpan={7} className="py-8 text-center text-xs text-stone-400">{isLoading ? 'Đang tải đơn hàng...' : 'Không thể tải danh sách đơn hàng.'}</td></tr>
+              ) : recentOrders.length === 0 ? (
+                <tr><td colSpan={7} className="py-8 text-center text-xs text-stone-400">Chưa có đơn hàng gần đây.</td></tr>
+              ) : recentOrders.map((order) => (
                 <tr key={order.id} className="hover:bg-stone-50/60 dark:hover:bg-stone-900/30 transition-colors">
                   <td className="py-3.5 px-4 font-bold text-stone-900 dark:text-stone-100">
                     <Link href={`/orders/${order.id}`} className="hover:text-rose-600 dark:hover:text-rose-400 transition-colors">
@@ -248,7 +298,11 @@ function DashboardContent() {
 
         {/* Mobile List/Card View */}
         <div className="md:hidden divide-y divide-stone-100 dark:divide-stone-800">
-          {recentOrders.map((order) => (
+          {!hasLoaded ? (
+            <div className="p-4 text-center text-xs text-stone-400">{isLoading ? 'Đang tải đơn hàng...' : 'Không thể tải danh sách đơn hàng.'}</div>
+          ) : recentOrders.length === 0 ? (
+            <div className="p-4 text-center text-xs text-stone-400">Chưa có đơn hàng gần đây.</div>
+          ) : recentOrders.map((order) => (
             <Link
               key={order.id}
               href={`/orders/${order.id}`}

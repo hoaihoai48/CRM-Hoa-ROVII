@@ -75,6 +75,7 @@ npm run test:emulator
 
 - Firestore Rules yêu cầu active membership để đọc/ghi dữ liệu nghiệp vụ; quyền ghi sản phẩm chỉ dành cho admin. Với mô hình Firebase Spark, order/customer transactions vẫn chạy từ client, vì vậy Rules không thể tự chứng minh mọi phép tính tổng tiền hoặc customer aggregate. F-01 là giới hạn trust-boundary đã được chấp nhận cho CRM nội bộ; xem [Firebase Security Audit](docs/audits/CRM_HOA_ROVII_FIREBASE_SECURITY_AUDIT_2026-11-22.md) và [Spark write-boundary decision](docs/security/FIRESTORE_BUSINESS_WRITE_BOUNDARY_PLAN.md).
 - Số điện thoại hợp lệ được chuẩn hóa về dạng quốc gia `0...`; tra cứu vẫn hỗ trợ hồ sơ cũ dạng `84...` để hạn chế trùng khách hàng. Khi tạo đơn, ID khách hàng được kiểm tra khớp với số điện thoại trong cùng Firestore transaction.
+- Dashboard chỉ đọc tối đa 200 đơn mới nhất trong ngày và hiển thị cảnh báo khi vượt ngưỡng; trong trường hợp đó, số lượng đơn và doanh thu trên KPI được tính trên 200 đơn này. Danh sách đơn gần đây giới hạn 6 đơn mới nhất.
 - Danh sách đơn hàng và khách hàng hỗ trợ cursor pagination khi duyệt thông thường. Tìm kiếm chuỗi con hiện vẫn tải toàn bộ tập dữ liệu; danh mục sản phẩm và gợi ý khách hàng trên form tạo đơn cũng tải toàn bộ collection. Cách này phù hợp với quy mô CRM nội bộ nhỏ; nếu dữ liệu tăng đáng kể, cần bổ sung tìm kiếm/phân trang có index.
 - Data URL lưu trong Firestore được giới hạn kích thước và số ảnh ở service lẫn Firestore Rules; phù hợp với catalog nhỏ. Firebase Storage chỉ dùng khi project đã được cấu hình tương ứng.
 
