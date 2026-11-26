@@ -20,9 +20,7 @@ import { Button } from '@/components/common/Button';
 import { getCustomerById, listOrdersPage, updateCustomer } from '@/lib/services';
 import { formatDateShort } from '@/lib/utils/format';
 
-function CustomerDetailContent() {
-  const params = useParams();
-  const customerId = params?.id as string;
+function CustomerDetailContentForId({ customerId }: { customerId: string }) {
   const [initialCustomer, setInitialCustomer] = useState<Awaited<ReturnType<typeof getCustomerById>>>(null);
   const [customerOrders, setCustomerOrders] = useState<Awaited<ReturnType<typeof listOrdersPage>>['items']>([]);
   const [ordersCursor, setOrdersCursor] = useState<Awaited<ReturnType<typeof listOrdersPage>>['nextCursor']>(null);
@@ -393,6 +391,13 @@ function CustomerDetailContent() {
       </div>
     </>
   );
+}
+
+function CustomerDetailContent() {
+  const params = useParams();
+  const customerId = params?.id as string;
+  // Reset profile form, save state and history pagination whenever the route identity changes.
+  return <CustomerDetailContentForId key={customerId} customerId={customerId} />;
 }
 
 function CustomerDetailPageContent() {

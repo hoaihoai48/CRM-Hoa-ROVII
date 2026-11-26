@@ -192,3 +192,10 @@ When a new lesson is added:
 - Key the data-owning child component by the route ID so its loading, error and form state are reset together when the entity changes.
 - Keep service-side field bounds aligned with Firestore Rules. UI required fields alone do not protect direct service callers or oversized values.
 - Treat deactivate and save as separate in-flight operations; disable repeated actions while either operation is running.
+
+
+## 2026-11-26 — Bind customer profile state to the customer route identity
+
+- Request IDs prevent an older Firestore read from overwriting a newer customer, but they do not reset component-local edit fields, save messages or pagination state when a dynamic route component is reused.
+- Key the customer-detail data-owning child by customer ID. This resets the entire profile/edit/history state and lets the previous component's cleanup invalidate in-flight reads.
+- Apply the same rule to any detail page with mutable form state, not only pages that fetch a record.
