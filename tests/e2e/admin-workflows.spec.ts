@@ -229,7 +229,7 @@ test.describe('Admin daily workflows', () => {
     await page.getByLabel('Email').fill(account.email);
     await page.getByLabel('Mật khẩu').fill('RoviiE2E-Synthetic-2026!');
     await page.getByRole('button', { name: 'Đăng nhập với Email' }).click();
-    await expect(page).toHaveURL(/\\/dashboard$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
 
     await expect(page.getByText('UID Firebase Auth:', { exact: false })).toBeVisible();
     await expect(page.getByText(account.uid, { exact: true })).toBeVisible();

@@ -130,7 +130,7 @@ export async function linkExistingStaffAccount(input: LinkExistingStaffInput): P
   const email = input.email.trim().toLowerCase();
   if (!uid || uid.length > 128) throw new Error('UID Firebase Auth không hợp lệ.');
   if (!name || name.length > 120) throw new Error('Tên nhân viên phải có từ 1 đến 120 ký tự.');
-  if (!email || email.length > 254 || !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)) {
+  if (!email || email.length > 254 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     throw new Error('Email tài khoản hiện có không hợp lệ.');
   }
   if (input.role !== 'admin' && input.role !== 'staff') throw new Error('Vai trò không hợp lệ.');
