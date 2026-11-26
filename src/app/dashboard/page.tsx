@@ -44,16 +44,18 @@ function DashboardContent() {
     const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
 
     try {
-      const [ordersResult, settings] = await Promise.all([
-        getDashboardOrders(dayStart, dayEnd),
-        getStoreSettings().catch(() => null),
-      ]);
+      const ordersResult = await getDashboardOrders(dayStart, dayEnd);
       if (requestId !== loadRequestRef.current) return;
       setTodayOrders(ordersResult.todayOrders);
       setTodayOrdersTruncated(ordersResult.todayOrdersTruncated);
       setRecentOrders(ordersResult.recentOrders);
-      if (settings) setStoreZaloUrl(settings.zaloUrl);
       setHasLoaded(true);
+      // Store settings are secondary to the order KPIs; do not block the dashboard on this read.
+      void getStoreSettings()
+        .then((settings) => {
+          if (requestId === loadRequestRef.current) setStoreZaloUrl(settings.zaloUrl);
+        })
+        .catch(() => {});
     } catch (error) {
       if (requestId === loadRequestRef.current) {
         setLoadError(error instanceof Error ? error.message : 'Không thể tải dữ liệu tổng quan.');
