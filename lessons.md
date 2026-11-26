@@ -114,3 +114,10 @@ When a new lesson is added:
 - The owner clarified that work should be split into bounded functional milestones to avoid tool timeouts, but files that jointly implement one behavior must be changed and committed together.
 - Creating a separate commit for every file fragments a single feature, increases GitHub operations and makes review/history harder to follow.
 - Plan each bounded task around one independently reviewable behavior; include its related UI/service/Rules/tests/docs in one commit. Split only when the next piece is an independent milestone. Keep each tool operation bounded and avoid huge batches.
+
+
+## 2026-11-26 — Correct stale project status from live GitHub state
+
+- HANDOFF documents can lag behind merges; always verify PR state and exact main SHA before acting. PR #30 was already merged at `ec2d74115a61fc01f13e0124ffdd2aece0f252ff` even though the prior HANDOFF still described it as Draft.
+- Historical audit documents must be visibly marked as snapshots when architecture changes. In this repo, callable Cloud Functions descriptions are obsolete for routine writes; Spark-compatible client transactions are current.
+- Do not promise F-01 can be fully secured against a malicious authenticated client while retaining the Spark-only trusted-client architecture. A Rules-only guard must be proven against all transaction paths and Firestore Rules limits; otherwise explicitly record the residual accepted risk.
