@@ -25,6 +25,11 @@ import {
 import { canTransitionOrderStatus } from '@/lib/utils/order-status';
 import { normalizeIsoString } from '@/lib/utils/timestamp';
 
+function normalizePhoneIdentity(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  return /^84[35789]\d{8}$/.test(digits) ? `0${digits.slice(2)}` : digits;
+}
+
 function mapDocToOrder(id: string, data: Record<string, unknown>): Order {
   const rawItems = Array.isArray(data.items) ? data.items : [];
   const items: OrderItem[] = rawItems.map((item: Record<string, unknown>, idx: number) => ({
@@ -272,8 +277,7 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
     throw new Error('Phí giao hàng và giảm giá phải là số hợp lệ, không âm.');
   }
 
-  const phoneDigits = input.customerSnapshot.phone.replace(/\D/g, '');
-  const phoneNormalized = /^84[35789]\d{8}$/.test(phoneDigits) ? `0${phoneDigits.slice(2)}` : phoneDigits;
+  const phoneNormalized = normalizePhoneIdentity(input.customerSnapshot.phone);
   if (!/^0[35789]\d{8}$/.test(phoneNormalized)) {
     throw new Error('Số điện thoại không hợp lệ (10 số, đầu 03/05/07/08/09).');
   }
@@ -297,6 +301,16 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
   return await runTransaction(db, async (tx) => {
     // 1. ALL READS FIRST (Strict Firestore transaction rule: all tx.get before any writes)
     const customerSnap = await tx.get(customerRef);
+    if (!customerSnap.exists() && input.customerId) {
+      throw new Error('Hồ sơ khách hàng đã chọn không còn tồn tại. Vui lòng tìm và chọn lại khách hàng.');
+    }
+    if (customerSnap.exists()) {
+      const customerData = customerSnap.data() || {};
+      const storedPhone = normalizePhoneIdentity(String(customerData.phoneNormalized || customerData.phone || ''));
+      if (storedPhone && storedPhone !== phoneNormalized) {
+        throw new Error('Số điện thoại không khớp với hồ sơ khách hàng đã chọn. Vui lòng chọn lại khách hàng.');
+      }
+    }
 
     const productSnaps = await Promise.all(productRefs.map((p) => tx.get(p.ref)));
 

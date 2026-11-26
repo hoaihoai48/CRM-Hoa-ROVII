@@ -149,6 +149,72 @@ test('staff can create, edit and complete an order with consistent totals and hi
 });
 
 
+test('changing the phone after selecting a customer clears the old customer identity', async ({ page }) => {
+  const productId = `PROD-PHONE-IDENTITY-${crypto.randomUUID()}`;
+  const productName = `Hoa kiểm tra danh tính ${crypto.randomUUID().slice(0, 6)}`;
+  const originalPhone = `09${String(Math.floor(Math.random() * 100000000)).padStart(8, '0')}`;
+  const replacementPhone = `08${String(Math.floor(Math.random() * 100000000)).padStart(8, '0')}`;
+  const originalCustomerId = `CUST_${originalPhone}`;
+  await seedActiveProduct(page, productId, productName, 120000);
+  await signInAsActiveAdmin(page);
+
+  const customerSeed = await page.request.patch(
+    `${firestoreEmulator}/v1/projects/${projectId}/databases/(default)/documents/customers/${originalCustomerId}`,
+    {
+      headers: { Authorization: 'Bearer owner' },
+      data: {
+        fields: {
+          name: { stringValue: 'Khách đã chọn ban đầu' },
+          phone: { stringValue: originalPhone },
+          phoneNormalized: { stringValue: originalPhone },
+          address: { stringValue: 'Địa chỉ khách ban đầu' },
+          totalOrders: { integerValue: '0' },
+          totalSpent: { integerValue: '0' },
+          lastOrderDate: { stringValue: '' },
+          createdAt: { stringValue: new Date().toISOString() },
+        },
+      },
+    },
+  );
+  expect(customerSeed.ok()).toBeTruthy();
+
+  await page.goto('/orders/new');
+  await page.getByLabel('Số điện thoại').fill(originalPhone);
+  await page.getByRole('button', { name: 'Chọn khách này' }).click();
+  await expect(page.getByLabel('Tên khách hàng')).toHaveValue('Khách đã chọn ban đầu');
+
+  // Changing the identity phone must not retain the selected customer's document ID or profile.
+  await page.getByLabel('Số điện thoại').fill(replacementPhone);
+  await expect(page.getByLabel('Tên khách hàng')).toHaveValue('');
+  await expect(page.getByLabel('Địa chỉ giao hoa')).toHaveValue('');
+
+  await page.getByLabel('Tên khách hàng').fill('Khách theo số mới');
+  await page.getByLabel('Địa chỉ giao hoa').fill('Địa chỉ khách theo số mới');
+  const productCard = page.getByText(productName, { exact: true }).locator('xpath=../..');
+  await productCard.locator('button[title="Tăng"]').click();
+  await page.getByRole('button', { name: 'Lưu đơn hàng' }).click();
+  await expect(page).toHaveURL(/\/orders\/DH-/);
+
+  const orderId = new URL(page.url()).pathname.split('/').pop();
+  const orderResponse = await page.request.get(
+    `${firestoreEmulator}/v1/projects/${projectId}/databases/(default)/documents/orders/${orderId}`,
+    { headers: { Authorization: 'Bearer owner' } },
+  );
+  expect(orderResponse.ok()).toBeTruthy();
+  const order = await orderResponse.json();
+  expect(order.fields.customerId.stringValue).toBe(`CUST_${replacementPhone}`);
+  expect(order.fields.customerSnapshot.mapValue.fields.phone.stringValue).toBe(replacementPhone);
+
+  const originalCustomer = await page.request.get(
+    `${firestoreEmulator}/v1/projects/${projectId}/databases/(default)/documents/customers/${originalCustomerId}`,
+    { headers: { Authorization: 'Bearer owner' } },
+  );
+  expect(originalCustomer.ok()).toBeTruthy();
+  const original = await originalCustomer.json();
+  expect(original.fields.totalOrders.integerValue).toBe('0');
+});
+
+
 test('customer order history loads additional cursor pages without skipping records', async ({ page }) => {
   const staffUid = await signInAsActiveAdmin(page);
   const customerId = `CUST-HISTORY-E2E-${crypto.randomUUID()}`;

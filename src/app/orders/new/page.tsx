@@ -24,6 +24,11 @@ import { isValidVNPhone } from '@/lib/services/customers';
 import { Customer, Product } from '@/types';
 import { formatVND } from '@/lib/utils/format';
 
+function normalizePhoneIdentity(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  return /^84[35789]\d{8}$/.test(digits) ? `0${digits.slice(2)}` : digits;
+}
+
 interface CartItem {
   product: Product;
   quantity: number;
@@ -77,6 +82,20 @@ function CreateOrderPageContent() {
     setPhoneSearch(customer.phone);
     setCustomerName(customer.name);
     setCustomerAddress(customer.address);
+  };
+
+  const handlePhoneChange = (value: string) => {
+    if (
+      selectedCustomer
+      && normalizePhoneIdentity(value) !== normalizePhoneIdentity(selectedCustomer.phoneNormalized || selectedCustomer.phone)
+    ) {
+      // A changed phone means a different customer identity. Clear the old
+      // selection and its profile fields so the order cannot attach to the wrong customer.
+      setSelectedCustomer(null);
+      setCustomerName('');
+      setCustomerAddress('');
+    }
+    setPhoneSearch(value);
   };
 
   // Prefill customer when navigated from a customer profile (?customerId=...).
@@ -252,7 +271,7 @@ function CreateOrderPageContent() {
                   required
                   placeholder="Nhập SĐT khách hàng (vd: 0901234567)..."
                   value={phoneSearch}
-                  onChange={(e) => setPhoneSearch(e.target.value)}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
                   leftIcon={<Phone className="w-4 h-4" />}
                 />
 
