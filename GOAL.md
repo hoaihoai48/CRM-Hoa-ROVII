@@ -33,8 +33,8 @@ Deliver a dependable, easy-to-operate internal CRM that lets the ROVII team mana
 
 The active priority order is:
 
-1. Finish and verify the current customer/order-history simplification safely.
-2. Close known security and data-integrity gaps with designs that fit Firebase Spark and the internal-team threat model.
+1. Close known security and data-integrity gaps with designs that fit Firebase Spark and the internal-team threat model, starting with staff membership identity/immutability (F-04).
+2. Align historical security-audit documentation with the actual Spark client-transaction architecture and accepted trust boundary (F-05).
 3. Strengthen E2E coverage for products, customers, staff and store settings, in addition to authentication and orders.
 4. Continue improving usability and responsive behavior in the actual daily workflows.
 5. Reassess larger architecture changes only when a concrete operational need justifies them.

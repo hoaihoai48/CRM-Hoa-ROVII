@@ -1,9 +1,9 @@
 # HANDOFF — CRM Hoa ROVII
 
-**Last verified:** 2026-11-26 08:10 (Asia/Ho_Chi_Minh)  
+**Last verified:** 2026-11-26 08:18 (Asia/Ho_Chi_Minh)  
 **Repository:** `hoaihoai48/CRM-Hoa-ROVII`  
 **Default branch:** `main`  
-**Main SHA:** `a6b4f7e32a44885eeb2725992c197a38bd2c9e14`  
+**Main SHA:** `f32814c65204a53d89a3502c09420235f3353f6b`  
 **Canonical project memory:** [GOAL.md](GOAL.md) · [lessons.md](lessons.md) · [HANDOFF.md](HANDOFF.md)
 
 > Re-fetch live GitHub state before acting. This handoff records verified state, not a substitute for checking current refs, PRs, Actions and deployment contexts.
@@ -16,13 +16,13 @@
 
 ## Executive status
 
-**PR #26 and PR #29 merged successfully.** Customer history now uses canonical order documents, and product image payload bounds are enforced in code and Firestore Rules. The Spark scalar-aggregate limitation remains explicitly open. Next implementation priority is F-04 staff membership identity/immutability.
+**PR #26 and PR #29 merged successfully. PR #30 contains the F-04 staff membership identity/immutability implementation and remains Draft pending final latest-head verification/review.** Customer history uses canonical order documents, and product image payload bounds are enforced in code and Firestore Rules. The Spark scalar-aggregate limitation remains explicitly open.
 
 ## Repository and delivery state
 
 ### Main
 
-- Live `main`: `a6b4f7e32a44885eeb2725992c197a38bd2c9e14`.
+- Live `main`: `f32814c65204a53d89a3502c09420235f3353f6b` (includes the F-03 merge verification lesson).
 - PR #27 project-memory foundation remains on main: `AGENTS.md`, `GOAL.md`, `lessons.md`, `HANDOFF.md`.
 - PR #25 closed without merge; superseded by PR #26.
 
@@ -61,11 +61,14 @@
 
 - Branch: `security/staff-membership-identity-immutability-2026-11-26`.
 - Base: `f32814c65204a53d89a3502c09420235f3353f6b`.
-- Implementation head before this handoff update: `01abf401bde45a58ac9f5a4d3e8d95b01f48d8e0`.
-- PR: not opened yet.
+- Implementation head before this documentation refresh: `61af96b8baf458612b970d509b286c45079492bf`.
+- PR: [#30](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/30), **OPEN / DRAFT**; base `f32814c65204a53d89a3502c09420235f3353f6b`.
 - Firestore Rules now require `users/{uid}` path/field UID consistency on create/update; keep email, name and createdAt immutable; constrain role/status enums; and prevent users from changing their own role/status. Admins may still update another member.
 - Staff service writes the document path UID on updates, allowing legacy records without a UID field to be repaired without changing their identity fields. New staff name/email lengths are aligned with Rules.
-- Emulator regression cases cover mismatched path UID on create/update, immutable email/name/createdAt, self-demotion/deactivation denial, allowed status changes, and repair of a legacy membership without UID. Execution status: **NOT RUN manually** per owner direction; automatic PR Actions expected after opening.
+- Emulator regression cases cover mismatched path UID on create/update, immutable email/name/createdAt, self-demotion/deactivation denial, allowed status changes, and repair of a legacy membership without UID. No manual tests were run per owner direction.
+- Automatic PR Actions run [#45733162211](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45733162211): **SUCCESS** on code head `61af96b8baf458612b970d509b286c45079492bf`.
+- Vercel Preview status on that code head: **SUCCESS** ([Preview](https://vercel.com/vu-nhim/tiem-hoa-rovii/AgS6Nec3kdsrcoNYMuSD25st5s1V)). No PR reviews or inline review comments were present at last check.
+- This documentation-only follow-up will create a new PR head; its automatic Actions/Preview state must be checked separately. PR remains Draft until that exact head is verified.
 - No production data, Firebase project configuration, billing or deployment changes.
 
 ## Security backlog
@@ -75,7 +78,7 @@
 | F-01 — customer aggregate integrity | OPEN / PARTIAL MITIGATION ONLY | Scalar aggregates remain client-maintained under Spark; do not claim authoritative protection from a malicious active staff client. |
 | F-02 — Storage authorization mismatch | RESOLVED | PR #22 merged; Storage writes require active admin, public reads preserved; emulator regression coverage exists. |
 | F-03 — product image Data URL size / payload bounds | RESOLVED (PR #29) | 150,000-character Data URL cap, five-image/900,000-character worst-case payload, HTTPS URL bounds and legacy-safe unrelated edits; PR and post-merge Actions PASS. |
-| F-04 — membership identity/immutable fields | IN PROGRESS (implementation branch) | UID/path match, immutable email/name/createdAt, role/status enums, no self role/status changes and legacy UID repair. |
+| F-04 — membership identity/immutable fields | IN PROGRESS (PR #30, Draft) | UID/path match, immutable email/name/createdAt, role/status enums, no self role/status changes and legacy UID repair. Code-head Actions and Preview passed; documentation follow-up checks pending. |
 | F-05 — stale security-audit narrative | OPEN | Align historical documentation with the actual Spark client-transaction architecture. |
 
 ## Product test coverage gap
@@ -87,19 +90,21 @@ Current E2E coverage is concentrated on authentication and order flows. Add focu
 - Store settings read/update.
 - Responsive smoke coverage for critical daily workflows.
 
-Do not start these unrelated suites while PR #26 is blocked on its current required Emulator gate.
+Keep broader product/customer/settings E2E expansion as a separate scope after F-04 and F-05; do not mix it into the current security PR.
 
 ## Next actions — in order
 
-1. Complete F-04 staff membership UID/path consistency, immutable identity fields and role/status update constraints.
-2. Then close F-05 by aligning the historical Firebase security-audit narrative with the actual Spark client-transaction architecture and accepted trust boundary.
-3. Keep one active code PR at a time. Do not manually run tests unless the owner asks; observe automatically triggered Actions and report exact results.
-4. Add focused product/staff browser coverage only as a separate later UX/E2E scope.
+1. Verify the new PR #30 head after this documentation refresh; keep it Draft until latest-head Actions and Preview are confirmed.
+2. Complete review of F-04 and merge only when latest-head checks and review are satisfactory.
+3. Close F-05 by aligning the historical Firebase security-audit narrative with the actual Spark client-transaction architecture and accepted trust boundary.
+4. Keep one active code PR at a time. Do not manually run tests unless the owner asks; observe automatically triggered Actions and report exact results.
+5. Add focused product/staff browser coverage only as a separate later UX/E2E scope.
 
 ## Delivery and safety rules
 
 - Use the GitHub connector for this repository workflow. Do not switch to ChatGPT Work unless the owner explicitly requests it.
 - Do not create overlapping PRs or multiple speculative commits. One active code PR at a time.
+- Make commits task-sized, not file-sized: group all tightly coupled files for one complete functional change into a single commit. Split only at independent milestones; never create one commit per file.
 - Do not push while the previous exact-head Actions run is still running.
 - Do not merge failed, pending, stale or inadequately reviewed changes.
 - Preserve Firebase Spark; no paid Firebase service or billing changes.

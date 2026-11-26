@@ -107,3 +107,10 @@ When a new lesson is added:
 - Bind every new or updated `users/{uid}` membership's `uid` field to the document path. Admin update service should always write the path UID so legacy documents missing the field can be repaired.
 - Keep email, name and createdAt immutable; constrain role/status to known enums and prevent self role/status changes in Rules, not only in UI controls.
 - Preserve optional legacy identity fields on update by comparing their old/new values rather than requiring them to exist on every legacy document.
+
+
+## 2026-11-26 — Small tasks mean cohesive changes, not one commit per file
+
+- The owner clarified that work should be split into bounded functional milestones to avoid tool timeouts, but files that jointly implement one behavior must be changed and committed together.
+- Creating a separate commit for every file fragments a single feature, increases GitHub operations and makes review/history harder to follow.
+- Plan each bounded task around one independently reviewable behavior; include its related UI/service/Rules/tests/docs in one commit. Split only when the next piece is an independent milestone. Keep each tool operation bounded and avoid huge batches.
