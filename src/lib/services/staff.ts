@@ -1,5 +1,5 @@
 import { collection, doc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, deleteUser, getAuth, signOut, updateProfile } from 'firebase/auth';
+import { connectAuthEmulator, createUserWithEmailAndPassword, deleteUser, getAuth, signOut, updateProfile } from 'firebase/auth';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { db } from '@/lib/firebase/config';
 import { UserMembership, UserRole, MembershipStatus } from '@/types';
@@ -34,7 +34,20 @@ function getSecondaryAuth() {
   const secondaryName = 'staff-provisioning';
   const existing = getApps().find((app) => app.name === secondaryName);
   const secondaryApp = existing || initializeApp(mainApp.options, secondaryName);
-  return getAuth(secondaryApp);
+  const secondaryAuth = getAuth(secondaryApp);
+  // The secondary Auth instance must use the same emulator as the primary app.
+  // Otherwise staff provisioning can accidentally target the configured Firebase project
+  // even when the rest of the application is running against the Auth Emulator.
+  const authEmulatorHost = process.env.FIREBASE_AUTH_EMULATOR_HOST || process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST;
+  if (authEmulatorHost) {
+    try {
+      const authUrl = authEmulatorHost.startsWith('http') ? authEmulatorHost : 'http://' + authEmulatorHost;
+      connectAuthEmulator(secondaryAuth, authUrl, { disableWarnings: true });
+    } catch {
+      // Already connected.
+    }
+  }
+  return secondaryAuth;
 }
 
 /** Admin-only: list all staff memberships. Enforced by firestore.rules (list: admin). */
