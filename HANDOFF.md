@@ -1,39 +1,65 @@
-# CURRENT HANDOFF — updated 2026-11-26 (Spark-first operating decision)
+# CURRENT HANDOFF — 2026-11-26 (sequential V1 completion plan)
 
 - Repository: `hoaihoai48/CRM-Hoa-ROVII`; default branch: `main`.
-- Live `main`: `eb1bf6a91e698bb519c7b764cf21f10e005a34da` (includes PRs #36 and #37).
-- Live `main`: `cf42153c4dd3af62fb6cc46b7f9f0ca0521c5144` (includes PR #36).
-- Main includes the order/customer identity fix from [PR #35](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/35), squash merge `550c9c487688a7d7f797a2d040d93fc71c4efa12`.
-- PR #33 ([Admin catalog and staff workflows](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/33)) is **MERGED**. It adds Playwright scenarios for product create/edit/deactivation, customer create/search/profile update, staff membership/provisioning, store settings and staff permission boundaries. The secondary Firebase Auth instance now connects to the configured Auth Emulator.
-- PR #34 ([Spark-first handoff and audit alignment](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/34)) is **MERGED**; it records the Spark-only decision in `HANDOFF.md`, `lessons.md`, and the current Firebase security audit.
-- PR #35 fixes customer identity mismatch during order creation: changing the selected customer's phone clears the old selection/profile, and `createOrder()` validates the selected record's normalized phone before any write. Its E2E regression case is committed but was not run.
-- PR #36 ([avoid duplicate product catalog reads](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/36)) is **MERGED** as `cf42153c4dd3af62fb6cc46b7f9f0ca0521c5144`: the products page now performs one collection read on mount and ignores stale async responses after retry/unmount.
-- PR #37 ([prevent stale detail data after route changes](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/37)) is **MERGED** as `eb1bf6a91e698bb519c7b764cf21f10e005a34da`: customer/order detail fetches and customer-history pagination now use request identities so responses for a previous route cannot overwrite the currently opened record. No open PRs remain.
-- F-01 customer aggregate integrity is **OPEN / ACCEPTED RESIDUAL RISK** under the approved internal-team + Firebase Spark model. Customer scalar aggregates remain client-maintained; Firestore Rules cannot independently prove all client-computed cross-document arithmetic or product-price totals. Canonical `orders/{orderId}` documents remain the evidence for reconciliation. Do not claim authoritative financial integrity.
-- F-02 Storage authorization: **RESOLVED** (PR #22).
-- F-03 product image payload bounds: **RESOLVED** (PR #29).
-- F-04 staff membership identity/immutability: **RESOLVED** (PR #30).
-- F-05 historical audit drift: **DOCUMENTATION-CORRECTED** (PR #31 plus historical-audit notices).
-- Order print view is already implemented on `main`; do not port the stale feature branch.
-- PR #33 and PR #35 E2E coverage is committed, but tests were not manually run for those deliveries. PR #36 is a focused loading-path fix; no tests were run per owner direction. Do not describe unrun scenarios as executed or passing.
+- Verified main commit: `5021a67fad65c61590f5ddceecca2a0d3b952b34` (PR #38).
+- PR #38 is **MERGED**. It fixes the product-page React effect lint regression.
+- PR #38 Actions run [#45844772182](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45844772182): **SUCCESS** — lint, typecheck, Firebase Emulator integration, Playwright E2E and production build all passed.
+- Main push Actions run [#45844801586](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45844801586): **SUCCESS** on the same main commit, including lint, typecheck, Emulator, Playwright E2E and production build.
+- No open PRs were found at the start of this delivery.
+- Vercel status context on the main commit: **SUCCESS**. No manual deployment or promotion was initiated.
+- The previous handoff header contained stale SHAs and duplicated current-state entries. This header supersedes them; older snapshots remain below for historical audit only.
 
-## Approved architecture and delivery direction
+## Product scope and completion definition
 
-- Keep Firebase on **Spark**. Do not link billing, move to Blaze, introduce Cloud Functions, or add paid infrastructure for this internal CRM.
-- Continue using the existing client-side Firestore transactions for routine order/customer workflows. Treat customer scalar aggregates as display/cache summaries, not an independently trusted financial ledger.
-- Use canonical order documents for order history and as the source from which customer summaries can be reconciled if an operational discrepancy is reported.
-- Do not add a superficial Firestore Rules restriction for F-01: it could break legitimate order create/edit/status/cancel transactions without solving every arithmetic trust issue.
-- Prioritize practical reliability in daily operations. Fix concrete defects reported during actual use; avoid speculative architecture work.
-- Owner direction: do not manually run test suites, rerun CI, or wait for test reports unless explicitly requested. Be honest about what was and was not executed.
-- Use the GitHub connector for this repository. Keep related changes in cohesive commits, not one commit per file. Update this handoff and `lessons.md` at meaningful milestones.
+V1 is the internal flower-shop CRM defined in `GOAL.md` and `README.md`: Dashboard, orders, customers, products, staff/access, store settings, Zalo contact and printable order output. Explicitly out of scope: public storefront, customer accounts, cart/checkout, payments, inventory, suppliers and Zalo API.
 
-## Safety boundaries
+V1 is complete only when the supported daily workflow works end to end across these modules, access rules match UI/service behavior, critical states/errors are handled, the app remains Spark-compatible, and the handoff records known residual risks. A green CI run alone is not product completion.
 
-Preserve Firebase Spark. Do not access or mutate production customer/order records, perform destructive migrations, change Firebase project configuration/billing, or manually deploy/promote production without explicit approval. An owner-authorized merge may trigger the repository's configured automatic deployment; do not manually promote it.
+## Sequential delivery plan
 
-- Product catalog page duplicate-read defect fixed in [PR #36](https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/36) once merged: initial mount previously issued two identical full product collection reads; it now shares one request path for initial load/retry and ignores stale in-flight responses after unmount or a newer retry.
+| Step | Scope | Status | Completion gate |
+|---|---|---|---|
+| 1 | Baseline, scope and project inventory | **IN PROGRESS** | Reconcile live Git/CI/docs; map every V1 route to its service, rules and existing coverage; record gaps without guessing. |
+| 2 | Authentication, membership and access | PENDING | Login/session/logout and admin/staff route + data permissions agree; no unauthorized UI or service path. |
+| 3 | Product catalog | PENDING | Admin product create/edit/activate/deactivate, image handling, catalog selection and error/retry states work together. |
+| 4 | Customer management | PENDING | Create/search/profile/history and phone identity are consistent; canonical order history is used. |
+| 5 | Order lifecycle | PENDING | Create, totals, snapshots, edits allowed by lifecycle, transitions, cancellation, history and print are coherent. |
+| 6 | Dashboard and operational summaries | PENDING | Date/status metrics reconcile to canonical orders; cancelled orders are excluded from completed revenue. |
+| 7 | Cross-module UX and reliability | PENDING | Desktop/mobile navigation, loading/empty/error states, duplicate submission and stale-response cases are addressed. |
+| 8 | Final handoff and delivery hygiene | PENDING | Latest merged SHA/PR/CI state and all residual limitations are recorded; no unresolved regression caused by delivery. |
 
-- Customer and order detail pages now invalidate route-bound Firestore reads on navigation/retry, preventing a slower response for the previous record from replacing the currently opened record (PR #37).
+### Execution rules
+
+1. Work in the order above. Do not jump to an unrelated module because a minor issue is noticed elsewhere; log it for its planned step unless it blocks the current one.
+2. Each milestone is a coherent behavior, including the related UI, service, types, Rules, tests and documentation where applicable. Do not create one commit per file.
+3. Keep one active implementation PR at a time. Inspect current `main`, PRs and latest Actions before starting the next scope.
+4. Do not manually run test suites or rerun CI unless the owner asks. Automatic GitHub Actions may run; inspect their results and fix regressions caused by our changes. Never claim unrun checks passed.
+5. Avoid speculative pushes and redundant workflow runs. Preserve the existing CI quality gates and use `paths-ignore` for documentation-only changes.
+6. Preserve Firebase Spark and the current client-side Firestore transaction architecture. No Blaze upgrade, Cloud Functions, paid infrastructure or billing changes.
+7. Do not read or mutate production customer/order records, perform destructive migrations, change Firebase project configuration, or manually deploy/promote production without explicit approval.
+8. Update this current-state section and `lessons.md` at meaningful milestones. Keep historical snapshots below; do not leave stale claims in the current-state section.
+
+## Known accepted architecture boundary
+
+F-01 customer scalar aggregates (`totalOrders`, `totalSpent`, `lastOrderDate`) remain client-maintained display/cache summaries under Firebase Spark. Firestore Rules cannot independently prove all cross-document arithmetic. Canonical `orders/{orderId}` documents are the durable order history and reconciliation evidence. Do not claim authoritative financial integrity or add superficial Rules restrictions that break legitimate transactions.
+
+Resolved items: F-02 Storage authorization (PR #22), F-03 product image payload bounds (PR #29), F-04 staff membership identity/immutability (PR #30), F-05 historical audit drift correction (PR #31). PR #35 fixes selected-customer/phone identity mismatch. PR #36 consolidates product catalog loading but its initial lint regression was corrected by PR #38. PR #37 protects route-bound detail and pagination reads from stale responses. Order print output is already implemented on main; do not port the stale feature branch.
+
+## Initial inventory findings
+
+- `GOAL.md` and `README.md` define a finite internal V1 scope; the work must not expand into unrelated storefront/inventory/payment features.
+- Orders list uses cursor pagination for the unfiltered default view, but switches to full collection loading for search/status filtering. README documents full-dataset search as a small-CRM limitation; evaluate its actual impact during the relevant module audit before changing it.
+- Customer and product selection on order creation currently load complete customer/product collections; README documents this as acceptable only for small internal datasets. Assess practical usage and avoid adding costly infrastructure.
+- Dashboard currently derives today's KPIs from a bounded order query; verify its date boundaries and status/revenue semantics during Step 6.
+- Product and settings pages have client-side workflows; inspect service/Rules constraints together before changing their behavior.
+- The main Actions run above is now successful. This verifies the current code snapshot only; it does not complete the remaining product audit.
+
+## Step 1 remaining work
+
+- Inspect all V1 routes and their service functions, type contracts, Firestore/Storage Rules, and existing Emulator/Playwright coverage.
+- Produce a concise route-to-service-to-permission inventory and prioritize concrete blockers for Steps 2–7.
+- Do not mark Step 1 complete until that inventory is grounded in source files.
+
 
 ## Historical handoff archive
 
