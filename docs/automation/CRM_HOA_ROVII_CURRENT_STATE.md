@@ -185,3 +185,29 @@ Read this handoff and docs/automation/CRM_HOA_ROVII_AUTONOMOUS_DELIVERY_PLAYBOOK
 - Fresh code review and documentation-focused security review are required on the live resulting PR head. Earlier review receipts are stale. Do not merge until both reviews complete without findings and all inline threads are resolved.
 - Actions are NOT RUN because the entire diff is Markdown/docs excluded by `.github/workflows/ci.yml` `paths-ignore`; no CI PASS is claimed and app build/isolated app tests are not relevant. Vercel Preview is N/A for this docs-only diff; the previous-head Vercel status was success but is not required.
 - Playbook follow-up commit: `0feaf758b11fd324ea20cc2575c0607d917cd7cd`. No runtime code, Firebase Rules, emulator/test infrastructure, production data, deployment, billing, Firebase project settings or migration changed. Next code step remains F-01 customer aggregate integrity after PR #24 closes.
+
+
+## Delivery update — 2026-11-23 (customer/order simplification plan)
+
+- Owner requested the CRM be kept simple and delegated autonomous completion through the GitHub connector.
+- Read-only inspection confirmed that customer detail history already comes from paginated canonical `orders`; the embedded `orderSummaries` cache is not needed by that UI. Customer list/detail still consume `totalOrders`, `totalSpent` and `lastOrderDate`.
+- PR #25 remains separate and unmerged: branch `security/customer-aggregate-write-boundary-2026-11-23`, head `d25408e7e9fdfdb9572c3dd144aa247ab076fbdc`. Its 10-row projection/marker/refill protocol failed Emulator run #45081169966: lint and typecheck passed; Emulator failed; Playwright and build were skipped. The failure includes the Firestore 1,000-expression evaluation limit and a concurrent status/projection inconsistency. Two P2 review threads remain unresolved. Do not merge PR #25.
+- A separate refactor branch `refactor/simple-customer-order-source-2026-11-23` was created from main `8f2d0d3695429ebdd47733caca1b51b80067f582`. It is still clean pending an internally consistent, reviewable implementation; no code has been pushed to it yet.
+- Simplification direction: canonical `orders` only for history; stop maintaining/reading customer `orderSummaries`; keep only scalar UI summaries; define `lastOrderDate` as latest placement regardless of current status; preserve legacy fields/data without migration.
+- Security limitation must be explicit: with Firebase Spark client transactions, scalar aggregate arithmetic is not independently provable by Firestore Rules. This refactor is not a resolution of scalar tampering risk. It reduces complexity/Rules evaluation and keeps the existing trusted internal staff model.
+- No production data, migration, deployment, Firebase configuration or billing was touched. F-01 remains open until a separate security solution is validated.
+
+## Implementation checkpoint — 2026-11-24
+
+This section supersedes the earlier note that the refactor branch was still code-clean.
+
+- Refactor branch now contains application code changes through 6109c53e6f1c0f0c1759d3bda9b1d2a9221b6f48.
+- Removed runtime customer order-summary projection logic and bounded-cache/refill/fingerprint helpers from src/lib/services/orders.ts.
+- createOrder and updateOrderStatus update only the three scalar customer summaries; updateOrder no longer reads/writes the customer cache.
+- Customer mapper and Customer TypeScript model no longer expose orderSummaries. Existing stored arrays are not migrated, deleted, or rewritten; Firestore Rules tolerate the legacy optional array as opaque data.
+- Firestore Rules no longer require order/customer writes to maintain a cross-document order projection. Authentication, active membership, order schema/lifecycle/history checks, customer schema and immutable phone identity remain.
+- Emulator tests now exercise scalar repair and canonical history beyond 50 orders; legacy arrays are checked for preservation. Audit script compares scalar summaries only and treats old embedded arrays as legacy data.
+- Static source inspection: order service has no orderSummaries references; projection-specific Firestore Rules helpers are absent. Customer detail/list pages use canonical order reads and did not reference the removed property.
+- Not yet verified by execution: lint, TypeScript, Emulator suite, Playwright and production build. Open a draft PR to run the repository's pull-request CI; do not merge until all checks pass and the security limitation is reviewed.
+- Explicit limitation: customer scalar aggregate values are client-maintained under Firebase Spark. This simplification does not prevent an authenticated active staff member from forging those scalar values. F-01 remains open; no production data migration or deployment is authorized by this refactor.
+- PR #25 remains separate and unmerged; do not merge it.

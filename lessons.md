@@ -69,3 +69,11 @@ When a new lesson is added:
 - The owner has asked to prioritize finishing implementation and not proactively run Playwright or other test suites; report runtime defects when the owner encounters them during normal use.
 - Avoid spending time on repeated manual test/CI runs unless the owner asks. Repository pushes may still trigger configured GitHub Actions automatically; never claim unrun checks passed.
 - Keep untested changes clearly identified and preserve production, billing and data-safety boundaries.
+
+
+## 2026-11-26 — Remove all obsolete projection assertions after canonical-history refactor
+
+- PR #26 removed the embedded `customers.orderSummaries` write protocol, but the Emulator suite still contained three negative assertions requiring that projection on order create, status changes and total edits.
+- Those assertions no longer represented the intended Spark architecture and caused the latest-head Emulator stage to fail even though order lifecycle and actor-history invariants remained valid.
+- When removing a duplicated data representation, search the complete test suite and remove or redesign every assertion that enforces the retired contract; preserve tests for the invariants that still apply (document schema, identity, lifecycle, history and atomic application workflows).
+- Corrected in commit `d0ca98f145b0250534a958a18c685b435b490451`; automatic Actions run [#45729703091](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45729703091) completed successfully. Do not call this a security fix for Spark client-maintained customer scalar aggregates.

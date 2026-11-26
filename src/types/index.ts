@@ -30,13 +30,6 @@ export interface User {
   status?: MembershipStatus;
 }
 
-export interface CustomerOrderSummary {
-  id: string;
-  status: OrderStatus;
-  total: number;
-  createdAt: string;
-}
-
 export interface Customer {
   id: string;
   name: string;
@@ -46,8 +39,6 @@ export interface Customer {
   totalOrders: number;
   totalSpent: number;
   lastOrderDate: string;
-  /** Bounded recent-order projection (max 51, including a currently changed cancelled order); not the lifetime source of truth. */
-  orderSummaries?: CustomerOrderSummary[];
   note?: string;
   createdAt: string;
 }

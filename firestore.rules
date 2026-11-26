@@ -59,10 +59,6 @@ service cloud.firestore {
         && (!('deliveryDate' in data.keys()) || data.deliveryDate == null || data.deliveryDate is string);
     }
 
-    function boundedCustomerProjection(data) {
-      return !('orderSummaries' in data.keys()) || data.orderSummaries.size() <= 51;
-    }
-
     function validCustomer(data) {
       return data.keys().hasOnly([
           'name', 'phone', 'phoneNormalized', 'address',
@@ -153,74 +149,28 @@ service cloud.firestore {
         );
     }
 
-    // Order writes must keep the corresponding per-order customer projection coherent
-    // in the same transaction/batch. This does not prove the customer's full aggregates.
-    function hasMatchingCustomerOrderProjection(orderId, orderData) {
-      let customerAfter = getAfter(
-        /databases/$(database)/documents/customers/$(orderData.customerId)
-      );
-      let expectedSummary = {
-        'id': orderId,
-        'status': orderData.status,
-        'total': orderData.summary.total,
-        'createdAt': orderData.createdAt
-      };
-      return customerAfter.data.orderSummaries is list
-        && expectedSummary in customerAfter.data.orderSummaries;
-    }
-
-    // Spark-compatible internal-team model. Rules enforce lifecycle and document invariants,
-    // but cannot prove cross-document arithmetic or reconstruct customer aggregates.
+    // Orders are canonical. Rules validate order shape and lifecycle.
+    // Scalar customer summaries are client-maintained in this Firebase Spark deployment;
+    // Firestore Rules cannot prove cross-document arithmetic without a trusted backend.
     match /orders/{orderId} {
       allow read: if isActiveMember();
       allow create: if isActiveMember()
-        && validInitialOrder(request.resource.data)
-        && hasMatchingCustomerOrderProjection(orderId, request.resource.data);
+        && validInitialOrder(request.resource.data);
       allow update: if isActiveMember()
         && validOrder(request.resource.data)
         && validStatusChange(resource.data, request.resource.data)
         && request.resource.data.customerId == resource.data.customerId
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.createdBy == resource.data.createdBy
-        && request.resource.data.get('createdByUid', null) == resource.data.get('createdByUid', null)
-        && hasMatchingCustomerOrderProjection(orderId, request.resource.data);
+        && request.resource.data.get('createdByUid', null) == resource.data.get('createdByUid', null);
       allow delete: if false;
-    }
-
-    function hasMatchingFirstOrderProjection(customerId, customerData) {
-      return customerData.orderSummaries is list
-        && customerData.orderSummaries.size() == 1
-        && customerData.orderSummaries[0] is map
-        && customerData.orderSummaries[0].keys().hasOnly(['id', 'status', 'total', 'createdAt'])
-        && customerData.orderSummaries[0].keys().hasAll(['id', 'status', 'total', 'createdAt'])
-        && customerData.orderSummaries[0].status == 'new'
-        && customerData.totalOrders == 1
-        && customerData.totalSpent == 0
-        && customerData.lastOrderDate == customerData.orderSummaries[0].createdAt
-        && getAfter(/databases/$(database)/documents/orders/$(customerData.orderSummaries[0].id)).data.customerId == customerId
-        && getAfter(/databases/$(database)/documents/orders/$(customerData.orderSummaries[0].id)).data.status == 'new'
-        && getAfter(/databases/$(database)/documents/orders/$(customerData.orderSummaries[0].id)).data.summary.total == customerData.orderSummaries[0].total
-        && getAfter(/databases/$(database)/documents/orders/$(customerData.orderSummaries[0].id)).data.createdAt == customerData.orderSummaries[0].createdAt
-        && getAfter(/databases/$(database)/documents/orders/$(customerData.orderSummaries[0].id)).data.customerSnapshot.name == customerData.name
-        && getAfter(/databases/$(database)/documents/orders/$(customerData.orderSummaries[0].id)).data.customerSnapshot.phone == customerData.phone
-        && getAfter(/databases/$(database)/documents/orders/$(customerData.orderSummaries[0].id)).data.customerSnapshot.address == customerData.address;
     }
 
     match /customers/{customerId} {
       allow read: if isActiveMember();
-      allow create: if isActiveMember()
+      allow create: if isActiveMember() && validCustomer(request.resource.data);
+      allow update: if isActiveMember()
         && validCustomer(request.resource.data)
-        && boundedCustomerProjection(request.resource.data)
-        && (
-          (request.resource.data.totalOrders == 0
-            && request.resource.data.totalSpent == 0
-            && request.resource.data.lastOrderDate == ''
-            && (!('orderSummaries' in request.resource.data.keys())
-              || request.resource.data.orderSummaries.size() == 0))
-          || hasMatchingFirstOrderProjection(customerId, request.resource.data)
-        );
-      allow update: if isActiveMember() && validCustomer(request.resource.data)
-        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['orderSummaries']) || boundedCustomerProjection(request.resource.data))
         && request.resource.data.phone == resource.data.phone
         && request.resource.data.phoneNormalized == resource.data.phoneNormalized
         && request.resource.data.createdAt == resource.data.createdAt;

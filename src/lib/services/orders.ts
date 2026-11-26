@@ -20,56 +20,10 @@ import {
   UpdateOrderStatusInput,
   OrderItem,
   OrderStatusHistory,
-  Product,
-  CustomerOrderSummary
+  Product
 } from '@/types';
 import { canTransitionOrderStatus } from '@/lib/utils/order-status';
 import { normalizeIsoString } from '@/lib/utils/timestamp';
-
-const MAX_CUSTOMER_ORDER_SUMMARIES = 50;
-
-function mapCustomerOrderSummaries(raw: unknown): CustomerOrderSummary[] {
-  if (!Array.isArray(raw)) return [];
-  return raw.map((entry: Record<string, unknown>) => ({
-    id: String(entry.id || ''),
-    status: (entry.status as Order['status']) || 'new',
-    total: Number(entry.total || 0),
-    createdAt: normalizeIsoString(entry.createdAt),
-  }));
-}
-
-/**
- * Keep the legacy customer projection bounded without losing the order currently
- * being changed (Firestore Rules require that exact projection in the same write).
- * Small histories retain their previous complete shape for backward compatibility.
- */
-function projectCustomerOrderSummaries(
-  existing: CustomerOrderSummary[],
-  changed: CustomerOrderSummary
-): CustomerOrderSummary[] {
-  const all = [...existing.filter((summary) => summary.id !== changed.id), changed];
-  if (all.length <= MAX_CUSTOMER_ORDER_SUMMARIES) return all;
-
-  const recentActive = all
-    .filter((summary) => summary.status !== 'cancelled')
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
-    .slice(0, MAX_CUSTOMER_ORDER_SUMMARIES);
-
-  if (changed.status === 'cancelled') {
-    return [...recentActive, changed];
-  }
-  if (recentActive.some((summary) => summary.id === changed.id)) {
-    return recentActive;
-  }
-  return [...recentActive.slice(0, MAX_CUSTOMER_ORDER_SUMMARIES - 1), changed];
-}
-
-function latestDate(summaries: CustomerOrderSummary[]): string {
-  return summaries.reduce(
-    (latest, summary) => summary.createdAt > latest ? summary.createdAt : latest,
-    ''
-  );
-}
 
 function mapDocToOrder(id: string, data: Record<string, unknown>): Order {
   const rawItems = Array.isArray(data.items) ? data.items : [];
@@ -127,100 +81,64 @@ function mapDocToOrder(id: string, data: Record<string, unknown>): Order {
 }
 
 /**
- * Rebuild lifetime aggregates from the complete orders collection and compact the
- * customer document's bounded recent-order projection.
- *
- * The orders query cannot be included in a Firestore Web SDK transaction. To avoid
- * overwriting a concurrent create/status mutation, snapshot the customer's current
- * projection before querying orders, then compare it inside the transaction. If it
- * changed at any point, abort this repair attempt and repeat the query from scratch.
+ * Reconcile the three customer summary fields from canonical orders.
+ * This is an explicit admin maintenance action, not part of order creation/history.
+ */
+/**
+ * Reconcile customer summary fields from canonical orders.
+ * Use only as an explicit maintenance action, not in normal order workflows.
  */
 export async function syncCustomerAggregates(customerId: string): Promise<void> {
   if (!customerId) return;
   const customerRef = doc(db, 'customers', customerId);
-  const ordersColl = collection(db, 'orders');
-  const q = query(ordersColl, where('customerId', '==', customerId));
-  const maxAttempts = 5;
+  const ordersQuery = query(
+    collection(db, 'orders'),
+    where('customerId', '==', customerId),
+  );
 
-  const readProjection = (raw: Record<string, unknown>): CustomerOrderSummary[] => {
-    const summaries = Array.isArray(raw.orderSummaries) ? raw.orderSummaries : [];
-    return summaries.map((s: Record<string, unknown>) => ({
-      id: String(s.id || ''),
-      status: (s.status as Order['status']) || 'new',
-      total: Number(s.total || 0),
-      createdAt: normalizeIsoString(s.createdAt),
-    }));
-  };
+  // Collection queries cannot run inside a Web SDK transaction. Snapshot the three
+  // aggregate values first, then retry if an order mutation changes them during the scan.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const before = await getDoc(customerRef);
+    if (!before.exists()) return;
+    const beforeData = before.data();
+    const baseline = {
+      totalOrders: Number(beforeData.totalOrders || 0),
+      totalSpent: Number(beforeData.totalSpent || 0),
+      lastOrderDate: String(beforeData.lastOrderDate || ''),
+    };
 
-  const projectionFingerprint = (summaries: CustomerOrderSummary[]): string =>
-    JSON.stringify(
-      summaries
-        .map((s) => ({ id: s.id, status: s.status, total: s.total, createdAt: s.createdAt }))
-        .sort((a, b) => a.id.localeCompare(b.id))
+    const snapshot = await getDocs(ordersQuery);
+    const orders = snapshot.docs.map((item) => mapDocToOrder(item.id, item.data()));
+    const totalOrders = orders.filter((order) => order.status !== 'cancelled').length;
+    const totalSpent = orders
+      .filter((order) => order.status === 'completed')
+      .reduce((sum, order) => sum + order.summary.total, 0);
+    const lastOrderDate = orders.reduce(
+      (latest, order) => order.createdAt > latest ? order.createdAt : latest,
+      '',
     );
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    // Capture the projection version before the collection query.
-    const beforeQuerySnap = await getDoc(customerRef);
-    if (!beforeQuerySnap.exists()) return;
-    const baselineSummaries = readProjection((beforeQuerySnap.data() || {}) as Record<string, unknown>);
-    const baselineFingerprint = projectionFingerprint(baselineSummaries);
-
-    const ordersSnapshot = await getDocs(q);
-    const scannedSummaries: CustomerOrderSummary[] = ordersSnapshot.docs.map((d) => {
-      const order = mapDocToOrder(d.id, d.data());
-      return {
-        id: order.id,
-        status: order.status,
-        total: order.summary.total,
-        createdAt: order.createdAt,
-      };
-    });
-    const boundedProjection = scannedSummaries.length <= MAX_CUSTOMER_ORDER_SUMMARIES
-      ? scannedSummaries
-      : scannedSummaries
-          .filter((summary) => summary.status !== 'cancelled')
-          .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
-          .slice(0, MAX_CUSTOMER_ORDER_SUMMARIES);
 
     try {
       await runTransaction(db, async (tx) => {
-        const customerSnap = await tx.get(customerRef);
-        if (!customerSnap.exists()) return;
-        const currentSummaries = readProjection((customerSnap.data() || {}) as Record<string, unknown>);
-
-        // A create/status mutation updates the projection atomically with its order.
-        // If it raced with our query, do not merge guesses: retry the whole repair.
-        if (projectionFingerprint(currentSummaries) !== baselineFingerprint) {
-          throw new Error('SYNC_CUSTOMER_AGGREGATES_RETRY');
-        }
-
-        // Lifetime counters always come from the full order scan, never the bounded cache.
-        const activeOrders = scannedSummaries.filter((order) => order.status !== 'cancelled');
-        const completedOrders = scannedSummaries.filter((order) => order.status === 'completed');
-        const totalOrders = activeOrders.length;
-        const totalSpent = completedOrders.reduce((sum, order) => sum + order.total, 0);
-        const sortedDates = activeOrders.map((order) => order.createdAt).sort();
-
-        tx.update(customerRef, {
-          totalOrders,
-          totalSpent,
-          lastOrderDate: sortedDates.at(-1) || '',
-          orderSummaries: boundedProjection,
-        });
+        const current = await tx.get(customerRef);
+        if (!current.exists()) return;
+        const currentData = current.data();
+        const unchanged =
+          Number(currentData.totalOrders || 0) === baseline.totalOrders
+          && Number(currentData.totalSpent || 0) === baseline.totalSpent
+          && String(currentData.lastOrderDate || '') === baseline.lastOrderDate;
+        if (!unchanged) throw new Error('SYNC_CUSTOMER_AGGREGATES_RETRY');
+        tx.update(customerRef, { totalOrders, totalSpent, lastOrderDate });
       });
       return;
     } catch (error) {
-      if (error instanceof Error && error.message === 'SYNC_CUSTOMER_AGGREGATES_RETRY') {
-        continue;
-      }
+      if (error instanceof Error && error.message === 'SYNC_CUSTOMER_AGGREGATES_RETRY') continue;
       throw error;
     }
   }
 
-  throw new Error(
-    `Could not repair aggregates for customer ${customerId}: customer orders changed during ${maxAttempts} consecutive attempts.`
-  );
+  throw new Error(`Could not repair aggregates for customer ${customerId}: order totals changed during five consecutive scans.`);
 }
 
 export type OrderPageCursor = QueryDocumentSnapshot<DocumentData>;
@@ -462,35 +380,11 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
       deliveryDate: input.deliveryDate || null,
     };
 
-    // The customer document is the transaction's contention point. Update scalar
-    // aggregates by deltas; never derive lifetime totals from the bounded projection.
-    const custRaw = customerSnap.exists() ? customerSnap.data() || {} : {};
-    const existingSummaries = mapCustomerOrderSummaries(custRaw.orderSummaries);
-    const newOrderSummary: CustomerOrderSummary = {
-      id: orderId,
-      status: 'new',
-      total,
-      createdAt: now,
-    };
-    const projectedSummaries = projectCustomerOrderSummaries(existingSummaries, newOrderSummary);
-    const fallbackActive = existingSummaries.filter((summary) => summary.status !== 'cancelled');
-    const currentTotalOrders = Number.isFinite(Number(custRaw.totalOrders))
-      ? Number(custRaw.totalOrders)
-      : fallbackActive.length;
-    const currentTotalSpent = Number.isFinite(Number(custRaw.totalSpent))
-      ? Number(custRaw.totalSpent)
-      : existingSummaries
-          .filter((summary) => summary.status === 'completed')
-          .reduce((sum, summary) => sum + summary.total, 0);
-    const currentLastOrderDate = typeof custRaw.lastOrderDate === 'string' && custRaw.lastOrderDate
-      ? normalizeIsoString(custRaw.lastOrderDate)
-      : latestDate(fallbackActive);
-
+    const customerData = customerSnap.exists() ? customerSnap.data() || {} : {};
     const updatedCustomerAggregates = {
-      totalOrders: currentTotalOrders + 1,
-      totalSpent: currentTotalSpent,
-      lastOrderDate: now > currentLastOrderDate ? now : currentLastOrderDate,
-      orderSummaries: projectedSummaries,
+      totalOrders: (Number.isFinite(Number(customerData.totalOrders)) ? Number(customerData.totalOrders) : 0) + 1,
+      totalSpent: Number.isFinite(Number(customerData.totalSpent)) ? Number(customerData.totalSpent) : 0,
+      lastOrderDate: now,
     };
 
     // 3. ALL WRITES AFTER READS (Atomic)
@@ -520,31 +414,21 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
   const orderRef = doc(db, 'orders', id);
 
   return await runTransaction(db, async (tx) => {
-    // 1. ALL READS FIRST (Strict Firestore transaction rule)
-    // Read order inside the transaction so customerId is always consistent.
     const orderSnap = await tx.get(orderRef);
-    if (!orderSnap.exists()) {
-      throw new Error(`Không tìm thấy đơn hàng: ${id}`);
-    }
+    if (!orderSnap.exists()) throw new Error(`Không tìm thấy đơn hàng: ${id}`);
 
     const orderData = orderSnap.data();
     const currentStatus = orderData.status as Order['status'];
     const customerId = String(orderData.customerId || '');
-    if (!customerId) {
-      throw new Error(`Đơn hàng không có mã khách hàng: ${id}`);
-    }
-    const customerRef = doc(db, 'customers', customerId);
-
+    if (!customerId) throw new Error(`Đơn hàng không có mã khách hàng: ${id}`);
     if (!canTransitionOrderStatus(currentStatus, input.status)) {
       throw new Error(`Không thể chuyển trạng thái từ "${currentStatus}" sang "${input.status}".`);
     }
 
+    const customerRef = doc(db, 'customers', customerId);
     const customerSnap = await tx.get(customerRef);
-    if (!customerSnap.exists()) {
-      throw new Error(`Không tìm thấy khách hàng của đơn hàng: ${customerId}`);
-    }
+    if (!customerSnap.exists()) throw new Error(`Không tìm thấy khách hàng của đơn hàng: ${customerId}`);
 
-    // 2. COMPUTE UPDATES
     const now = new Date().toISOString();
     const historyEntry: OrderStatusHistory = {
       id: `${id}-HIST-${crypto.randomUUID()}`,
@@ -554,64 +438,25 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
       ...(input.actorUid ? { actorUid: input.actorUid } : {}),
       note: input.note?.trim() || null,
     };
+    const previousHistory = Array.isArray(orderData.statusHistory) ? orderData.statusHistory : [];
+    const statusHistory = [...previousHistory, historyEntry];
 
-    const existingHistory = Array.isArray(orderData.statusHistory) ? orderData.statusHistory : [];
-    const updatedHistory = [...existingHistory, historyEntry];
-
-    const custRaw = customerSnap.data() || {};
-    const existingSummaries = mapCustomerOrderSummaries(custRaw.orderSummaries);
+    const customer = customerSnap.data() || {};
     const orderTotal = Number((orderData.summary as Record<string, unknown>)?.total || 0);
-    const orderCreatedAt = normalizeIsoString(orderData.createdAt);
-    const changedSummary: CustomerOrderSummary = {
-      id,
-      status: input.status,
-      total: orderTotal,
-      createdAt: orderCreatedAt,
-    };
-    const projectedSummaries = projectCustomerOrderSummaries(existingSummaries, changedSummary);
+    const wasActive = currentStatus !== 'cancelled';
+    const willBeActive = input.status !== 'cancelled';
+    const wasCompleted = currentStatus === 'completed';
+    const willBeCompleted = input.status === 'completed';
 
-    const fallbackActive = existingSummaries.filter((summary) => summary.status !== 'cancelled');
-    const currentTotalOrders = Number.isFinite(Number(custRaw.totalOrders))
-      ? Number(custRaw.totalOrders)
-      : fallbackActive.length;
-    const currentTotalSpent = Number.isFinite(Number(custRaw.totalSpent))
-      ? Number(custRaw.totalSpent)
-      : existingSummaries
-          .filter((summary) => summary.status === 'completed')
-          .reduce((sum, summary) => sum + summary.total, 0);
-    const totalOrders = currentTotalOrders
-      + (input.status === 'cancelled' ? 0 : 1)
-      - (currentStatus === 'cancelled' ? 0 : 1);
-    const totalSpent = currentTotalSpent
-      + (input.status === 'completed' ? orderTotal : 0)
-      - (currentStatus === 'completed' ? orderTotal : 0);
-    const currentLastOrderDate = typeof custRaw.lastOrderDate === 'string' && custRaw.lastOrderDate
-      ? normalizeIsoString(custRaw.lastOrderDate)
-      : latestDate(fallbackActive);
-    const lastOrderDate = input.status === 'cancelled' && orderCreatedAt >= currentLastOrderDate
-      ? latestDate(projectedSummaries.filter((summary) => summary.status !== 'cancelled'))
-      : orderCreatedAt > currentLastOrderDate
-        ? orderCreatedAt
-        : currentLastOrderDate;
-
-    // 3. WRITES (Atomic)
     tx.update(customerRef, {
-      totalOrders,
-      totalSpent,
-      lastOrderDate,
-      orderSummaries: projectedSummaries,
+      totalOrders: Math.max(0, Number(customer.totalOrders || 0) + Number(willBeActive) - Number(wasActive)),
+      totalSpent: Math.max(0, Number(customer.totalSpent || 0)
+        + (willBeCompleted ? orderTotal : 0)
+        - (wasCompleted ? orderTotal : 0)),
     });
+    tx.update(orderRef, { status: input.status, statusHistory });
 
-    tx.update(orderRef, {
-      status: input.status,
-      statusHistory: updatedHistory,
-    });
-
-    return mapDocToOrder(id, {
-      ...orderData,
-      status: input.status,
-      statusHistory: updatedHistory,
-    });
+    return mapDocToOrder(id, { ...orderData, status: input.status, statusHistory });
   });
 }
 
@@ -622,7 +467,8 @@ export async function updateOrderStatus(id: string, input: UpdateOrderStatusInpu
  * - Orders in 'delivering', 'completed' or 'cancelled' are immutable (history/financial integrity).
  * - Item unit prices are always re-read from the products collection; client totals are ignored,
  *   so changing a product price never rewrites this order's recorded prices except through an explicit edit.
- * - The customer's materialized aggregates are recomputed in the same transaction.
+ * - The order document is canonical; scalar customer aggregates are unaffected because
+ *   only new/confirmed orders can be edited.
  */
 export async function updateOrder(id: string, input: UpdateOrderInput): Promise<Order> {
   if (!id) throw new Error('Mã đơn hàng không hợp lệ.');
@@ -663,13 +509,8 @@ export async function updateOrder(id: string, input: UpdateOrderInput): Promise<
     if (!customerId) {
       throw new Error(`Đơn hàng không có mã khách hàng: ${id}`);
     }
-    const customerRef = doc(db, 'customers', customerId);
 
     const productSnaps = await Promise.all(productRefs.map((p) => tx.get(p.ref)));
-    const customerSnap = await tx.get(customerRef);
-    if (!customerSnap.exists()) {
-      throw new Error(`Không tìm thấy khách hàng của đơn hàng: ${customerId}`);
-    }
 
     // 2. VALIDATION & CALCULATION (server prices win)
     const validatedItems: OrderItem[] = [];
@@ -724,21 +565,7 @@ export async function updateOrder(id: string, input: UpdateOrderInput): Promise<
       note: 'Chỉnh sửa thông tin đơn hàng',
     };
 
-    // 3. Update only the bounded order projection. This order can only be new/confirmed,
-    // so editing its price does not change lifetime order count or completed spend.
-    const custRaw = customerSnap.data() || {};
-    const existingSummaries = mapCustomerOrderSummaries(custRaw.orderSummaries);
-    const projectedSummaries = projectCustomerOrderSummaries(existingSummaries, {
-      id,
-      status: currentStatus,
-      total,
-      createdAt: normalizeIsoString(orderData.createdAt),
-    });
-
-    // 4. WRITES (Atomic)
-    tx.update(customerRef, {
-      orderSummaries: projectedSummaries,
-    });
+    // 3. WRITES (Atomic)
     tx.update(orderRef, {
       customerSnapshot: {
         name: input.customerName.trim(),

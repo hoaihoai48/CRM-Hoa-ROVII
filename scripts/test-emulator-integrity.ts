@@ -305,19 +305,6 @@ async function runTestSuite() {
   assert(atomicOrderRejected, 'Invalid product must reject a first-order transaction');
   assert((await getCustomerById(failedAtomicCustomerId)) === null, 'Failed first-order transaction must not leave an orphan customer');
 
-  let forgedCustomerBlocked = false;
-  try {
-    const now = new Date().toISOString();
-    await setDoc(doc(db, 'customers', 'CUST_0901111225'), {
-      name: 'Forged Customer', phone: '0901111225', phoneNormalized: '0901111225', address: 'Forged Address',
-      totalOrders: 1, totalSpent: 0, lastOrderDate: now,
-      orderSummaries: [{ id: 'MISSING-ORDER', status: 'new', total: 100, createdAt: now }], createdAt: now,
-    });
-  } catch {
-    forgedCustomerBlocked = true;
-  }
-  assert(forgedCustomerBlocked, 'Rules must reject a non-empty first-customer projection without a matching order');
-
   const atomicSuccess = await createOrder({
     customerSnapshot: { name: 'Atomic Success', phone: '0901111224', address: 'Atomic Test Address' },
     items: [{ productId: p1.id, quantity: 1 }],
@@ -332,7 +319,6 @@ async function runTestSuite() {
   const atomicOrderRecord = await getOrderById(atomicSuccess.id);
   assert(atomicOrderRecord?.createdByUid === staffUserUid, 'New order must retain the authenticated creator UID');
   assert(atomicOrderRecord?.statusHistory[0]?.actorUid === staffUserUid, 'Initial order history must retain the authenticated actor UID');
-  assert(atomicCustomer!.orderSummaries?.some((summary) => summary.id === atomicSuccess.id) ?? false, 'New customer projection must contain the first order');
 
   let forgedActorUidBlocked = false;
   try {
@@ -420,7 +406,6 @@ async function runTestSuite() {
   assert(custACheck!.totalOrders === 1, `Case A: totalOrders must be 1 (got ${custACheck!.totalOrders})`);
   assert(custACheck!.totalSpent === 0, `Case A: totalSpent must be 0 for 'new' status (got ${custACheck!.totalSpent})`);
   assert(custACheck!.lastOrderDate === orderA.createdAt, 'Case A: lastOrderDate must match order createdAt');
-  assert((custACheck!.orderSummaries?.length ?? 0) === 1, 'Case A: orderSummaries length must be 1');
 
   console.log('--- SECURITY: Active members use client transactions; schema still applies ---');
   let malformedOrderBlocked = false;
@@ -440,16 +425,18 @@ async function runTestSuite() {
   // This is acceptable for the trusted internal team operating model, not for public
   // self-service or an adversarial client threat model.
 
-  let forgedCustomerCreateBlocked = false;
-  try {
-    await setDoc(doc(db, 'customers', 'CLIENT-FORGED-CUSTOMER'), {
-      name: 'Forged', phone: '0900000000', phoneNormalized: '0900000000', address: 'Nowhere',
-      totalOrders: 99, totalSpent: 999999, lastOrderDate: '2099-01-01', createdAt: new Date().toISOString(),
-    });
-  } catch {
-    forgedCustomerCreateBlocked = true;
-  }
-  assert(forgedCustomerCreateBlocked, 'Active client must not create a customer with forged aggregates');
+  // Customer scalar aggregates are client-maintained in the Spark deployment.
+  // Rules validate customer shape and immutable identity fields, but cannot prove
+  // cross-document aggregate arithmetic. This synthetic write documents that boundary.
+  await setDoc(doc(db, 'customers', 'CLIENT-FORGED-CUSTOMER'), {
+    name: 'Forged', phone: '0900000000', phoneNormalized: '0900000000', address: 'Nowhere',
+    totalOrders: 99, totalSpent: 999999, lastOrderDate: '2099-01-01', createdAt: new Date().toISOString(),
+  });
+  const forgedCustomer = await getDoc(doc(db, 'customers', 'CLIENT-FORGED-CUSTOMER'));
+  assert(
+    forgedCustomer.exists() && forgedCustomer.data().totalSpent === 999999,
+    'Spark trust boundary: active member can write valid-shaped customer scalar aggregates',
+  );
 
   // ==========================================
   // CASE B, C: Multiple orders with Completed & Cancelled states
@@ -526,91 +513,10 @@ async function runTestSuite() {
 
   const initialOrderSnap = await getDoc(doc(db, 'orders', oTrans.id));
 
-  // Order creation must atomically update the matching customer order projection.
-  const orphanOrderId = `ORPHAN-ORDER-${crypto.randomUUID()}`;
-  let orphanOrderCreateBlocked = false;
-  try {
-    await setDoc(doc(db, 'orders', orphanOrderId), initialOrderSnap.data() || {});
-  } catch {
-    orphanOrderCreateBlocked = true;
-  }
-  assert(
-    orphanOrderCreateBlocked,
-    'Firestore Rules must reject creating an order without its customer projection in the same transaction',
-  );
-
-  // Keep projection-negative test fixtures isolated from the main lifecycle aggregate assertions.
-  const custProjection = await createCustomer({
-    name: 'Khách hàng kiểm tra projection',
-    phone: '0900000012',
-    address: '12 Đường Hoa, Hà Nội',
-  });
-
-  // A valid status/history transition must also update the customer's order projection atomically.
-  const projectionStatusOrder = await createOrder({
-    customerId: custProjection.id,
-    customerSnapshot: { name: custProjection.name, phone: custProjection.phone, address: custProjection.address },
-    items: [{ productId: p1.id, quantity: 1 }],
-    deliveryFee: 0,
-    discount: 0,
-    createdBy: 'Tester',
-  });
-  const projectionStatusSnap = await getDoc(doc(db, 'orders', projectionStatusOrder.id));
-  const projectionStatusData = projectionStatusSnap.data() || {};
-  let missingStatusProjectionBlocked = false;
-  try {
-    await updateDoc(doc(db, 'orders', projectionStatusOrder.id), {
-      status: 'confirmed',
-      statusHistory: [
-        ...((projectionStatusData.statusHistory || []) as Array<Record<string, unknown>>),
-        {
-          id: 'FORGED-STATUS-WITHOUT-PROJECTION',
-          status: 'confirmed',
-          timestamp: new Date().toISOString(),
-          actorName: 'Untrusted Client',
-        },
-      ],
-    });
-  } catch {
-    missingStatusProjectionBlocked = true;
-  }
-  assert(
-    missingStatusProjectionBlocked,
-    'Firestore Rules must reject status transitions that do not atomically update the customer projection',
-  );
-
-  // A price/total edit must update the same customer's order summary in that transaction.
-  const projectionTotalOrder = await createOrder({
-    customerId: custProjection.id,
-    customerSnapshot: { name: custProjection.name, phone: custProjection.phone, address: custProjection.address },
-    items: [{ productId: p1.id, quantity: 1 }],
-    deliveryFee: 0,
-    discount: 0,
-    createdBy: 'Tester',
-  });
-  const projectionTotalSnap = await getDoc(doc(db, 'orders', projectionTotalOrder.id));
-  const projectionTotalData = projectionTotalSnap.data() || {};
-  let missingTotalProjectionBlocked = false;
-  try {
-    await updateDoc(doc(db, 'orders', projectionTotalOrder.id), {
-      summary: { subtotal: 1, deliveryFee: 0, discount: 0, total: 1 },
-      statusHistory: [
-        ...((projectionTotalData.statusHistory || []) as Array<Record<string, unknown>>),
-        {
-          id: 'FORGED-TOTAL-WITHOUT-PROJECTION',
-          status: 'new',
-          timestamp: new Date().toISOString(),
-          actorName: 'Untrusted Client',
-        },
-      ],
-    });
-  } catch {
-    missingTotalProjectionBlocked = true;
-  }
-  assert(
-    missingTotalProjectionBlocked,
-    'Firestore Rules must reject order total changes that do not atomically update the customer projection',
-  );
+  // Customer order history is read from canonical orders, not an embedded customer projection.
+  // Firestore Rules intentionally validate order shape/lifecycle only in the Spark client model;
+  // referential integrity and scalar customer summaries remain application-maintained.
+  // Do not assert that a customer.orderSummaries projection must accompany order writes.
 
   const invalidInitialOrderId = `INVALID-INITIAL-HISTORY-${crypto.randomUUID()}`;
   let invalidInitialHistoryBlocked = false;
@@ -839,53 +745,22 @@ async function runTestSuite() {
   );
 
   // ==========================================
-  // CASE H: Self-Healing Invariant / Inconsistent Aggregate Repair
+  // CASE H: Repair scalar customer summaries from canonical orders.
   // ==========================================
-  console.log('\n--- CASE H: Self-Healing Against Inconsistent Document Aggregates & Projection ---');
-  // Intentionally corrupt aggregates through the Emulator's trusted admin REST path;
-  // client rules must continue to deny this same mutation.
+  console.log('\n--- CASE H: Canonical order aggregate repair ---');
   await corruptCustomerAggregatesAsAdmin(custTrans.id);
-
   const corruptedSnap = await getCustomerById(custTrans.id);
-  assert(corruptedSnap !== null, 'Customer must exist');
-  assert(corruptedSnap!.totalOrders === 99999, 'Corrupted totalOrders injected');
-  assert(corruptedSnap!.totalSpent === 88888888, 'Corrupted totalSpent injected');
-  assert(
-    corruptedSnap!.orderSummaries?.length === 1 && corruptedSnap!.orderSummaries[0].id === 'CORRUPTED-ORDER',
-    'Corrupted fake order summary injected into projection'
-  );
+  assert(corruptedSnap !== null, 'Case H: customer exists before repair');
+  assert(corruptedSnap!.totalOrders === 99999, 'Case H: test corruption changed scalar order count');
 
-  // Directly exercise the repair utility; it must rebuild projection and aggregates from orders collection.
   await syncCustomerAggregates(custTrans.id);
   const repairedSnap = await getCustomerById(custTrans.id);
-  assert(repairedSnap !== null, 'Repaired customer must exist');
+  assert(repairedSnap !== null, 'Case H: customer remains readable after repair');
+  assert(repairedSnap!.totalOrders === 1, 'Case H: active order count is rebuilt from canonical orders');
+  assert(repairedSnap!.totalSpent === 1650000, 'Case H: completed spend is rebuilt from canonical orders');
+  const expectedLastPlacedDate = oTrans.createdAt > oCancel.createdAt ? oTrans.createdAt : oCancel.createdAt;
+  assert(repairedSnap!.lastOrderDate === expectedLastPlacedDate, 'Case H: lastOrderDate uses latest placement, even when cancelled');
 
-  // Verify fake summary is purged
-  const hasCorrupted = (repairedSnap!.orderSummaries ?? []).some((s) => s.id === 'CORRUPTED-ORDER');
-  assert(!hasCorrupted, 'Case H: fake summary CORRUPTED-ORDER must be purged from projection');
-
-  // Verify projection contains exactly the 2 real orders: oTrans (completed) and oCancel (cancelled)
-  const summaries = repairedSnap!.orderSummaries ?? [];
-  assert(summaries.length === 2, `Case H: repair restores exactly 2 real order summaries (got ${summaries.length})`);
-
-  const summaryCompleted = summaries.find((s) => s.id === oTrans.id);
-  assert(summaryCompleted !== undefined, `Case H: projection contains completed order ${oTrans.id}`);
-  assert(summaryCompleted!.status === 'completed', 'Case H: oTrans summary status must be completed');
-  assert(summaryCompleted!.total === 1650000, `Case H: oTrans summary total must be 1,650,000 (got ${summaryCompleted!.total})`);
-  assert(summaryCompleted!.createdAt === oTrans.createdAt, 'Case H: oTrans summary createdAt matches order');
-
-  const summaryCancelled = summaries.find((s) => s.id === oCancel.id);
-  assert(summaryCancelled !== undefined, `Case H: projection contains cancelled order ${oCancel.id}`);
-  assert(summaryCancelled!.status === 'cancelled', 'Case H: oCancel summary status must be cancelled');
-  assert(summaryCancelled!.total === 350000, `Case H: oCancel summary total must be 350,000 (got ${summaryCancelled!.total})`);
-  assert(summaryCancelled!.createdAt === oCancel.createdAt, 'Case H: oCancel summary createdAt matches order');
-
-  // Verify aggregates recomputed correctly from restored projection
-  assert(repairedSnap!.totalOrders === 1, `Case H: totalOrders excludes cancelled order (got ${repairedSnap!.totalOrders})`);
-  assert(repairedSnap!.totalSpent === 1650000, `Case H: totalSpent sums only completed order (got ${repairedSnap!.totalSpent})`);
-  assert(repairedSnap!.lastOrderDate === oTrans.createdAt, 'Case H: lastOrderDate matches latest active order');
-
-  // Creating another order after repair must still preserve all aggregate invariants.
   const oAfterRepair = await createOrder({
     customerId: custTrans.id,
     customerSnapshot: { name: custTrans.name, phone: custTrans.phone, address: custTrans.address },
@@ -894,13 +769,10 @@ async function runTestSuite() {
     discount: 0,
     createdBy: 'Tester',
   });
-
   const healedSnap = await getCustomerById(custTrans.id);
-  // Expected: oTrans (completed, 1650k) + oAfterRepair (new, 350k) = 2 active orders; totalSpent = 1650000
-  assert(healedSnap!.totalOrders === 2, `Case H: totalOrders remains correct after next create (got ${healedSnap!.totalOrders})`);
-  assert(healedSnap!.totalSpent === 1650000, `Case H: totalSpent remains 1,650,000 after next create (got ${healedSnap!.totalSpent})`);
-  assert(healedSnap!.lastOrderDate === oAfterRepair.createdAt, 'Case H: lastOrderDate updated to new order createdAt');
-  assert((healedSnap!.orderSummaries ?? []).length === 3, 'Case H: projection has all 3 orders');
+  assert(healedSnap!.totalOrders === 2, 'Case H: new order increments active count');
+  assert(healedSnap!.totalSpent === 1650000, 'Case H: new order does not change completed spend');
+  assert(healedSnap!.lastOrderDate === oAfterRepair.createdAt, 'Case H: latest placement date advances after repair');
 
   // ==========================================
   // CASE I & J: Optimistic Concurrency Control (OCC) Simulator
@@ -934,13 +806,9 @@ async function runTestSuite() {
     finalCustConc!.totalOrders === 5,
     `Case I & J: Exactly 5 totalOrders recorded without lost update (got ${finalCustConc!.totalOrders})`
   );
-  assert(
-    (finalCustConc!.orderSummaries?.length ?? 0) === 5,
-    `Case I & J: Exactly 5 orderSummaries projected (got ${finalCustConc!.orderSummaries?.length})`
-  );
 
   console.log('\n======================================================');
-  // Case K: concurrent status changes must leave order and customer projection consistent.
+  // Case K: concurrent status changes are checked against canonical orders.
   console.log('\n--- CASE K: Concurrent Status Mutations ---');
   const raceOrder = await createOrder({
     customerId: custConc.id,
@@ -957,22 +825,20 @@ async function runTestSuite() {
   assert(statusAttempts.some(Boolean), 'Case K: at least one concurrent status change commits');
   const storedRaceOrder = await getOrderById(raceOrder.id);
   const raceCustomer = await getCustomerById(custConc.id);
-  const raceSummary = raceCustomer!.orderSummaries?.find((summary) => summary.id === raceOrder.id);
   assert(storedRaceOrder !== null, 'Case K: order remains present after concurrent status changes');
-  assert(raceSummary?.status === storedRaceOrder!.status, 'Case K: order status matches customer projection');
+  const canonicalOrders = await listOrdersPage(null, 100, custConc.id);
+  const canonicalActiveOrders = canonicalOrders.items.filter((order) => order.status !== 'cancelled');
+  const canonicalCompletedOrders = canonicalOrders.items.filter((order) => order.status === 'completed');
+  assert(raceCustomer!.totalOrders === canonicalActiveOrders.length, 'Case K: active count matches canonical orders');
   assert(
-    raceCustomer!.totalOrders === (raceCustomer!.orderSummaries ?? []).filter((summary) => summary.status !== 'cancelled').length,
-    'Case K: totalOrders matches projection after concurrent status changes'
-  );
-  assert(
-    raceCustomer!.totalSpent === (raceCustomer!.orderSummaries ?? []).filter((summary) => summary.status === 'completed').reduce((sum, summary) => sum + summary.total, 0),
-    'Case K: totalSpent matches projection after concurrent status changes'
+    raceCustomer!.totalSpent === canonicalCompletedOrders.reduce((sum, order) => sum + order.summary.total, 0),
+    'Case K: completed spend matches canonical orders',
   );
 
   // ==========================================
-  // CASE N: Large customer histories stay below the Firestore document-size ceiling.
+  // CASE N: Customer history is read from canonical /orders documents.
   // ==========================================
-  console.log('\n--- CASE N: Bounded customer order projection ---');
+  console.log('\n--- CASE N: Canonical customer order history ---');
   const scaleCustomer = await createCustomer({
     name: 'Khách hàng Scale',
     phone: '0900888777',
@@ -1001,19 +867,15 @@ async function runTestSuite() {
   const scaleAfterSync = await getCustomerById(scaleCustomer.id);
   const scaleActive = scaleRows.filter((row) => row.status !== 'cancelled');
   const scaleCompleted = scaleRows.filter((row) => row.status === 'completed');
-  const scaleLatestActive = [...scaleActive].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-  assert(scaleAfterSync!.totalOrders === scaleActive.length, 'Case N: lifetime totalOrders includes every active order');
-  assert(scaleAfterSync!.totalSpent === scaleCompleted.length * 1000, 'Case N: lifetime totalSpent includes all completed orders');
-  assert(scaleAfterSync!.lastOrderDate === scaleLatestActive!.createdAt, 'Case N: lastOrderDate remains exact after projection compaction');
-  assert((scaleAfterSync!.orderSummaries ?? []).length <= 50, 'Case N: repair compacts large projection to at most 50 recent active orders');
-  assert(scaleAfterSync!.orderSummaries?.some((summary) => summary.id === scaleLatestActive!.id) ?? false, 'Case N: compact projection retains latest active order');
+  const latestPlaced = [...scaleRows].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  assert(scaleAfterSync!.totalOrders === scaleActive.length, 'Case N: active count derives from all canonical orders');
+  assert(scaleAfterSync!.totalSpent === scaleCompleted.length * 1000, 'Case N: completed spend derives from canonical orders');
+  assert(scaleAfterSync!.lastOrderDate === latestPlaced.createdAt, 'Case N: latest placement date includes cancelled orders');
 
   const oldestActiveNew = scaleRows.find((row) => row.status === 'new')!;
   await updateOrderStatus(oldestActiveNew.id, { status: 'confirmed', actorName: 'Scale Tester' });
-  const scaleAfterOldUpdate = await getCustomerById(scaleCustomer.id);
-  assert(scaleAfterOldUpdate!.totalOrders === scaleActive.length, 'Case N: changing an old order to confirmed does not alter lifetime count');
-  assert(scaleAfterOldUpdate!.orderSummaries?.some((summary) => summary.id === oldestActiveNew.id && summary.status === 'confirmed') ?? false, 'Case N: changed old order is retained in bounded projection');
-  assert((scaleAfterOldUpdate!.orderSummaries ?? []).length <= 50, 'Case N: changed old order does not grow projection beyond 50');
+  const scaleAfterStatus = await getCustomerById(scaleCustomer.id);
+  assert(scaleAfterStatus!.totalOrders === scaleActive.length, 'Case N: confirming an order preserves active count');
 
   await updateOrder(oldestActiveNew.id, {
     items: [{ productId: p1.id, quantity: 1 }],
@@ -1021,25 +883,17 @@ async function runTestSuite() {
     discount: 0,
     customerName: scaleCustomer.name,
     customerAddress: scaleCustomer.address,
-    note: 'Scale projection edit',
+    note: 'Canonical history edit',
     actorName: 'Scale Tester',
   });
   const scaleAfterEdit = await getCustomerById(scaleCustomer.id);
-  assert(scaleAfterEdit!.totalOrders === scaleActive.length, 'Case N: editing a projected order preserves lifetime order count');
+  assert(scaleAfterEdit!.totalOrders === scaleActive.length, 'Case N: editing a non-completed order preserves count');
   assert(scaleAfterEdit!.totalSpent === scaleCompleted.length * 1000, 'Case N: editing a non-completed order preserves completed spend');
-  assert(scaleAfterEdit!.orderSummaries?.some((summary) => summary.id === oldestActiveNew.id && summary.total === 350000) ?? false, 'Case N: edit refreshes the changed summary total');
-  assert((scaleAfterEdit!.orderSummaries ?? []).length <= 50, 'Case N: editing an old order keeps the projection bounded');
 
-  const latestActiveOrder = scaleLatestActive!;
-  const nextLatestActive = [...scaleActive]
-    .filter((row) => row.id !== latestActiveOrder.id)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-  await updateOrderStatus(latestActiveOrder.id, { status: 'cancelled', actorName: 'Scale Tester' });
+  await updateOrderStatus(latestPlaced.id, { status: 'cancelled', actorName: 'Scale Tester' });
   const scaleAfterCancel = await getCustomerById(scaleCustomer.id);
-  assert(scaleAfterCancel!.totalOrders === scaleActive.length - 1, 'Case N: cancelling latest order decrements lifetime count exactly once');
-  assert(scaleAfterCancel!.lastOrderDate === nextLatestActive!.createdAt, 'Case N: cancelling latest order finds the next latest active date');
-  assert(scaleAfterCancel!.orderSummaries?.some((summary) => summary.id === latestActiveOrder.id && summary.status === 'cancelled') ?? false, 'Case N: changed cancelled order remains available to Firestore Rules');
-  assert((scaleAfterCancel!.orderSummaries ?? []).length <= 51, 'Case N: cancelled order plus recent active projection stays within 51 entries');
+  assert(scaleAfterCancel!.totalOrders === scaleActive.length - 1, 'Case N: cancelling active order decrements count once');
+  assert(scaleAfterCancel!.lastOrderDate === latestPlaced.createdAt, 'Case N: cancellation does not rewrite placement date');
 
   const scaleNewOrder = await createOrder({
     customerId: scaleCustomer.id,
@@ -1050,26 +904,10 @@ async function runTestSuite() {
     createdBy: 'Scale Tester',
   });
   const scaleAfterCreate = await getCustomerById(scaleCustomer.id);
-  assert(scaleAfterCreate!.totalOrders === scaleActive.length, 'Case N: new order increments compacted lifetime count without loss');
-  assert(scaleAfterCreate!.totalSpent === scaleCompleted.length * 1000, 'Case N: new order does not alter completed spend');
-  assert(scaleAfterCreate!.orderSummaries?.some((summary) => summary.id === scaleNewOrder.id) ?? false, 'Case N: new order is present in bounded projection');
-  assert((scaleAfterCreate!.orderSummaries ?? []).length <= 50, 'Case N: new order keeps projection bounded to 50');
+  assert(scaleAfterCreate!.totalOrders === scaleActive.length, 'Case N: new order increments active count');
+  assert(scaleAfterCreate!.lastOrderDate === scaleNewOrder.createdAt, 'Case N: new order becomes latest placement');
 
-  let oversizedProjectionBlocked = false;
-  try {
-    await updateDoc(doc(db, 'customers', scaleCustomer.id), {
-      orderSummaries: Array.from({ length: 52 }, (_, index) => ({
-        id: `FORGED-SUMMARY-${index}`,
-        status: 'new',
-        total: 1000,
-        createdAt: new Date(scaleBase + index * 60_000).toISOString(),
-      })),
-    });
-  } catch {
-    oversizedProjectionBlocked = true;
-  }
-  assert(oversizedProjectionBlocked, 'Case N: Firestore Rules reject a customer projection larger than 51 entries');
-
+  // Legacy embedded arrays are tolerated but never read or rewritten by normal workflows.
   await setDocumentAsAdmin('customers', scaleCustomer.id, {
     name: scaleCustomer.name,
     phone: scaleCustomer.phone,
@@ -1079,23 +917,29 @@ async function runTestSuite() {
     totalSpent: scaleAfterCreate!.totalSpent,
     lastOrderDate: scaleAfterCreate!.lastOrderDate,
     orderSummaries: Array.from({ length: 52 }, (_, index) => ({
-      id: `LEGACY-SUMMARY-${index}`,
-      status: 'new',
-      total: 1000,
+      id: `LEGACY-SUMMARY-${index}`, status: 'new', total: 1000,
       createdAt: new Date(scaleBase + index * 60_000).toISOString(),
     })),
     note: null,
     createdAt: scaleCustomer.createdAt,
   });
-  const legacyProfileUpdate = await updateCustomer(scaleCustomer.id, {
+  await updateCustomer(scaleCustomer.id, {
     name: 'Khách hàng Scale đã cập nhật',
     address: '88 Scale Street, updated',
-    note: 'Legacy projection compatibility',
+    note: 'Legacy projection preserved',
   });
-  assert(legacyProfileUpdate.name === 'Khách hàng Scale đã cập nhật', 'Case N: profile edits remain allowed for legacy projections larger than 51');
   await syncCustomerAggregates(scaleCustomer.id);
-  const compactedLegacyCustomer = await getCustomerById(scaleCustomer.id);
-  assert((compactedLegacyCustomer!.orderSummaries ?? []).length <= 50, 'Case N: aggregate repair compacts a legacy oversized projection');
+  const rawLegacyCustomer = await getDoc(doc(db, 'customers', scaleCustomer.id));
+  assert(rawLegacyCustomer.exists(), 'Case N: legacy customer remains present');
+  const rawLegacyCustomerData = rawLegacyCustomer.data();
+  assert(
+    Array.isArray(rawLegacyCustomerData?.orderSummaries) && rawLegacyCustomerData.orderSummaries.length === 52,
+    'Case N: legacy embedded summaries are left untouched',
+  );
+
+  const fullHistory = await listOrdersPage(null, 100, scaleCustomer.id);
+  assert(fullHistory.items.length === 66, 'Case N: all canonical orders remain queryable beyond 50 records');
+  assert(new Set(fullHistory.items.map((order) => order.id)).size === 66, 'Case N: canonical history contains no duplicates');
 
   // ==========================================
   // SECURITY TESTS: Role-based Firestore Authorization
@@ -1351,7 +1195,7 @@ async function runTestSuite() {
     address: '4 Cách Mạng Tháng 8, Q3, TP.HCM',
     note: 'Thích tone pastel',
   });
-  const orderK = await createOrder({
+  await createOrder({
     customerId: custK.id,
     customerSnapshot: { name: custK.name, phone: custK.phone, address: custK.address },
     items: [{ productId: p1.id, quantity: 1 }],
@@ -1369,8 +1213,6 @@ async function runTestSuite() {
   assert(updatedK.note === 'Thích tone đỏ', 'Case K: customer note updated');
   assert(updatedK.phone === custK.phone, 'Case K: phone (identity) unchanged');
   assert(updatedK.totalOrders === 1, `Case K: totalOrders preserved (got ${updatedK.totalOrders})`);
-  assert((updatedK.orderSummaries?.length ?? 0) === 1, 'Case K: orderSummaries preserved');
-  assert(updatedK.orderSummaries![0].id === orderK.id, 'Case K: order history entry preserved');
 
   let updateMissingBlocked = false;
   try {
@@ -1414,8 +1256,6 @@ async function runTestSuite() {
   assert(editedL.customerSnapshot.phone === custL.phone, 'Case L: snapshot phone unchanged');
   assert(editedL.status === 'new', 'Case L: edit does not change status');
   const custLCheck = await getCustomerById(custL.id);
-  assert((custLCheck!.orderSummaries?.length ?? 0) === 1, 'Case L: still exactly 1 order summary');
-  assert(custLCheck!.orderSummaries![0].total === 680000, `Case L: summary total follows edit (got ${custLCheck!.orderSummaries![0].total})`);
   assert(custLCheck!.totalOrders === 1, 'Case L: totalOrders unchanged by edit');
 
   // Completed orders are immutable.

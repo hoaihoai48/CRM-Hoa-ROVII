@@ -122,3 +122,16 @@ No production data, deployment, billing or paid Firebase service was touched.
 - GitHub Actions run [#45047810582](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45047810582) is the push-triggered `main` workflow for exact merge commit `3efd04c601b4bffaa976edad38c282e921d82be4`; status `completed`, conclusion `success`.
 - Inspected job #137286140172: dependency/MCP checks, lint, TypeScript typecheck, Firebase Auth/Firestore/Storage Emulator integration, Playwright E2E and production build all completed successfully.
 - This supersedes the earlier handoff note that post-merge main Actions were unverified. PR #22 F-02 remediation has both PR-head CI and post-merge main CI evidence.
+
+
+## F-01 architecture decision — simplify rather than add a projection protocol (2026-11-23)
+
+The customer order-history array is not required by the UI: customer detail already reads all order history from the canonical `orders` collection using cursor pagination. The 10/50-row projection, refill protocol, latest-date order markers and projection fingerprint are an unnecessary second representation of order history.
+
+The intended simplification is to stop depending on or maintaining `orderSummaries`, leave legacy values untouched, and retain only scalar customer display summaries. `lastOrderDate` is defined as the most recent order placement date, including orders later cancelled. The scalar summaries remain a trusted-internal-team/client-computed cache under Firebase Spark.
+
+**Residual F-01 risk is not solved by this simplification:** an active member can still tamper with client-maintained `totalOrders`, `totalSpent`, or `lastOrderDate` unless a trusted backend is introduced or a separately proven Rules protocol is implemented. Firestore Rules cannot independently prove all product-price arithmetic. Do not describe these fields as authoritative financial records or claim that the refactor closes scalar forgery. The canonical `orders` documents remain the evidence from which summaries can be recomputed.
+
+No production data, billing, deployment, Firebase configuration or migration is authorized.
+
+**Implementation status (2026-11-26):** PR #26 is open and Draft at head `61f2db1f217991589d9f2076de40a843e1fe70a9`. Its application-code tree passed the automatically triggered Actions run [#45729703091](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45729703091): lint, TypeScript, Auth/Firestore/Storage Emulator integration, Playwright E2E and production build all PASS. The Vercel Preview for the latest head is Ready. No PR review submissions or inline review threads are recorded; do not merge until an adequate code/security review is completed. F-01 remains OPEN / PARTIAL MITIGATION ONLY because scalar aggregate tampering remains possible under the Spark trusted-client model.

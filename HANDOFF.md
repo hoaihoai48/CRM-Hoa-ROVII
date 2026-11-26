@@ -1,56 +1,62 @@
 # HANDOFF — CRM Hoa ROVII
 
-**Last verified:** 2026-11-25 22:10 (Asia/Ho_Chi_Minh)  
+**Last verified:** 2026-11-26 07:46 (Asia/Ho_Chi_Minh)  
 **Repository:** `hoaihoai48/CRM-Hoa-ROVII`  
 **Default branch:** `main`  
-**Main SHA at verification:** `cf398d1c73cd5b641084db1a19612f4b5147de2e`  
+**Main SHA:** `b93d336137be1873623ff461790b18c3231ce8ed`  
 **Canonical project memory:** [GOAL.md](GOAL.md) · [lessons.md](lessons.md) · [HANDOFF.md](HANDOFF.md)
 
-> This is the canonical live handoff. Re-fetch GitHub before acting: every SHA, PR and CI state below can change. Do not assume this file is current just because it exists.
+> Re-fetch live GitHub state before acting. This file is a handoff, not a substitute for checking refs, PRs, Actions, reviews and Preview status.
 
-## Current owner operating direction — 2026-11-25
+## Owner operating direction
 
-- Owner has asked to prioritize completing implementation and not proactively run Playwright or other test suites; report runtime defects when the owner encounters them during use.
-- Do not spend time repeatedly running CI/tests unless the owner asks. GitHub Actions may still start automatically on code pushes according to workflow triggers; do not describe an unexecuted test as passed.
-- Continue to preserve production/billing safety boundaries. An untested change must not be described as verified; keep merge/release risk explicit.
+- Prioritize completing implementation. Do not proactively initiate manual test suites or repeated CI runs.
+- GitHub Actions may run automatically after pushes; report only observed results and never claim an unrun check passed.
+- Continue to preserve production, billing and Firebase Spark safety boundaries.
 
 ## Executive status
 
-<badge color="warning">In progress — not ready to merge</badge>
+**In progress — PR #26 has passing automated checks but is not ready to merge until review and current Preview are confirmed.**
 
-The CRM has the main operational areas in place: Dashboard, Products, Customers, Orders, Staff and Store Settings. Current delivery work is focused on simplifying customer order history around canonical order documents while preserving the known Firebase Spark trust boundary.
+The CRM's operational areas are Dashboard, Products, Customers, Orders, Staff and Store Settings. Active delivery work simplifies customer order history around canonical order documents.
 
 ## Repository and PR state
 
 ### Main
 
-- Main currently points to `cf398d1c73cd5b641084db1a19612f4b5147de2e` (two docs-only commits after PR #28).
-- PR #27 merged this delivery-memory foundation as `46d989cc0e638ff305e3f45cfdbf0670e6a70d86`; the three canonical files and mandatory `AGENTS.md` instructions are now present on main.
-- The changes described below are not merged to main.
-- PR #25 is closed without merge; it was superseded by the simpler direction in PR #26.
+- Live `main`: `b93d336137be1873623ff461790b18c3231ce8ed`.
+- PR #27's project-memory foundation is merged; `AGENTS.md`, `GOAL.md`, `lessons.md` and `HANDOFF.md` are present on main.
+- PR #25 is closed without merge and superseded by PR #26.
 
 ### PR #26 — canonical customer order history
 
 - URL: https://github.com/hoaihoai48/CRM-Hoa-ROVII/pull/26
 - Branch: `refactor/simple-customer-order-source-2026-11-23`
-- Exact head at last verification: `498733d00f99858f853e3f76819ffff9a7d25f2a`
-- State: open, Draft; latest metadata reports mergeable true.
-- Goal: use `orders/{orderId}` as the canonical customer history source; remove runtime dependence on embedded `customers.orderSummaries` and its bounded projection/refill/fingerprint protocol; retain scalar UI summaries.
-- Legacy `orderSummaries` data is tolerated and left untouched. No production migration is included.
+- Exact current head: `ddffcfb9248de233e1f2d64e6a3a65a3c61baec9`
+- State: open, Draft, mergeable; branch is synchronized with main (0 commits behind).
+- Goal: use `orders/{orderId}` as the only canonical customer history source; remove runtime dependence on embedded `customers.orderSummaries` and its bounded projection/refill/fingerprint protocol; retain the three scalar UI summaries.
+- Legacy `orderSummaries` values are tolerated and left untouched. No production migration is included.
 - This is a complexity reduction, **not** a fix for customer scalar aggregate tampering.
 
-### Latest verified CI on PR #26
+### Latest automatic GitHub Actions result
 
-- Actions run: https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45539044812
-- Exact head: `ba3c4770ba168b5049b9f52ee30031f8ea5101e4`
+- Run: https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45729703091
+- Result: **completed / SUCCESS**.
+- The run executed against synthetic PR merge commit `f2cecde899028c68ea9aa98860254bf0d04d1610`; its tree SHA `bf3d97e5b954fa3875befa5f41510eab7871d050` is identical to the current branch head tree at `df3fdb9a4d54a2b2d41d966ad72e1a2f2090eb13`.
 - Lint: **PASS**.
-- TypeScript: **PASS**. The prior TS2532 issue at `scripts/test-emulator-integrity.ts:1014` was fixed by narrowing one snapshot value before reading its optional data.
-- Firebase Emulator integration on the prior head: **FAIL** at `scripts/test-emulator-integrity.ts:437`; that head has since been superseded.
-- Corrective commit `498733d00f99858f853e3f76819ffff9a7d25f2a` changes the stale assertion to explicitly document that valid-shaped customer scalar aggregates are client-maintained under the Spark trusted-staff model. This corrects the test contract; it has **NOT BEEN RUN**.
-- Playwright E2E on the prior head: **SKIPPED** because the Emulator stage failed; new head: **NOT RUN / not yet reported**.
-- Production build on the prior head: **SKIPPED** because the Emulator stage failed; new head: **NOT RUN / not yet reported**.
-- Vercel Preview: a new deployment was reported as Building on 2026-11-25 22:39 local time; not yet confirmed Ready.
-- Review threads: none were returned on PR #26 at last check; a complete code/security review has not been recorded.
+- TypeScript: **PASS**.
+- Firebase Auth/Firestore/Storage Emulator integration: **PASS**.
+- Playwright E2E against Emulators: **PASS**.
+- Production build: **PASS**.
+- This was an automatically triggered workflow after the branch commit; no manual test command or manual rerun was initiated.
+- The earlier failed run #45647601442 exposed a second stale assertion requiring customer order projections. Commit `d0ca98f145b0250534a958a18c685b435b490451` removed those obsolete assertions; run #45729703091 then passed all stages.
+
+### Preview and review
+
+- Vercel Preview is **Ready** for the unchanged application-code tree (deployment `4s6kjPM4kwYW2XpA5ZF7Zi7a79cC`, updated 2026-11-26 00:39:48 UTC). Commits after the verified application-code tree only update delivery/audit Markdown; no runtime code changed.
+- Preview URL: https://tiem-hoa-rovii-git-refactor-simple-customer-orde-48b700-vu-nhim.vercel.app. This is a PR Preview, not a production deployment.
+- PR review submissions: none. Inline review threads: none.
+- Keep PR #26 Draft until the current Preview is Ready and an adequate code/security review is recorded. Do not merge solely because Actions passed.
 
 ## Security backlog
 
@@ -75,10 +81,11 @@ Do not start these unrelated suites while PR #26 is blocked on its current requi
 
 ## Next actions — in order
 
-1. Owner has explicitly requested implementation-first work and no proactive test runs. Do not initiate manual tests/CI; distinguish automatic workflow results from tests deliberately run.
-2. Corrected the stale Spark trust-boundary assertion in `scripts/test-emulator-integrity.ts`; current head is `498733d00f99858f853e3f76819ffff9a7d25f2a`.
-3. Keep PR #26 Draft until the owner uses the app and any runtime defects are addressed, or explicitly asks to resume verification/review. Do not merge an unverified code change merely to close the PR.
-4. After PR #26 is resolved, address F-03, F-04 and F-05 in separate small scopes, and improve daily product/customer/staff/settings workflows.
+1. Confirm the Vercel Preview for head `df3fdb9a4d54a2b2d41d966ad72e1a2f2090eb13` is Ready.
+2. Complete a fresh code/security review on the synchronized PR head; resolve any findings and keep F-01's Spark limitation explicit.
+3. Do not run manual tests unless the owner asks. The latest automatic PR Actions run already passed on a tree identical to the current head.
+4. Only after Preview and review are clear, mark PR #26 ready and merge if all repository merge requirements are satisfied.
+5. After PR #26 is resolved, handle F-03, F-04 and F-05 in separate small scopes.
 
 ## Delivery and safety rules
 

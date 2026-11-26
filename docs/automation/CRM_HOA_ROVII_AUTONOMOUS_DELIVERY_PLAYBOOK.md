@@ -255,3 +255,25 @@ Both Vercel Previews were Ready with zero unresolved feedback. No production dat
 - PR #24 remains documentation-only (three Markdown files). GitHub Actions are NOT RUN because the workflow excludes `docs/**` and Markdown via `paths-ignore`; no CI PASS is claimed. Vercel status on the previous head was success, but Preview is N/A for this docs-only diff and is not a merge gate.
 - The two P2 threads are resolved/outdated; the P3 thread is unresolved until the correction is committed. The review receipts on earlier heads are stale. After this commit, request fresh code review and documentation-focused security review on the exact resulting head; do not merge while either review or any thread is unresolved.
 - No application code, Firebase Rules, emulator/test infrastructure, production data, deployment, billing, project configuration or migration changed. F-01 remains the next code-delivery step after PR #24 closes.
+
+
+## 23. Customer aggregate simplification decision (2026-11-23)
+
+- Treat `orders/{orderId}` as the single canonical order/history record. Customer detail already uses paginated canonical order reads.
+- Remove runtime dependence on `customers.orderSummaries`; do not add refill, date-source markers, mutation fingerprints or projection repair.
+- Preserve the three small UI summaries only: non-cancelled order count, sum of completed-order totals, and most-recent placement date (including subsequently cancelled orders).
+- Create/status transitions update the scalar summaries atomically; editable order content changes do not affect them.
+- The admin repair utility reads canonical orders and writes only scalar summaries. Legacy embedded summary arrays are left untouched; do not run a production migration or destructive cleanup.
+- Keep the Spark limitation explicit: Firestore Rules validate access, schema, ownership/identity, status transitions and append-only history, but do not prove aggregate arithmetic or product-price arithmetic for an untrusted client. The trusted-internal-staff model remains a deliberate limitation, not full financial integrity.
+- Do not close F-01 as a security fix. This is a complexity reduction that removes the Rules expression-budget problem; scalar forgery remains a known risk pending a trusted backend or separately validated Rules solution.
+- Required checks for the implementation PR: exact-head lint, TypeScript, Firebase Emulator integration, Playwright, production build and Vercel Preview where required. A failed or skipped stage is not a pass.
+
+## 24. Canonical customer order history implementation — 2026-11-24
+
+- The implementation is now present on refactor/simple-customer-order-source-2026-11-23; see current-state document for exact head.
+- Runtime no longer reads/writes customers.orderSummaries. Full customer order history comes from paginated canonical orders documents.
+- Customer documents retain only small scalar UI summaries: non-cancelled order count, completed-order spend, and latest placement date. Cancelling an order changes the count/spend as applicable but does not roll the placement date backwards.
+- Legacy orderSummaries arrays are tolerated by Rules for compatibility and are left untouched. No production migration or cleanup.
+- Firestore Rules retain active-member, schema, immutable customer phone identity, order lifecycle and append-only history constraints. The cross-document projection checks and refill/fingerprint helpers are removed.
+- Firebase Spark limitation remains: scalar customer summary arithmetic is not protected against a malicious authenticated staff client. Do not call this a security fix; keep F-01 open and document the trusted-internal-staff assumption.
+- Verification still required on the exact PR head: lint, TypeScript, Emulator integration, Playwright and production build. Do not merge if any check fails/skips or if independent security review identifies unresolved issues.
