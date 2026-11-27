@@ -285,3 +285,10 @@ When a new lesson is added:
 - Returning `FirebaseError.message` from email/password login can reveal whether an account exists and exposes implementation-specific error codes to staff.
 - Map invalid-credential, user-not-found and wrong-password to the same user-facing message; provide a separate rate-limit message and a generic fallback for other failures.
 - Keep account recovery responses generic too, and assert these user-visible contracts in the Auth Emulator E2E tests.
+
+
+## 2026-11-27 — Authentication recovery and error privacy completed
+
+- PR #55 added Firebase Auth password recovery with identical user-facing confirmation for known and unknown email addresses; PR #56 removed raw Firebase credential errors from email/password login responses.
+- The Auth Emulator Playwright coverage verifies the generic recovery response and generic invalid-credential message. Both PR heads and their post-merge main runs passed all configured quality gates.
+- The current `main` is `020ea9def42c3533d051ed8acd7894825b3d38da`; do not confuse historical handoff snapshots below with current status.
