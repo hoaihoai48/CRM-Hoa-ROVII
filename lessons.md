@@ -278,3 +278,10 @@ When a new lesson is added:
 - Keep password recovery on Firebase Auth; do not add custom token storage, backend functions, paid services or production configuration changes.
 
 - In Playwright, assert the exact password-reset status message for known/unknown addresses rather than asserting that the whole page has no generic `role=alert`; unrelated framework/accessibility alerts can make a broad locator fail even when the feature contract is correct.
+
+
+## 2026-11-27 — Do not expose raw Firebase credential errors on login
+
+- Returning `FirebaseError.message` from email/password login can reveal whether an account exists and exposes implementation-specific error codes to staff.
+- Map invalid-credential, user-not-found and wrong-password to the same user-facing message; provide a separate rate-limit message and a generic fallback for other failures.
+- Keep account recovery responses generic too, and assert these user-visible contracts in the Auth Emulator E2E tests.

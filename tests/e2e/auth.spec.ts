@@ -25,9 +25,8 @@ test.describe('Authentication entry points', () => {
     await page.getByLabel('Mật khẩu').fill('WrongPassword123!');
     await page.getByRole('button', { name: 'Đăng nhập với Email' }).click();
 
-    await expect(
-      page.getByText(/auth\/(invalid-credential|user-not-found|wrong-password)/i),
-    ).toBeVisible();
+    await expect(page.getByText('Email hoặc mật khẩu không chính xác.')).toBeVisible();
+    await expect(page.getByText(/auth\//i)).toHaveCount(0);
   });
 
   test('offers the same password-reset confirmation for existing and unknown emails', async ({ page }) => {
