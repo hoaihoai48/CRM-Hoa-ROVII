@@ -34,8 +34,17 @@ export default function LoginPage() {
       await loginWithEmail(email, password);
       router.push('/dashboard');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Đăng nhập email thất bại. Vui lòng kiểm tra lại.';
-      setError(message);
+      const code = typeof err === 'object' && err !== null && 'code' in err
+        ? String((err as { code?: unknown }).code)
+        : '';
+      if (['auth/invalid-credential', 'auth/user-not-found', 'auth/wrong-password'].includes(code)) {
+        // Keep credential failures indistinguishable to avoid account enumeration.
+        setError('Email hoặc mật khẩu không chính xác.');
+      } else if (code === 'auth/too-many-requests') {
+        setError('Bạn đã thử đăng nhập quá nhiều lần. Vui lòng chờ một lúc rồi thử lại.');
+      } else {
+        setError('Không thể đăng nhập lúc này. Vui lòng thử lại sau.');
+      }
     } finally {
       setIsLoading(false);
     }
