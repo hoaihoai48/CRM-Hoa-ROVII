@@ -32,6 +32,7 @@ function OrderDetailContentForId({ orderId }: { orderId: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const loadRequestRef = useRef(0);
+  const statusMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   // Order edit state (only for status new/confirmed)
   const [isEditing, setIsEditing] = useState(false);
@@ -77,9 +78,30 @@ function OrderDetailContentForId({ orderId }: { orderId: string }) {
     loadOrder();
     return () => {
       loadRequestRef.current += 1;
+      if (statusMessageTimerRef.current) {
+        clearTimeout(statusMessageTimerRef.current);
+        statusMessageTimerRef.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
+
+  const showStatusMessage = (message: string) => {
+    if (statusMessageTimerRef.current) clearTimeout(statusMessageTimerRef.current);
+    setStatusMessage(message);
+    statusMessageTimerRef.current = setTimeout(() => {
+      statusMessageTimerRef.current = null;
+      setStatusMessage(null);
+    }, 3000);
+  };
+
+  const clearStatusMessage = () => {
+    if (statusMessageTimerRef.current) {
+      clearTimeout(statusMessageTimerRef.current);
+      statusMessageTimerRef.current = null;
+    }
+    setStatusMessage(null);
+  };
 
   const effectiveLoadError = !orderId ? 'Mã đơn hàng không hợp lệ.' : loadError;
 
@@ -109,11 +131,11 @@ function OrderDetailContentForId({ orderId }: { orderId: string }) {
   }
   const handleUpdateStatus = async (newStatus: OrderStatus) => {
     if (!canTransitionOrderStatus(currentStatus, newStatus)) {
-      setStatusMessage(`Không thể chuyển trạng thái từ "${currentStatus}" sang "${newStatus}".`);
+      showStatusMessage(`Không thể chuyển trạng thái từ "${currentStatus}" sang "${newStatus}".`);
       return;
     }
     if (!currentUser) {
-      setStatusMessage('Chưa tải được tài khoản nhân viên, vui lòng thử lại.');
+      showStatusMessage('Chưa tải được tài khoản nhân viên, vui lòng thử lại.');
       return;
     }
     if (isUpdatingStatus) return;
@@ -126,13 +148,12 @@ function OrderDetailContentForId({ orderId }: { orderId: string }) {
       });
       setInitialOrder(updated);
       setCurrentStatus(updated.status);
-      setStatusMessage(`Đã cập nhật trạng thái sang "${newStatus}"`);
+      showStatusMessage(`Đã cập nhật trạng thái sang "${newStatus}"`);
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : 'Không thể cập nhật trạng thái.');
+      showStatusMessage(error instanceof Error ? error.message : 'Không thể cập nhật trạng thái.');
     } finally {
       setIsUpdatingStatus(false);
     }
-    setTimeout(() => setStatusMessage(null), 3000);
   };
 
   const canEditOrder = currentStatus === 'new' || currentStatus === 'confirmed';
@@ -234,8 +255,7 @@ function OrderDetailContentForId({ orderId }: { orderId: string }) {
       setInitialOrder(updated);
       setCurrentStatus(updated.status);
       setIsEditing(false);
-      setStatusMessage('Đã lưu thay đổi đơn hàng.');
-      setTimeout(() => setStatusMessage(null), 3000);
+      showStatusMessage('Đã lưu thay đổi đơn hàng.');
     } catch (error) {
       // Keep edit form data so nothing is lost on failure.
       setSaveError(error instanceof Error ? error.message : 'Không thể lưu thay đổi đơn hàng.');
@@ -404,7 +424,7 @@ function OrderDetailContentForId({ orderId }: { orderId: string }) {
       {statusMessage && (
         <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-lg flex items-center justify-between">
           <span>{statusMessage}</span>
-          <button onClick={() => setStatusMessage(null)} className="font-bold cursor-pointer">×</button>
+          <button onClick={clearStatusMessage} className="font-bold cursor-pointer">×</button>
         </div>
       )}
 

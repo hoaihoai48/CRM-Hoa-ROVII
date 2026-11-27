@@ -241,3 +241,10 @@ When a new lesson is added:
 - Reject duplicate product IDs in both create and update service paths before opening the Firestore transaction. Keep the regression in the isolated Emulator integrity suite and verify rejected writes leave customer/order documents unchanged.
 - Do not rely on the UI cart as an integrity boundary.
 
+
+
+## 2026-11-27 — Prevent stale order-detail feedback timers
+
+- Order status updates and order edits shared a status message but each scheduled an independent three-second timeout. An earlier timeout could clear a newer message before the user had time to read it; pending callbacks also survived route changes/unmount.
+- Keep one timer ref per order-detail instance. Replace the prior timer whenever a message is shown, clear it when dismissed, and clear it during route-effect cleanup.
+- Keep transient feedback lifecycle scoped to the current order detail rather than allowing overlapping timers to race.

@@ -1,7 +1,7 @@
-# CURRENT HANDOFF — 2026-11-26 (sequential V1 completion plan)
+# CURRENT HANDOFF — 2026-11-27 (post-PR #50 order integrity and follow-up hardening)
 
 - Repository: `hoaihoai48/CRM-Hoa-ROVII`; default branch: `main`.
-- Verified main commit: `2a74c155494d68ad24b69c18e1a143ec4b9f1e5e` (PR #48 merge).
+- Verified main commit: `22ebac5fd2effe04315e97b1bd3f06de698c996b` (PR #50 merge).
 - PR #38 is **MERGED**. It fixes the product-page React effect lint regression.
 - PR #39 and PR #40 are **MERGED** documentation-only updates that establish the sequential V1 plan and route/access inventory.
 - PR #41 is **MERGED** as `27ccb99a4544daf3a2126b67b8739a7967d6ef25`; it adds admin-mediated linking for existing Firebase Auth identities and in-session membership retry.
@@ -17,6 +17,13 @@
 - No open PRs were found after merging PR #48 and before this final documentation update.
 - No manual deployment or promotion was initiated. Production remains untouched by this delivery.
 - The previous handoff header contained stale SHAs and duplicated current-state entries. This header supersedes them; older snapshots remain below for historical audit only.
+
+
+## Current delivery update — 2026-11-27
+
+- PR #50 **MERGED** as `22ebac5fd2effe04315e97b1bd3f06de698c996b`: order creation/edit now reject duplicate product IDs before Firestore transactions; Emulator regressions cover no-write behavior. PR Actions run [#45959138625](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45959138625) **SUCCESS** across lint, typecheck, Firebase Emulator integration, Playwright E2E and production build. Vercel status context **SUCCESS**. No production deploy or data mutation was initiated.
+- Follow-up implementation branch `fix/order-detail-feedback-timer-2026-11-27`: make order-detail status feedback timers replace prior timers and clear on dismiss, order change and unmount. PR/CI status is recorded after the implementation is opened.
+- Keep the owner’s implementation-first instruction: no manual test suites or repetitive CI triggers; inspect automatic checks once, fix regressions caused by our patch, and do not stop at progress reports.
 
 ## Product scope and completion definition
 
