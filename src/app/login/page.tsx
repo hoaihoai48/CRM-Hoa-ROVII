@@ -57,7 +57,7 @@ export default function LoginPage() {
 
   const handlePasswordReset = async () => {
     const normalizedEmail = email.trim();
-    if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(normalizedEmail)) {
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(normalizedEmail)) {
       setResetMessage(null);
       setResetError('Vui lòng nhập email hợp lệ trước khi đặt lại mật khẩu.');
       return;
