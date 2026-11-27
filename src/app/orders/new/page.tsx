@@ -50,27 +50,38 @@ function CreateOrderPageContent() {
   const [deliveryDate, setDeliveryDate] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const prefillRequestRef = useRef(0);
+  const formDataRequestRef = useRef(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadFormData = useCallback(() => {
+    const requestId = ++formDataRequestRef.current;
     setIsLoadingData(true);
     setLoadError(null);
     Promise.all([listCustomers(), listActiveProducts()])
       .then(([loadedCustomers, loadedProducts]) => {
+        if (requestId !== formDataRequestRef.current) return;
         setCustomers(loadedCustomers);
         setProducts(loadedProducts);
       })
-      .catch((error) => setLoadError(error instanceof Error ? error.message : 'Không thể tải dữ liệu tạo đơn hàng.'))
-      .finally(() => setIsLoadingData(false));
+      .catch((error) => {
+        if (requestId !== formDataRequestRef.current) return;
+        setLoadError(error instanceof Error ? error.message : 'Không thể tải dữ liệu tạo đơn hàng.');
+      })
+      .finally(() => {
+        if (requestId === formDataRequestRef.current) setIsLoadingData(false);
+      });
   }, []);
 
   // Initial data fetch on mount (external Firestore read — legitimate effect).
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadFormData();
+    return () => {
+      formDataRequestRef.current += 1;
+    };
   }, [loadFormData]);
 
   // Suggestion match based on phone

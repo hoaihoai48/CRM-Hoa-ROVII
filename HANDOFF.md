@@ -1,8 +1,9 @@
-# CURRENT HANDOFF — 2026-11-27 (post-PR #51 order-detail reliability)
+# CURRENT HANDOFF — 2026-11-27 (post-PR #52 image upload optimization)
 
 - Repository: `hoaihoai48/CRM-Hoa-ROVII`; default branch: `main`.
-- Verified main commit: `22ebac5fd2effe04315e97b1bd3f06de698c996b` (PR #50 merge).
+- Verified main commit: `e2ad47b9651abdde056d2817593d441c7a2ce799` (PR #52 merge).
 - PR #50 is **MERGED** as `22ebac5fd2effe04315d4cf878bc7f3d40546a681`; duplicate product IDs are rejected by order create/update services, with Emulator regression coverage.
+- PR #52 is **MERGED** as `e2ad47b9651abdde056d2817593d441c7a2ce799`; Firebase Storage now receives the compressed JPEG payload rather than the original file. Actions run [#45960468086](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45960468086) **SUCCESS** across lint, typecheck, Firebase Emulator integration, Playwright E2E and production build; Vercel Preview **SUCCESS**. No production deploy or data mutation was initiated.
 - PR #51 is **MERGED** as `5f2a0f5a35acb28e5aeb78eee7b94c61dd63a0dd`; order-detail feedback uses one replaceable timer and clears it on dismissal and route cleanup. Latest-head Actions run [#45959618203](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45959618203) **SUCCESS** for lint, typecheck, Emulator, Playwright E2E and production build; Vercel Preview status **SUCCESS**.
 - PR #38 is **MERGED**. It fixes the product-page React effect lint regression.
 - PR #39 and PR #40 are **MERGED** documentation-only updates that establish the sequential V1 plan and route/access inventory.
@@ -23,6 +24,7 @@
 
 ## Current delivery update — 2026-11-27
 
+- PR #52 **MERGED** as `e2ad47b9651abdde056d2817593d441c7a2ce799`: Storage uploads use the compressed JPEG bytes, aligned `.jpg` filename and `image/jpeg` content type. Actions run [#45960468086](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45960468086) **SUCCESS**; Vercel Preview **SUCCESS**. Default Firebase Spark path remains unchanged.
 - PR #50 **MERGED** as `22ebac5fd2effe04315e97b1bd3f06de698c996b`: order creation/edit now reject duplicate product IDs before Firestore transactions; Emulator regressions cover no-write behavior. PR Actions run [#45959138625](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45959138625) **SUCCESS** across lint, typecheck, Firebase Emulator integration, Playwright E2E and production build. Vercel status context **SUCCESS**. No production deploy or data mutation was initiated.
 - PR #51 follow-up is complete and merged; see the verified main SHA above.
 - Keep the owner’s implementation-first instruction: no manual test suites or repetitive CI triggers; inspect automatic checks once, fix regressions caused by our patch, and do not stop at progress reports.

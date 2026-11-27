@@ -255,3 +255,10 @@ When a new lesson is added:
 - The image service compressed every selected file to a bounded JPEG Data URL, but when Firebase Storage was enabled it uploaded the original File with its original MIME type. This wasted bandwidth and made the Storage path bypass the compression work.
 - The browser canvas output is JPEG regardless of the source extension. Decode that exact Data URL into a Blob, upload it as `image/jpeg`, and use a `.jpg` object name so content type and extension describe the actual bytes.
 - Keep the existing Firebase Spark default (no Storage upload unless explicitly configured) and the same bounded Data URL fallback. Do not change billing or Firebase configuration as part of image optimization.
+
+
+## 2026-11-27 — Invalidate overlapping order-creation catalog reads
+
+- The order-creation page loaded customers and active products with an unguarded `Promise.all`. Repeated retries or navigation during a slow read could let an older response overwrite newer state or update an unmounted page.
+- Give each load a monotonically increasing request ID; only the latest request may update data, errors or loading state. Invalidate the request on effect cleanup.
+- Keep the fix at the UI request lifecycle; do not change Firestore query scope or introduce paid infrastructure.
