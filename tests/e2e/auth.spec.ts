@@ -42,6 +42,7 @@ test.describe('Authentication entry points', () => {
     await page.getByLabel('Email').fill(email);
     await page.getByRole('button', { name: 'Quên mật khẩu?' }).click();
     const confirmation = await page.getByRole('status').textContent();
+    if (!confirmation) throw new Error('Password reset confirmation was not rendered.');
     await expect(page.getByRole('status')).toContainText('Nếu email này thuộc một tài khoản có thể khôi phục');
 
     await page.getByLabel('Email').fill('not-registered@example.test');
