@@ -25,6 +25,11 @@ export function MultiImageUploader({
   const [urls, setUrls] = useState<string[]>(imageUrls);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadRequestRef = useRef(0);
+
+  useEffect(() => () => {
+    uploadRequestRef.current += 1;
+  }, []);
 
   // Sync when parent passes a new list (e.g. switching edited product).
   useEffect(() => {
@@ -40,6 +45,7 @@ export function MultiImageUploader({
   };
 
   const handleFiles = async (files: FileList | File[]) => {
+    if (disabled || isUploading) return;
     const picked = Array.from(files);
     if (picked.length === 0) return;
 
@@ -49,6 +55,7 @@ export function MultiImageUploader({
       return;
     }
 
+    const requestId = ++uploadRequestRef.current;
     setErrorMessage(null);
     setIsUploading(true);
     setUploadProgress(0);
@@ -63,18 +70,22 @@ export function MultiImageUploader({
           throw new Error('Kích thước mỗi ảnh không được vượt quá 10MB.');
         }
         const downloadUrl = await uploadProductImage(file, (progress) => {
-          setUploadProgress(progress);
+          if (requestId === uploadRequestRef.current) setUploadProgress(progress);
         });
+        if (requestId !== uploadRequestRef.current) return;
         next.push(downloadUrl);
       }
-      emit(next);
+      if (requestId === uploadRequestRef.current) emit(next);
     } catch (error) {
+      if (requestId !== uploadRequestRef.current) return;
       setErrorMessage(
         error instanceof Error ? error.message : 'Tải ảnh lên thất bại.'
       );
     } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (requestId === uploadRequestRef.current) {
+        setIsUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
     }
   };
 
