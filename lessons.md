@@ -248,3 +248,10 @@ When a new lesson is added:
 - Order status updates and order edits shared a status message but each scheduled an independent three-second timeout. An earlier timeout could clear a newer message before the user had time to read it; pending callbacks also survived route changes/unmount.
 - Keep one timer ref per order-detail instance. Replace the prior timer whenever a message is shown, clear it when dismissed, and clear it during route-effect cleanup.
 - Keep transient feedback lifecycle scoped to the current order detail rather than allowing overlapping timers to race.
+
+
+## 2026-11-27 — Upload the compressed product image, not the original file
+
+- The image service compressed every selected file to a bounded JPEG Data URL, but when Firebase Storage was enabled it uploaded the original File with its original MIME type. This wasted bandwidth and made the Storage path bypass the compression work.
+- The browser canvas output is JPEG regardless of the source extension. Decode that exact Data URL into a Blob, upload it as `image/jpeg`, and use a `.jpg` object name so content type and extension describe the actual bytes.
+- Keep the existing Firebase Spark default (no Storage upload unless explicitly configured) and the same bounded Data URL fallback. Do not change billing or Firebase configuration as part of image optimization.

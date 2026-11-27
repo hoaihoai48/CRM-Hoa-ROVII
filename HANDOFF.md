@@ -1,7 +1,9 @@
-# CURRENT HANDOFF — 2026-11-27 (post-PR #50 order integrity and follow-up hardening)
+# CURRENT HANDOFF — 2026-11-27 (post-PR #51 order-detail reliability)
 
 - Repository: `hoaihoai48/CRM-Hoa-ROVII`; default branch: `main`.
 - Verified main commit: `22ebac5fd2effe04315e97b1bd3f06de698c996b` (PR #50 merge).
+- PR #50 is **MERGED** as `22ebac5fd2effe04315d4cf878bc7f3d40546a681`; duplicate product IDs are rejected by order create/update services, with Emulator regression coverage.
+- PR #51 is **MERGED** as `5f2a0f5a35acb28e5aeb78eee7b94c61dd63a0dd`; order-detail feedback uses one replaceable timer and clears it on dismissal and route cleanup. Latest-head Actions run [#45959618203](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45959618203) **SUCCESS** for lint, typecheck, Emulator, Playwright E2E and production build; Vercel Preview status **SUCCESS**.
 - PR #38 is **MERGED**. It fixes the product-page React effect lint regression.
 - PR #39 and PR #40 are **MERGED** documentation-only updates that establish the sequential V1 plan and route/access inventory.
 - PR #41 is **MERGED** as `27ccb99a4544daf3a2126b67b8739a7967d6ef25`; it adds admin-mediated linking for existing Firebase Auth identities and in-session membership retry.
@@ -22,7 +24,7 @@
 ## Current delivery update — 2026-11-27
 
 - PR #50 **MERGED** as `22ebac5fd2effe04315e97b1bd3f06de698c996b`: order creation/edit now reject duplicate product IDs before Firestore transactions; Emulator regressions cover no-write behavior. PR Actions run [#45959138625](https://github.com/hoaihoai48/CRM-Hoa-ROVII/actions/runs/45959138625) **SUCCESS** across lint, typecheck, Firebase Emulator integration, Playwright E2E and production build. Vercel status context **SUCCESS**. No production deploy or data mutation was initiated.
-- Follow-up implementation branch `fix/order-detail-feedback-timer-2026-11-27`: make order-detail status feedback timers replace prior timers and clear on dismiss, order change and unmount. PR/CI status is recorded after the implementation is opened.
+- PR #51 follow-up is complete and merged; see the verified main SHA above.
 - Keep the owner’s implementation-first instruction: no manual test suites or repetitive CI triggers; inspect automatic checks once, fix regressions caused by our patch, and do not stop at progress reports.
 
 ## Product scope and completion definition
