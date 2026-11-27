@@ -8,7 +8,8 @@ import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import {
   loginWithEmail,
-  loginWithGoogle
+  loginWithGoogle,
+  requestPasswordReset
 } from '@/lib/firebase/authService';
 
 export default function LoginPage() {
@@ -21,6 +22,9 @@ export default function LoginPage() {
   // Status states
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,6 +52,35 @@ export default function LoginPage() {
       setError(message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    const normalizedEmail = email.trim();
+    if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(normalizedEmail)) {
+      setResetMessage(null);
+      setResetError('Vui lòng nhập email hợp lệ trước khi đặt lại mật khẩu.');
+      return;
+    }
+
+    setIsResetting(true);
+    setResetMessage(null);
+    setResetError(null);
+    try {
+      await requestPasswordReset(normalizedEmail);
+      setResetMessage('Nếu email này thuộc một tài khoản có thể khôi phục, hướng dẫn đặt lại mật khẩu sẽ được gửi. Vui lòng kiểm tra cả thư mục thư rác.');
+    } catch (err: unknown) {
+      const code = typeof err === 'object' && err !== null && 'code' in err
+        ? String((err as { code?: unknown }).code)
+        : '';
+      if (code === 'auth/user-not-found') {
+        // Keep the response indistinguishable from a successful request to avoid account enumeration.
+        setResetMessage('Nếu email này thuộc một tài khoản có thể khôi phục, hướng dẫn đặt lại mật khẩu sẽ được gửi. Vui lòng kiểm tra cả thư mục thư rác.');
+      } else {
+        setResetError('Không thể gửi hướng dẫn đặt lại mật khẩu lúc này. Vui lòng thử lại sau hoặc liên hệ quản trị viên.');
+      }
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -79,7 +112,11 @@ export default function LoginPage() {
             type="email"
             required
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setResetMessage(null);
+              setResetError(null);
+            }}
             leftIcon={<Mail className="w-4 h-4" />}
             placeholder="nhanvien@tiemhoa.vn"
           />
@@ -94,13 +131,26 @@ export default function LoginPage() {
             placeholder="Nhập mật khẩu"
           />
 
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={handlePasswordReset}
+              disabled={isLoading || isResetting}
+              className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 disabled:opacity-50"
+            >
+              {isResetting ? 'Đang gửi hướng dẫn...' : 'Quên mật khẩu?'}
+            </button>
+          </div>
+          {resetMessage && <p role="status" className="rounded-lg bg-emerald-50 p-3 text-xs text-emerald-800">{resetMessage}</p>}
+          {resetError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-xs text-red-700">{resetError}</p>}
+
           <div className="pt-2">
             <Button
               type="submit"
               variant="primary"
               size="lg"
               className="w-full"
-              isLoading={isLoading}
+              isLoading={isLoading || isResetting}
               rightIcon={<ArrowRight className="w-4 h-4" />}
             >
               Đăng nhập với Email
@@ -122,7 +172,7 @@ export default function LoginPage() {
         <button
           type="button"
           onClick={handleGoogleLogin}
-          disabled={isLoading}
+          disabled={isLoading || isResetting}
           className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl border border-border-theme bg-surface hover:bg-surface-subtle text-foreground text-sm font-semibold shadow-xs transition-colors cursor-pointer"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">

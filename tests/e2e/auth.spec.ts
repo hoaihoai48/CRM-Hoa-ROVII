@@ -29,6 +29,25 @@ test.describe('Authentication entry points', () => {
       page.getByText(/auth\/(invalid-credential|user-not-found|wrong-password)/i),
     ).toBeVisible();
   });
+
+  test('offers the same password-reset confirmation for existing and unknown emails', async ({ page }) => {
+    const email = 'rovii-reset-' + crypto.randomUUID() + '@example.test';
+    const authResponse = await page.request.post(
+      'http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake-api-key-for-emulator',
+      { data: { email, password: 'RoviiE2E-Synthetic-2026!', returnSecureToken: true } },
+    );
+    expect(authResponse.ok()).toBeTruthy();
+
+    await page.goto('/login');
+    await page.getByLabel('Email').fill(email);
+    await page.getByRole('button', { name: 'Quên mật khẩu?' }).click();
+    await expect(page.getByRole('status')).toContainText('Nếu email này thuộc một tài khoản có thể khôi phục');
+
+    await page.getByLabel('Email').fill('not-registered@example.test');
+    await page.getByRole('button', { name: 'Quên mật khẩu?' }).click();
+    await expect(page.getByRole('status')).toContainText('Nếu email này thuộc một tài khoản có thể khôi phục');
+    await expect(page.getByRole('alert')).toHaveCount(0);
+  });
 });
 
  
