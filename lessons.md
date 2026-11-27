@@ -262,3 +262,10 @@ When a new lesson is added:
 - The order-creation page loaded customers and active products with an unguarded `Promise.all`. Repeated retries or navigation during a slow read could let an older response overwrite newer state or update an unmounted page.
 - Give each load a monotonically increasing request ID; only the latest request may update data, errors or loading state. Invalidate the request on effect cleanup.
 - Keep the fix at the UI request lifecycle; do not change Firestore query scope or introduce paid infrastructure.
+
+
+## 2026-11-27 — Guard image uploader callbacks after unmount
+
+- Single- and multi-image uploaders awaited asynchronous Storage/fallback work and continued setting local state or calling parent callbacks after their component had unmounted.
+- Use a per-component upload request identity, invalidate it in effect cleanup, and guard progress/success/error/finally updates. Always revoke temporary object URLs even when the request becomes stale.
+- The upload itself may finish in the background, but a departed editor must not receive stale UI updates or mutate its parent state.

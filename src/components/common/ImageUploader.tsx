@@ -34,9 +34,14 @@ export function ImageUploader({
   }, [currentImageUrl, isUploading]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadRequestRef = useRef(0);
+
+  useEffect(() => () => {
+    uploadRequestRef.current += 1;
+  }, []);
 
   const handleFile = async (file: File) => {
-    if (!file) return;
+    if (!file || disabled || isUploading) return;
 
     if (!file.type.startsWith('image/')) {
       setErrorMessage('Vui lòng chọn file hình ảnh (JPG, PNG, WebP,...).');
@@ -48,6 +53,7 @@ export function ImageUploader({
       return;
     }
 
+    const requestId = ++uploadRequestRef.current;
     setErrorMessage(null);
     setIsUploading(true);
     setUploadProgress(0);
@@ -58,18 +64,20 @@ export function ImageUploader({
 
     try {
       const downloadUrl = await uploadProductImage(file, (progress) => {
-        setUploadProgress(progress);
+        if (requestId === uploadRequestRef.current) setUploadProgress(progress);
       });
+      if (requestId !== uploadRequestRef.current) return;
       setPreviewUrl(downloadUrl);
       onImageUploaded(downloadUrl);
     } catch (error) {
+      if (requestId !== uploadRequestRef.current) return;
       setErrorMessage(
         error instanceof Error ? error.message : 'Tải ảnh lên thất bại.'
       );
       // Revert preview on failure
       setPreviewUrl(currentImageUrl || null);
     } finally {
-      setIsUploading(false);
+      if (requestId === uploadRequestRef.current) setIsUploading(false);
       URL.revokeObjectURL(objectUrl);
     }
   };
