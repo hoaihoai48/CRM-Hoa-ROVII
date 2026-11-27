@@ -1,5 +1,6 @@
 import { 
   signInWithEmailAndPassword, 
+  sendPasswordResetEmail,
   createUserWithEmailAndPassword,
   signInWithPopup, 
   signOut as firebaseSignOut,
@@ -22,6 +23,13 @@ export async function loginWithEmail(email: string, pass: string) {
 export async function registerWithEmail(email: string, pass: string) {
   const credential = await createUserWithEmailAndPassword(auth, email, pass);
   return credential.user;
+}
+
+/** Send Firebase's standard password-reset email to an email/password account. */
+export async function requestPasswordReset(email: string): Promise<void> {
+  const normalizedEmail = email.trim();
+  if (!normalizedEmail) throw new Error('Vui lòng nhập email tài khoản.');
+  await sendPasswordResetEmail(auth, normalizedEmail);
 }
 
 /**

@@ -269,3 +269,12 @@ When a new lesson is added:
 - Single- and multi-image uploaders awaited asynchronous Storage/fallback work and continued setting local state or calling parent callbacks after their component had unmounted.
 - Use a per-component upload request identity, invalidate it in effect cleanup, and guard progress/success/error/finally updates. Always revoke temporary object URLs even when the request becomes stale.
 - The upload itself may finish in the background, but a departed editor must not receive stale UI updates or mutate its parent state.
+
+
+## 2026-11-27 — Provide account recovery without exposing account existence
+
+- The login screen had email/password and Google sign-in but no self-service password recovery path for staff provisioned with email/password.
+- Use Firebase Authentication's standard password-reset email flow; validate the entered email, show a generic confirmation for both known and unknown accounts, and avoid exposing `auth/user-not-found` to the user.
+- Keep password recovery on Firebase Auth; do not add custom token storage, backend functions, paid services or production configuration changes.
+
+- In Playwright, assert the exact password-reset status message for known/unknown addresses rather than asserting that the whole page has no generic `role=alert`; unrelated framework/accessibility alerts can make a broad locator fail even when the feature contract is correct.
