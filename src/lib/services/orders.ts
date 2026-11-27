@@ -30,6 +30,16 @@ function normalizePhoneIdentity(value: string): string {
   return /^84[35789]\d{8}$/.test(digits) ? `0${digits.slice(2)}` : digits;
 }
 
+function assertUniqueProductIds(items: Array<{ productId: string }>): void {
+  const productIds = new Set<string>();
+  for (const item of items) {
+    if (productIds.has(item.productId)) {
+      throw new Error('Mỗi sản phẩm chỉ được xuất hiện một dòng trong đơn hàng.');
+    }
+    productIds.add(item.productId);
+  }
+}
+
 function mapDocToOrder(id: string, data: Record<string, unknown>): Order {
   const rawItems = Array.isArray(data.items) ? data.items : [];
   const items: OrderItem[] = rawItems.map((item: Record<string, unknown>, idx: number) => ({
@@ -278,6 +288,7 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
   if (input.items.length > 100) {
     throw new Error('Một đơn hàng không được vượt quá 100 dòng sản phẩm.');
   }
+  assertUniqueProductIds(input.items);
   if (!Number.isFinite(input.deliveryFee) || !Number.isFinite(input.discount) || input.deliveryFee < 0 || input.discount < 0) {
     throw new Error('Phí giao hàng và giảm giá phải là số hợp lệ, không âm.');
   }
@@ -497,6 +508,7 @@ export async function updateOrder(id: string, input: UpdateOrderInput): Promise<
   if (input.items.length > 100) {
     throw new Error('Một đơn hàng không được vượt quá 100 dòng sản phẩm.');
   }
+  assertUniqueProductIds(input.items);
   if (!input.customerName.trim() || !input.customerAddress.trim()) {
     throw new Error('Tên người nhận và địa chỉ giao hoa là bắt buộc.');
   }

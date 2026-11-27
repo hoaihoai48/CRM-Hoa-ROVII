@@ -233,3 +233,11 @@ When a new lesson is added:
 - `npm audit` depends on registry/advisory network availability and can stall an otherwise healthy lint/typecheck/Emulator/E2E/build pipeline.
 - Run informational dependency audits on a weekly schedule or explicit dispatch, with a bounded timeout and an artifact/summary. Keep the functional PR workflow focused on deterministic quality gates.
 - Do not remove the main-branch push trigger unless required PR checks/branch protection are confirmed; otherwise direct pushes could bypass all automated validation.
+
+## 2026-11-27 — Enforce one order line per product at the service boundary
+
+- UI cart controls normally keep one line per product, but service inputs are also callable independently of that UI.
+- Duplicate product IDs could create duplicate lines and, on edits, bypass per-line quantity checks for discontinued products (each duplicate line could individually stay below the original quantity while their sum exceeds it).
+- Reject duplicate product IDs in both create and update service paths before opening the Firestore transaction. Keep the regression in the isolated Emulator integrity suite and verify rejected writes leave customer/order documents unchanged.
+- Do not rely on the UI cart as an integrity boundary.
+
