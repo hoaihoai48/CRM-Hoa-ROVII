@@ -119,17 +119,25 @@ export async function uploadProductImage(
     return fallback;
   }
 
-  const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
-  const rawExtension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-  const extension = allowedExtensions.includes(rawExtension) ? rawExtension : 'jpg';
+  // The canvas encoder always produces JPEG. Upload that bounded, resized
+  // payload rather than the original multi-megabyte file; keep the object
+  // extension and Storage content type aligned with the actual bytes.
+  const base64Payload = compressedDataUrl.split(',')[1];
+  if (!base64Payload) throw new Error('Dữ liệu ảnh sau nén không hợp lệ.');
+  const binaryPayload = atob(base64Payload);
+  const imageBytes = new Uint8Array(binaryPayload.length);
+  for (let index = 0; index < binaryPayload.length; index += 1) {
+    imageBytes[index] = binaryPayload.charCodeAt(index);
+  }
+  const compressedBlob = new Blob([imageBytes], { type: 'image/jpeg' });
 
   try {
     // Nếu có thể tải lên Firebase Storage (khi đã kích hoạt Bucket)
-    const cleanFileName = `${Date.now()}_${crypto.randomUUID()}.${extension}`;
+    const cleanFileName = `${Date.now()}_${crypto.randomUUID()}.jpg`;
     const storageRef = ref(storage, `products/${cleanFileName}`);
 
-    const uploadTask = uploadBytesResumable(storageRef, file, {
-      contentType: file.type,
+    const uploadTask = uploadBytesResumable(storageRef, compressedBlob, {
+      contentType: 'image/jpeg',
     });
 
     return await new Promise<string>((resolve, reject) => {
