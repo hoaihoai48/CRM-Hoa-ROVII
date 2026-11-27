@@ -384,6 +384,29 @@ async function runTestSuite() {
   assert(threwInactive, 'Must reject order creation with inactive product');
 
   // ==========================================
+  // TEST GUARD: One product must occupy exactly one order line
+  // ==========================================
+  console.log('--- TEST GUARD: Reject duplicate product lines ---');
+  const duplicateCreateCustomerId = 'CUST_0901111227';
+  let duplicateCreateBlocked = false;
+  try {
+    await createOrder({
+      customerSnapshot: { name: 'Duplicate Product', phone: '0901111227', address: 'Duplicate Test Address' },
+      items: [
+        { productId: p1.id, quantity: 1 },
+        { productId: p1.id, quantity: 1 },
+      ],
+      deliveryFee: 0,
+      discount: 0,
+      createdBy: 'Tester',
+    });
+  } catch (error) {
+    duplicateCreateBlocked = error instanceof Error && error.message.includes('một dòng');
+  }
+  assert(duplicateCreateBlocked, 'Order creation must reject duplicate product IDs');
+  assert((await getCustomerById(duplicateCreateCustomerId)) === null, 'Rejected duplicate-product creation must not create a customer');
+
+  // ==========================================
   // CASE A: Create order when no previous orders exist
   // ==========================================
   console.log('\n--- CASE A: First Order Creation ---');
@@ -401,6 +424,26 @@ async function runTestSuite() {
     discount: 50000, // Total = 680,000
     createdBy: 'Tester',
   });
+
+  let duplicateEditBlocked = false;
+  try {
+    await updateOrder(orderA.id, {
+      items: [
+        { productId: p1.id, quantity: 2 },
+        { productId: p1.id, quantity: 2 },
+      ],
+      deliveryFee: 30000,
+      discount: 50000,
+      customerName: custA.name,
+      customerAddress: custA.address,
+      actorName: 'Tester',
+    });
+  } catch (error) {
+    duplicateEditBlocked = error instanceof Error && error.message.includes('một dòng');
+  }
+  assert(duplicateEditBlocked, 'Order editing must reject duplicate product IDs that could bypass inactive-product quantity limits');
+  const unchangedOrderA = await getOrderById(orderA.id);
+  assert(unchangedOrderA?.items.length === 1 && unchangedOrderA.items[0].quantity === 2, 'Rejected duplicate-line edit must leave the original order unchanged');
 
   const custACheck = await getCustomerById(custA.id);
   assert(custACheck !== null, 'Customer A must exist');

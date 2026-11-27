@@ -262,3 +262,11 @@ The repository also contains older `docs/automation/CRM_HOA_ROVII_CURRENT_STATE.
 - Actions did not run for the docs-only PR; no CI PASS is claimed. Vercel Preview was pending but is not a required gate for this docs-only change.
 - The new HANDOFF records PR #26 as open Draft with Emulator failure on exact head `ba3c4770ba168b5049b9f52ee30031f8ea5101e4`; PR #25 is closed unmerged. These remain separate from the merged documentation change.
 - No production data, deployment, billing, Firebase configuration or migration changed.
+
+## 2026-11-27 — Order-line integrity hardening (implementation branch)
+
+- Branch: `fix/order-duplicate-product-lines-2026-11-27`.
+- Finding: duplicate product IDs in direct service inputs could create multiple lines for one product. During order edits this could bypass the discontinued-product quantity cap because the cap was checked per line rather than against the combined quantity.
+- Change: reject duplicate product IDs in both `createOrder()` and `updateOrder()` before Firestore transactions; add Emulator regressions for rejected create/edit and unchanged persisted data.
+- Verification: pending automatic GitHub Actions on the PR head. No manual test suite, production data, deployment, Firebase configuration or billing was touched.
+
