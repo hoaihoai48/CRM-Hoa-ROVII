@@ -24,6 +24,54 @@ interface AuthContextType {
   logout: () => Promise<void>;
 }
 
+const MEMBERSHIP_CACHE_PREFIX = 'rovii:membership:';
+
+function readCachedMembership(uid: string): MembershipUser | null {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.localStorage.getItem(`${MEMBERSHIP_CACHE_PREFIX}${uid}`);
+    if (!raw) return null;
+
+    const value = JSON.parse(raw) as Partial<MembershipUser>;
+    if (
+      value.id !== uid ||
+      (value.role !== 'admin' && value.role !== 'staff') ||
+      value.status !== 'active' ||
+      typeof value.name !== 'string' ||
+      typeof value.email !== 'string'
+    ) {
+      return null;
+    }
+
+    return {
+      id: uid,
+      name: value.name,
+      email: value.email,
+      role: value.role,
+      status: 'active',
+      avatarUrl: typeof value.avatarUrl === 'string' ? value.avatarUrl : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function cacheMembership(membership: MembershipUser | null, uid: string) {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const key = `${MEMBERSHIP_CACHE_PREFIX}${uid}`;
+    if (membership?.id === uid && membership.status === 'active') {
+      window.localStorage.setItem(key, JSON.stringify(membership));
+    } else {
+      window.localStorage.removeItem(key);
+    }
+  } catch {
+    // Storage can be unavailable or full; Firebase remains the source of truth.
+  }
+}
+
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
@@ -40,6 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [membershipAttempt, setMembershipAttempt] = useState(0);
   const [membershipState, setMembershipState] = useState<MembershipState | null>(null);
+  const membershipAttemptRef = useRef(0);
   const lastAuthUid = useRef<string | null | undefined>(undefined);
 
   useEffect(() => subscribeToAuth((currentUser) => {
@@ -47,8 +96,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (lastAuthUid.current !== nextUid) {
       lastAuthUid.current = nextUid;
       resetCurrentUserRequest();
-      // Invalidate a prior session's membership even when the same UID signs back in.
-      setMembershipAttempt((attempt) => attempt + 1);
+
+      const nextAttempt = membershipAttemptRef.current + 1;
+      membershipAttemptRef.current = nextAttempt;
+      setMembershipAttempt(nextAttempt);
+
+      // A cached profile restores the shell immediately, but never grants data access.
+      const cachedMembership = currentUser ? readCachedMembership(nextUid!) : null;
+      setMembershipState(cachedMembership ? {
+        uid: nextUid!,
+        attempt: nextAttempt,
+        user: cachedMembership,
+        error: null,
+      } : null);
     }
     setUser(currentUser);
     setLoading(false);
@@ -56,8 +116,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const userId = user?.uid ?? null;
 
-  // Resolve membership once per authenticated UID; route changes reuse this state.
-  // Loading is derived from the UID/attempt key so no synchronous state reset is needed in this effect.
+  // Refresh the cached profile from Firestore for every newly restored auth session.
+  // Firestore Security Rules remain the authorization boundary for all CRM data.
   useEffect(() => {
     if (loading || !userId) return;
 
@@ -65,6 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     getCurrentUser()
       .then((membership) => {
         if (!cancelled) {
+          cacheMembership(membership, userId);
           setMembershipState({ uid: userId, attempt: membershipAttempt, user: membership, error: null });
         }
       })
@@ -83,10 +144,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [loading, userId, membershipAttempt]);
 
   const retryMembership = () => {
-    setMembershipAttempt((attempt) => attempt + 1);
+    if (userId) {
+      try {
+        window.localStorage.removeItem(`${MEMBERSHIP_CACHE_PREFIX}${userId}`);
+      } catch {
+        // Ignore unavailable browser storage; the Firestore retry still proceeds.
+      }
+    }
+    const nextAttempt = membershipAttemptRef.current + 1;
+    membershipAttemptRef.current = nextAttempt;
+    setMembershipState(null);
+    setMembershipAttempt(nextAttempt);
   };
 
-  const logout = async () => { await logoutUser(); };
+  const logout = async () => {
+    if (userId) cacheMembership(null, userId);
+    await logoutUser();
+  };
 
   const stateMatchesCurrentAttempt = Boolean(
     userId && membershipState?.uid === userId && membershipState.attempt === membershipAttempt
