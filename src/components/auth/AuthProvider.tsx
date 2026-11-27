@@ -88,6 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [membershipAttempt, setMembershipAttempt] = useState(0);
   const [membershipState, setMembershipState] = useState<MembershipState | null>(null);
+  const membershipAttemptRef = useRef(0);
   const lastAuthUid = useRef<string | null | undefined>(undefined);
 
   useEffect(() => subscribeToAuth((currentUser) => {
@@ -95,9 +96,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (lastAuthUid.current !== nextUid) {
       lastAuthUid.current = nextUid;
       resetCurrentUserRequest();
-      setMembershipState(null);
-      // Invalidate a prior session's membership even when the same UID signs back in.
-      setMembershipAttempt((attempt) => attempt + 1);
+
+      const nextAttempt = membershipAttemptRef.current + 1;
+      membershipAttemptRef.current = nextAttempt;
+      setMembershipAttempt(nextAttempt);
+
+      // A cached profile restores the shell immediately, but never grants data access.
+      const cachedMembership = currentUser ? readCachedMembership(nextUid!) : null;
+      setMembershipState(cachedMembership ? {
+        uid: nextUid!,
+        attempt: nextAttempt,
+        user: cachedMembership,
+        error: null,
+      } : null);
     }
     setUser(currentUser);
     setLoading(false);
@@ -105,23 +116,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const userId = user?.uid ?? null;
 
-  // Restore a previously verified profile immediately for UI continuity, then
-  // always refresh it from Firestore. Cached data is never an authorization source:
-  // Firestore Security Rules independently enforce active membership on data access.
+  // Refresh the cached profile from Firestore for every newly restored auth session.
+  // Firestore Security Rules remain the authorization boundary for all CRM data.
   useEffect(() => {
     if (loading || !userId) return;
 
     let cancelled = false;
-    const cachedMembership = readCachedMembership(userId);
-    if (cachedMembership) {
-      setMembershipState({
-        uid: userId,
-        attempt: membershipAttempt,
-        user: cachedMembership,
-        error: null,
-      });
-    }
-
     getCurrentUser()
       .then((membership) => {
         if (!cancelled) {
@@ -151,8 +151,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Ignore unavailable browser storage; the Firestore retry still proceeds.
       }
     }
+    const nextAttempt = membershipAttemptRef.current + 1;
+    membershipAttemptRef.current = nextAttempt;
     setMembershipState(null);
-    setMembershipAttempt((attempt) => attempt + 1);
+    setMembershipAttempt(nextAttempt);
   };
 
   const logout = async () => {
