@@ -41,12 +41,13 @@ test.describe('Authentication entry points', () => {
     await page.goto('/login');
     await page.getByLabel('Email').fill(email);
     await page.getByRole('button', { name: 'Quên mật khẩu?' }).click();
+    const confirmation = await page.getByRole('status').textContent();
     await expect(page.getByRole('status')).toContainText('Nếu email này thuộc một tài khoản có thể khôi phục');
 
     await page.getByLabel('Email').fill('not-registered@example.test');
     await page.getByRole('button', { name: 'Quên mật khẩu?' }).click();
-    await expect(page.getByRole('status')).toContainText('Nếu email này thuộc một tài khoản có thể khôi phục');
-    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(page.getByRole('status')).toHaveText(confirmation);
+    await expect(page.getByText('Không thể gửi hướng dẫn đặt lại mật khẩu lúc này. Vui lòng thử lại sau hoặc liên hệ quản trị viên.')).toHaveCount(0);
   });
 });
 

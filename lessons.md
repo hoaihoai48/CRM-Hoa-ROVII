@@ -276,3 +276,5 @@ When a new lesson is added:
 - The login screen had email/password and Google sign-in but no self-service password recovery path for staff provisioned with email/password.
 - Use Firebase Authentication's standard password-reset email flow; validate the entered email, show a generic confirmation for both known and unknown accounts, and avoid exposing `auth/user-not-found` to the user.
 - Keep password recovery on Firebase Auth; do not add custom token storage, backend functions, paid services or production configuration changes.
+
+- In Playwright, assert the exact password-reset status message for known/unknown addresses rather than asserting that the whole page has no generic `role=alert`; unrelated framework/accessibility alerts can make a broad locator fail even when the feature contract is correct.
